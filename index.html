@@ -297,12 +297,23 @@
   .toast.show { opacity: 1; }
 
   /* Add student camera */
+  #addCameraOuter {
+    position: relative; width: 200px;
+    margin: 0 auto; display: none;
+  }
   #addCameraWrap {
-    position: relative; width: 200px; height: 200px;
-    margin: 0 auto; border-radius: 50%; overflow: hidden;
-    background: #000; display: none;
+    width: 200px; height: 200px;
+    border-radius: 50%; overflow: hidden;
+    background: #000;
   }
   #addVideo { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+  #flipAddBtn {
+    position: absolute; top: 0; right: -44px;
+    background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.3);
+    color: #fff; border-radius: 8px;
+    padding: 6px 8px; font-size: 18px; cursor: pointer;
+    z-index: 10;
+  }
 
   .confidence-bar-wrap { margin: 8px 0; }
   .confidence-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
@@ -422,9 +433,11 @@
         <div style="font-size:36px">📷</div>
         <div style="font-size:13px;color:var(--muted);margin-top:6px">點擊開啟相機拍照</div>
       </div>
-      <div id="addCameraWrap" style="position:relative;">
-        <video id="addVideo" autoplay muted playsinline></video>
-        <button onclick="flipAddCamera()" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:8px;padding:4px 8px;font-size:16px;cursor:pointer;z-index:10;">🔄</button>
+      <div id="addCameraOuter">
+        <div id="addCameraWrap">
+          <video id="addVideo" autoplay muted playsinline></video>
+        </div>
+        <button id="flipAddBtn" onclick="flipAddCamera()">🔄</button>
       </div>
       <img id="capturePreview" alt="預覽">
       <button class="btn btn-outline" id="snapBtn" onclick="snapPhoto()" style="display:none;margin-top:10px">📸 拍照</button>
@@ -677,12 +690,13 @@ function showAddModal() {
   document.getElementById('capturePreview').style.display = 'none';
   document.getElementById('snapBtn').style.display = 'none';
   document.getElementById('retakeBtn').style.display = 'none';
-  document.getElementById('addCameraWrap').style.display = 'none';
+  document.getElementById('addCameraOuter').style.display = 'none';
   document.getElementById('photoArea').style.display = 'block';
 }
 
 function hideAddModal() {
   document.getElementById('addModal').style.display = 'none';
+  document.getElementById('addCameraOuter').style.display = 'none';
   if (addStream) { addStream.getTracks().forEach(t => t.stop()); addStream = null; }
 }
 
@@ -690,7 +704,7 @@ async function startAddCamera(facing) {
   if (!facing) facing = addCurrentFacing;
   addCurrentFacing = facing;
   document.getElementById('photoArea').style.display = 'none';
-  document.getElementById('addCameraWrap').style.display = 'block';
+  document.getElementById('addCameraOuter').style.display = 'block';
   document.getElementById('snapBtn').style.display = 'block';
   if (addStream) { addStream.getTracks().forEach(t => t.stop()); addStream = null; }
   const addVideo = document.getElementById('addVideo');
