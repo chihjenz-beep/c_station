@@ -2,934 +2,478 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>學員出席打卡系統</title>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js/dist/face-api.min.js"></script>
 <style>
-  :root {
-    --bg: #0f1923;
-    --card: #1a2a3a;
-    --accent: #00c9a7;
-    --accent2: #0099ff;
-    --warn: #ff6b6b;
-    --text: #e8f0fe;
-    --muted: #8a9bb0;
-    --border: #2a3f55;
-    --success: #00e676;
-    --radius: 14px;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
-    min-height: 100vh;
-    padding-bottom: 80px;
-  }
-  header {
-    background: linear-gradient(135deg, #0d2137 0%, #1a3a5c 100%);
-    padding: 16px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid var(--border);
-    position: sticky; top: 0; z-index: 100;
-    box-shadow: 0 2px 20px rgba(0,0,0,0.4);
-  }
-  header h1 { font-size: 18px; font-weight: 700; color: var(--accent); letter-spacing: 1px; }
-  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--warn); animation: pulse 1.5s infinite; }
-  .status-dot.ready { background: var(--success); }
-  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:0.6;transform:scale(1.3);} }
+:root {
+  --bg:#0f1923; --card:#1a2a3a; --accent:#00c9a7; --accent2:#0099ff;
+  --warn:#ff6b6b; --text:#e8f0fe; --muted:#8a9bb0; --border:#2a3f55;
+  --success:#00e676; --radius:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Microsoft JhengHei',sans-serif;min-height:100vh;padding-bottom:80px;}
 
-  /* Nav Tabs */
-  .nav-tabs {
-    display: flex;
-    background: var(--card);
-    border-bottom: 1px solid var(--border);
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  .nav-tabs::-webkit-scrollbar { display: none; }
-  .tab-btn {
-    flex: 1; min-width: 80px;
-    padding: 13px 8px;
-    background: none; border: none;
-    color: var(--muted); font-size: 13px;
-    cursor: pointer; transition: all 0.2s;
-    border-bottom: 3px solid transparent;
-    white-space: nowrap;
-  }
-  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
-  .tab-btn .icon { display: block; font-size: 20px; margin-bottom: 2px; }
+header{background:linear-gradient(135deg,#0d2137,#1a3a5c);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;}
+header h1{font-size:17px;font-weight:700;color:var(--accent);}
+.sdot{width:10px;height:10px;border-radius:50%;background:var(--warn);animation:pulse 1.5s infinite;}
+.sdot.ok{background:var(--success);}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.6;transform:scale(1.3);}}
 
-  .page { display: none; padding: 16px; }
-  .page.active { display: block; }
+.nav-tabs{display:flex;background:var(--card);border-bottom:1px solid var(--border);}
+.tab-btn{flex:1;padding:12px 4px;background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;border-bottom:3px solid transparent;}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+.tab-btn .icon{display:block;font-size:20px;margin-bottom:2px;}
 
-  /* Cards */
-  .card {
-    background: var(--card);
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    padding: 16px;
-    margin-bottom: 14px;
-  }
-  .card-title { font-size: 13px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+.page{display:none;padding:14px;}.page.active{display:block;}
 
-  /* Camera */
-  #cameraWrap {
-    position: relative;
-    width: 100%; max-width: 400px;
-    margin: 0 auto 14px;
-    border-radius: var(--radius);
-    overflow: hidden;
-    background: #000;
-    aspect-ratio: 3/4;
-  }
-  #video {
-    width: 100%; height: 100%;
-    object-fit: cover;
-    display: block;
-    transform: scaleX(-1);
-  }
-  #overlay {
-    position: absolute; top: 0; left: 0;
-    width: 100%; height: 100%;
-    pointer-events: none;
-    transform: scaleX(-1);
-  }
-  .face-guide {
-    position: absolute; top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    width: 200px; height: 240px;
-    border: 2px dashed rgba(0,201,167,0.5);
-    border-radius: 50%;
-    pointer-events: none;
-  }
-  .camera-hint {
-    position: absolute; bottom: 0; left: 0; right: 0;
-    padding: 12px;
-    background: linear-gradient(transparent, rgba(0,0,0,0.8));
-    text-align: center; font-size: 13px; color: #fff;
-  }
+/* 打卡相機 */
+#camBox{position:relative;width:100%;max-width:380px;margin:0 auto 12px;border-radius:14px;overflow:hidden;background:#000;aspect-ratio:3/4;}
+#video{width:100%;height:100%;object-fit:cover;display:block;}
+#overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;}
+.face-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-55%);width:180px;height:220px;border:2px dashed rgba(0,201,167,.6);border-radius:50%;pointer-events:none;}
+#camHint{position:absolute;bottom:0;left:0;right:0;padding:10px;background:linear-gradient(transparent,rgba(0,0,0,.8));text-align:center;font-size:13px;color:#fff;}
+#flipBtn{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:8px;padding:7px 10px;font-size:18px;cursor:pointer;z-index:5;}
 
-  /* Buttons */
-  .btn {
-    display: block; width: 100%;
-    padding: 14px;
-    border-radius: 10px;
-    border: none; cursor: pointer;
-    font-size: 15px; font-weight: 600;
-    transition: all 0.2s;
-  }
-  .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; }
-  .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
-  .btn-primary:disabled { opacity: 0.4; transform: none; cursor: not-allowed; }
-  .btn-danger { background: var(--warn); color: #fff; }
-  .btn-outline {
-    background: none; border: 1.5px solid var(--border);
-    color: var(--text); margin-top: 10px;
-  }
+.btn{display:block;width:100%;padding:14px;border-radius:10px;border:none;cursor:pointer;font-size:15px;font-weight:600;transition:all .2s;}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;}
+.btn-warn{background:var(--warn);color:#fff;margin-top:8px;}
 
-  /* Result display */
-  #resultBox {
-    text-align: center; padding: 16px;
-    border-radius: var(--radius);
-    margin-top: 14px;
-    display: none;
-  }
-  #resultBox.success { background: rgba(0,230,118,0.12); border: 1px solid var(--success); }
-  #resultBox.fail { background: rgba(255,107,107,0.12); border: 1px solid var(--warn); }
-  #resultBox .result-name { font-size: 22px; font-weight: 700; margin: 6px 0; }
-  #resultBox .result-time { font-size: 13px; color: var(--muted); }
+#resultBox{display:none;text-align:center;padding:14px;border-radius:var(--radius);margin-top:12px;}
+#resultBox.ok{background:rgba(0,230,118,.12);border:1px solid var(--success);}
+#resultBox.fail{background:rgba(255,107,107,.12);border:1px solid var(--warn);}
+#resultName{font-size:22px;font-weight:700;margin:6px 0;}
+#resultTime{font-size:13px;color:var(--muted);}
+.cbar-wrap{margin:8px 0;}
+.cbar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+.cfill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .3s;}
+.clabel{font-size:11px;color:var(--muted);margin-top:3px;}
 
-  /* Student list */
-  .student-item {
-    display: flex; align-items: center; gap: 12px;
-    padding: 12px;
-    background: var(--card);
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    margin-bottom: 10px;
-  }
-  .student-avatar {
-    width: 50px; height: 50px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid var(--accent);
-    flex-shrink: 0;
-  }
-  .student-avatar-placeholder {
-    width: 50px; height: 50px;
-    border-radius: 50%;
-    background: var(--border);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 22px; flex-shrink: 0;
-  }
-  .student-info { flex: 1; }
-  .student-name { font-size: 15px; font-weight: 600; }
-  .student-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  .student-actions { display: flex; gap: 8px; }
-  .icon-btn {
-    background: none; border: 1px solid var(--border);
-    color: var(--muted); border-radius: 8px;
-    padding: 6px 10px; cursor: pointer; font-size: 14px;
-    transition: all 0.2s;
-  }
-  .icon-btn:hover { color: var(--warn); border-color: var(--warn); }
+/* 學員 */
+.stu-item{display:flex;align-items:center;gap:10px;padding:12px;background:var(--card);border-radius:10px;border:1px solid var(--border);margin-bottom:10px;}
+.stu-av{width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--accent);flex-shrink:0;}
+.stu-ph{width:48px;height:48px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.stu-name{font-size:15px;font-weight:600;}
+.stu-meta{font-size:12px;color:var(--muted);margin-top:2px;}
+.del-btn{background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:14px;flex-shrink:0;}
 
-  /* Form */
-  .form-group { margin-bottom: 14px; }
-  label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px; }
-  input[type=text], select {
-    width: 100%; padding: 12px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid var(--border);
-    border-radius: 10px; color: var(--text);
-    font-size: 15px;
-  }
-  input[type=text]:focus, select:focus { outline: none; border-color: var(--accent); }
+/* Modal */
+#modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;overflow-y:auto;padding:16px;}
+.modal-box{max-width:400px;margin:0 auto;background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:18px;}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+.modal-head h2{font-size:16px;}
+.close-btn{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;}
+.fg{margin-bottom:12px;}
+label.lbl{font-size:13px;color:var(--muted);display:block;margin-bottom:5px;}
+input[type=text]{width:100%;padding:11px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:9px;color:var(--text);font-size:15px;}
+input[type=text]:focus{outline:none;border-color:var(--accent);}
 
-  /* Photo capture */
-  #capturePreview {
-    width: 120px; height: 120px;
-    border-radius: 50%; object-fit: cover;
-    border: 3px solid var(--accent);
-    display: none; margin: 10px auto;
-  }
-  .photo-area {
-    text-align: center;
-    border: 2px dashed var(--border);
-    border-radius: var(--radius);
-    padding: 20px;
-    cursor: pointer;
-  }
-  .photo-area:hover { border-color: var(--accent); }
+/* 照片上傳區 */
+.photo-btns{display:flex;gap:10px;margin-bottom:10px;}
+.photo-btn{flex:1;text-align:center;padding:13px 6px;border-radius:10px;cursor:pointer;font-size:14px;}
+.photo-btn-cam{background:rgba(0,201,167,.1);border:1.5px solid var(--accent);color:var(--accent);}
+.photo-btn-gal{background:rgba(255,255,255,.05);border:1.5px solid var(--border);color:var(--text);}
+#prevImg{display:none;width:110px;height:110px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);margin:8px auto;display:none;}
+#reBtn{display:none;width:100%;padding:10px;border-radius:9px;background:none;border:1.5px solid var(--warn);color:var(--warn);cursor:pointer;font-size:14px;margin-top:6px;}
 
-  /* Records */
-  .record-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 14px;
-    background: rgba(255,255,255,0.03);
-    border-radius: 8px;
-    border-left: 3px solid var(--accent);
-    margin-bottom: 8px;
-  }
-  .record-avatar {
-    width: 36px; height: 36px; border-radius: 50%;
-    object-fit: cover; flex-shrink: 0;
-  }
-  .record-info { flex: 1; }
-  .record-name { font-size: 14px; font-weight: 600; }
-  .record-time { font-size: 12px; color: var(--muted); }
-  .record-badge {
-    font-size: 11px; padding: 3px 8px;
-    border-radius: 20px; font-weight: 600;
-  }
-  .badge-in { background: rgba(0,201,167,0.2); color: var(--accent); }
-  .badge-out { background: rgba(255,107,107,0.2); color: var(--warn); }
+/* 紀錄 */
+.rec-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,.03);border-radius:8px;border-left:3px solid var(--accent);margin-bottom:8px;}
+.rec-av{width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0;}
+.rec-name{font-size:14px;font-weight:600;}
+.rec-time{font-size:12px;color:var(--muted);}
+.badge{font-size:11px;padding:3px 8px;border-radius:20px;font-weight:600;background:rgba(0,201,167,.2);color:var(--accent);}
 
-  /* Stats */
-  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .stat-card {
-    background: rgba(255,255,255,0.05);
-    border-radius: 10px; padding: 14px;
-    text-align: center;
-  }
-  .stat-num { font-size: 28px; font-weight: 700; color: var(--accent); }
-  .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.date-bar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+.date-bar input[type=date]{flex:1;min-width:130px;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;}
+.date-bar button{padding:8px 12px;border-radius:8px;background:var(--accent);color:#000;border:none;cursor:pointer;font-weight:600;font-size:13px;}
+#expBtn{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:block;margin-bottom:10px;margin-left:auto;}
 
-  /* Loading */
-  #loadingOverlay {
-    position: fixed; inset: 0;
-    background: rgba(15,25,35,0.95);
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    z-index: 999;
-  }
-  .spinner {
-    width: 50px; height: 50px;
-    border: 4px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin-bottom: 16px;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .load-text { color: var(--muted); font-size: 14px; }
+/* 統計 */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.stat-card{background:rgba(255,255,255,.05);border-radius:10px;padding:13px;text-align:center;}
+.stat-num{font-size:26px;font-weight:700;color:var(--accent);}
+.stat-lbl{font-size:12px;color:var(--muted);margin-top:3px;}
 
-  /* Date filter */
-  .date-bar {
-    display: flex; gap: 8px; align-items: center;
-    margin-bottom: 14px; flex-wrap: wrap;
-  }
-  .date-bar input[type=date] {
-    flex: 1; min-width: 140px; padding: 8px 12px;
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 8px; color: var(--text); font-size: 14px;
-  }
-  .date-bar button {
-    padding: 8px 14px; border-radius: 8px;
-    background: var(--accent); color: #000;
-    border: none; cursor: pointer; font-weight: 600; font-size: 13px;
-  }
+/* 載入 */
+#loading{position:fixed;inset:0;background:rgba(15,25,35,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;}
+.spin{width:48px;height:48px;border:4px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:14px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#loadTxt{color:var(--muted);font-size:14px;text-align:center;padding:0 20px;}
 
-  /* Export btn */
-  #exportBtn {
-    background: linear-gradient(135deg, #00c9a7, #0099ff);
-    color: #fff; border: none;
-    padding: 10px 20px; border-radius: 8px;
-    font-size: 14px; font-weight: 600; cursor: pointer;
-    margin-left: auto; display: block; margin-bottom: 12px;
-  }
+.empty{text-align:center;padding:36px 16px;color:var(--muted);font-size:14px;}
+.empty .ei{font-size:44px;margin-bottom:10px;}
+.card2{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:14px;margin-bottom:12px;}
+.ctitle{font-size:12px;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px;}
 
-  .empty-state { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 14px; }
-  .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
-
-  .toast {
-    position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
-    background: #1e3a5f; color: #fff;
-    padding: 10px 20px; border-radius: 30px;
-    font-size: 14px; z-index: 200;
-    opacity: 0; transition: opacity 0.3s;
-    border: 1px solid var(--border);
-    white-space: nowrap;
-  }
-  .toast.show { opacity: 1; }
-
-  /* Add student camera */
-  #addCameraOuter {
-    position: relative; width: 200px;
-    margin: 0 auto; display: none;
-  }
-  #addCameraWrap {
-    width: 200px; height: 200px;
-    border-radius: 50%; overflow: hidden;
-    background: #000;
-  }
-  #addVideo { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-  #flipAddBtn {
-    position: absolute; top: 0; right: -44px;
-    background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.3);
-    color: #fff; border-radius: 8px;
-    padding: 6px 8px; font-size: 18px; cursor: pointer;
-    z-index: 10;
-  }
-
-  .confidence-bar-wrap { margin: 8px 0; }
-  .confidence-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
-  .confidence-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.3s; }
-  .confidence-label { font-size: 11px; color: var(--muted); margin-top: 3px; }
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1e3a5f;color:#fff;padding:9px 18px;border-radius:28px;font-size:13px;z-index:500;opacity:0;transition:opacity .3s;border:1px solid var(--border);white-space:nowrap;}
+#toast.show{opacity:1;}
 </style>
 </head>
 <body>
 
-<!-- Loading -->
-<div id="loadingOverlay">
-  <div class="spinner"></div>
-  <div class="load-text" id="loadText">載入人臉辨識模型中…</div>
+<div id="loading">
+  <div class="spin"></div>
+  <div id="loadTxt">載入人臉辨識模型中…<br>首次約需 30～60 秒，請稍候</div>
 </div>
 
-<!-- Header -->
 <header>
   <h1>🏠 學員出席打卡</h1>
   <div style="display:flex;align-items:center;gap:8px;">
-    <span style="font-size:12px;color:var(--muted)" id="statusLabel">初始化中</span>
-    <div class="status-dot" id="statusDot"></div>
+    <span style="font-size:12px;color:var(--muted)" id="statusLbl">初始化中</span>
+    <div class="sdot" id="sdot"></div>
   </div>
 </header>
 
-<!-- Tabs -->
 <div class="nav-tabs">
-  <button class="tab-btn active" onclick="switchTab('checkin')">
-    <span class="icon">📷</span>打卡
-  </button>
-  <button class="tab-btn" onclick="switchTab('students')">
-    <span class="icon">👥</span>學員
-  </button>
-  <button class="tab-btn" onclick="switchTab('records')">
-    <span class="icon">📋</span>紀錄
-  </button>
-  <button class="tab-btn" onclick="switchTab('stats')">
-    <span class="icon">📊</span>統計
-  </button>
+  <button class="tab-btn active" onclick="goTab('checkin',this)"><span class="icon">📷</span>打卡</button>
+  <button class="tab-btn" onclick="goTab('students',this)"><span class="icon">👥</span>學員</button>
+  <button class="tab-btn" onclick="goTab('records',this)"><span class="icon">📋</span>紀錄</button>
+  <button class="tab-btn" onclick="goTab('stats',this)"><span class="icon">📊</span>統計</button>
 </div>
 
-<!-- ===== PAGE: CHECK-IN ===== -->
+<!-- 打卡 -->
 <div class="page active" id="page-checkin">
-  <div id="cameraWrap">
+  <div id="camBox">
     <video id="video" autoplay muted playsinline></video>
     <canvas id="overlay"></canvas>
-    <div class="face-guide"></div>
-    <div class="camera-hint" id="cameraHint">請將臉部對準圓框</div>
-    <button onclick="flipCamera()" style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:8px;padding:6px 10px;font-size:18px;cursor:pointer;z-index:10;">🔄</button>
+    <div class="face-ring"></div>
+    <div id="camHint">請將臉部對準圓框</div>
+    <button id="flipBtn" onclick="flipCam()">🔄</button>
   </div>
-
-  <button class="btn btn-primary" id="checkInBtn" onclick="doCheckin()" disabled>
-    📸 確認打卡
-  </button>
-
+  <button class="btn btn-primary" id="checkBtn" onclick="doCheckin()" disabled>📸 確認打卡</button>
   <div id="resultBox">
-    <div id="resultIcon" style="font-size:40px"></div>
-    <div class="result-name" id="resultName"></div>
-    <div class="result-time" id="resultTime"></div>
-    <div class="confidence-bar-wrap">
-      <div class="confidence-bar"><div class="confidence-fill" id="confBar" style="width:0%"></div></div>
-      <div class="confidence-label" id="confLabel"></div>
-    </div>
+    <div id="resultIcon" style="font-size:38px"></div>
+    <div id="resultName"></div>
+    <div id="resultTime"></div>
+    <div class="cbar-wrap"><div class="cbar"><div class="cfill" id="cfill" style="width:0%"></div></div><div class="clabel" id="clabel"></div></div>
   </div>
 </div>
 
-<!-- ===== PAGE: STUDENTS ===== -->
+<!-- 學員 -->
 <div class="page" id="page-students">
-  <button class="btn btn-primary" onclick="showAddModal()" style="margin-bottom:16px">
-    ➕ 新增學員
-  </button>
-  <div id="studentList"></div>
+  <button class="btn btn-primary" onclick="openModal()" style="margin-bottom:14px">➕ 新增學員</button>
+  <div id="stuList"></div>
 </div>
 
-<!-- ===== PAGE: RECORDS ===== -->
+<!-- 紀錄 -->
 <div class="page" id="page-records">
   <div class="date-bar">
-    <input type="date" id="filterDate" onchange="renderRecords()">
-    <button onclick="clearDateFilter()">全部</button>
+    <input type="date" id="dateFilter" onchange="renderRec()">
+    <button onclick="document.getElementById('dateFilter').value='';renderRec()">全部</button>
   </div>
-  <button id="exportBtn" onclick="exportExcel()">📥 匯出 Excel</button>
-  <div id="recordList"></div>
+  <button id="expBtn" onclick="exportCSV()">📥 匯出 Excel</button>
+  <div id="recList"></div>
 </div>
 
-<!-- ===== PAGE: STATS ===== -->
+<!-- 統計 -->
 <div class="page" id="page-stats">
-  <div class="card">
-    <div class="card-title">今日統計</div>
-    <div class="stats-grid" id="statsGrid"></div>
-  </div>
-  <div class="card">
-    <div class="card-title">本月出席率</div>
-    <div id="monthlyStats"></div>
-  </div>
+  <div class="card2"><div class="ctitle">今日統計</div><div class="stats-grid" id="statsGrid"></div></div>
+  <div class="card2"><div class="ctitle">本月出席次數</div><div id="monthStats"></div></div>
 </div>
 
-<!-- ===== ADD STUDENT MODAL ===== -->
-<div id="addModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:300;overflow-y:auto;padding:20px;">
-  <div style="max-width:400px;margin:0 auto;background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:20px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-      <h2 style="font-size:17px;">新增學員</h2>
-      <button onclick="hideAddModal()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;">✕</button>
+<!-- Modal 新增學員 -->
+<div id="modal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h2>新增學員</h2>
+      <button class="close-btn" onclick="closeModal()">✕</button>
     </div>
-
-    <div class="form-group">
-      <label>姓名 *</label>
-      <input type="text" id="newName" placeholder="請輸入學員姓名">
-    </div>
-    <div class="form-group">
-      <label>組別</label>
-      <input type="text" id="newGroup" placeholder="例：A組、日間班">
-    </div>
-
-    <!-- Photo section -->
-    <div class="form-group">
-      <label>人臉照片 *</label>
-
-      <!-- 拍照或選相簿 -->
-      <div style="display:flex;gap:10px;margin-bottom:10px;">
-        <label style="flex:1;text-align:center;padding:14px;background:rgba(0,201,167,0.1);border:1.5px solid var(--accent);border-radius:10px;cursor:pointer;font-size:14px;color:var(--accent);">
+    <div class="fg"><label class="lbl">姓名 *</label><input type="text" id="fName" placeholder="學員姓名"></div>
+    <div class="fg"><label class="lbl">組別</label><input type="text" id="fGroup" placeholder="例：A組"></div>
+    <div class="fg">
+      <label class="lbl">人臉照片 *</label>
+      <div class="photo-btns">
+        <label class="photo-btn photo-btn-cam">
           📷 拍照
-          <input type="file" accept="image/*" capture="user" onchange="loadPhotoFile(event)" style="display:none">
+          <input type="file" accept="image/*" capture="user" onchange="loadPhoto(event)" style="display:none">
         </label>
-        <label style="flex:1;text-align:center;padding:14px;background:rgba(255,255,255,0.05);border:1.5px solid var(--border);border-radius:10px;cursor:pointer;font-size:14px;color:var(--text);">
+        <label class="photo-btn photo-btn-gal">
           🖼 相簿
-          <input type="file" accept="image/*" onchange="loadPhotoFile(event)" style="display:none">
+          <input type="file" accept="image/*" onchange="loadPhoto(event)" style="display:none">
         </label>
       </div>
-
-      <img id="capturePreview" alt="預覽" style="display:none;width:120px;height:120px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);margin:10px auto;display:none;">
-      <button class="btn btn-outline" id="retakeBtn" onclick="retakePhoto()" style="display:none;margin-top:6px;border-color:var(--warn);color:var(--warn)">🔄 重新選擇</button>
+      <img id="prevImg" alt="預覽">
+      <button id="reBtn" onclick="clearPhoto()">🔄 重新選擇</button>
     </div>
-
-    <canvas id="addCanvas" style="display:none"></canvas>
-    <button class="btn btn-primary" onclick="saveStudent()">儲存學員</button>
+    <button class="btn btn-primary" onclick="saveStu()">儲存學員</button>
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<div id="toast"></div>
 
 <script>
-// ==================== STATE ====================
-let students = JSON.parse(localStorage.getItem('att_students') || '[]');
-let records = JSON.parse(localStorage.getItem('att_records') || '[]');
+// ── 狀態 ──────────────────────────────────────────
+let students = JSON.parse(localStorage.getItem('att_s')||'[]');
+let records  = JSON.parse(localStorage.getItem('att_r')||'[]');
 let faceMatcher = null;
 let stream = null;
-let addStream = null;
-let capturedPhotoData = null;
-let detectionLoop = null;
-let modelsLoaded = false;
+let camDevices = [];
+let camIdx = 0;
+let detLoop = null;
+let photoData = null;
 
-// ==================== INIT ====================
+// ── 初始化 ────────────────────────────────────────
 async function init() {
   try {
-    document.getElementById('loadText').textContent = '載入人臉辨識模型中…（首次約需30秒）';
-    const MODEL_URL = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
+    const BASE = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
     await Promise.all([
-      faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-      faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
-      faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+      faceapi.nets.tinyFaceDetector.loadFromUri(BASE),
+      faceapi.nets.faceLandmark68TinyNet.loadFromUri(BASE),
+      faceapi.nets.faceRecognitionNet.loadFromUri(BASE),
     ]);
-    modelsLoaded = true;
-    document.getElementById('loadingOverlay').style.display = 'none';
-    document.getElementById('statusLabel').textContent = '就緒';
-    document.getElementById('statusDot').classList.add('ready');
-    await getCameraDevices();
-    await startCamera(cameraDevices.length > 0 ? cameraDevices[0].deviceId : null);
-    await buildFaceMatcher();
-    renderStudents();
-    renderRecords();
-    renderStats();
-    document.getElementById('filterDate').value = today();
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('statusLbl').textContent = '就緒';
+    document.getElementById('sdot').classList.add('ok');
+    await initCam();
+    await buildMatcher();
+    renderStu(); renderRec(); renderStats();
+    document.getElementById('dateFilter').value = toDay();
   } catch(e) {
-    document.getElementById('loadText').textContent = '模型載入失敗：' + e.message;
+    document.getElementById('loadTxt').textContent = '❌ 模型載入失敗：' + e.message;
   }
 }
 
-// ==================== CAMERA ====================
-let currentFacing = 'user';
-let cameraDevices = [];    // 所有視訊裝置
-let currentDeviceIdx = 0;  // 目前使用的裝置索引
-
-async function getCameraDevices() {
-  const devices = await navigator.mediaDevices.enumerateDevices();
-  cameraDevices = devices.filter(d => d.kind === 'videoinput');
+// ── 相機（打卡用） ─────────────────────────────────
+async function initCam() {
+  try {
+    // 先用預設取得權限，同時取得裝置清單
+    const tmp = await navigator.mediaDevices.getUserMedia({video:true});
+    tmp.getTracks().forEach(t=>t.stop());
+    const all = await navigator.mediaDevices.enumerateDevices();
+    camDevices = all.filter(d=>d.kind==='videoinput');
+    camIdx = 0;
+    await startCam();
+  } catch(e) {
+    document.getElementById('camHint').textContent = '無法開啟相機：'+e.message;
+  }
 }
 
-async function startCamera(deviceId) {
-  clearInterval(detectionLoop);
-  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+async function startCam() {
+  clearInterval(detLoop);
+  if (stream) { stream.getTracks().forEach(t=>t.stop()); stream=null; }
   const video = document.getElementById('video');
   video.srcObject = null;
 
   try {
-    const constraints = deviceId
-      ? { video: { deviceId: { exact: deviceId } } }
-      : { video: { facingMode: { ideal: 'user' } } };
+    const dev = camDevices[camIdx];
+    const constraints = dev
+      ? { video:{ deviceId:{ exact: dev.deviceId } } }
+      : { video:true };
 
     stream = await navigator.mediaDevices.getUserMedia(constraints);
-
-    // 判斷是否為前鏡頭（前鏡頭才需要水平翻轉）
     const track = stream.getVideoTracks()[0];
-    const settings = track.getSettings();
-    const isFront = settings.facingMode === 'user' || !settings.facingMode;
-    video.style.transform = isFront ? 'scaleX(-1)' : 'scaleX(1)';
-    document.getElementById('overlay').style.transform = isFront ? 'scaleX(-1)' : 'scaleX(1)';
-
+    const s = track.getSettings();
+    // 前鏡頭(user)才需要水平翻轉
+    const isFront = (s.facingMode === 'user') || (camDevices.length > 1 && camIdx === 0);
+    video.style.transform = isFront ? 'scaleX(-1)' : 'none';
+    document.getElementById('overlay').style.transform = isFront ? 'scaleX(-1)' : 'none';
     video.srcObject = stream;
-    video.oncanplay = () => { startDetection(); video.oncanplay = null; };
+    video.oncanplay = () => { runDetect(); video.oncanplay=null; };
   } catch(e) {
-    document.getElementById('cameraHint').textContent = '無法開啟相機：' + e.message;
+    document.getElementById('camHint').textContent = '無法開啟相機：'+e.message;
   }
 }
 
-async function flipCamera() {
-  if (cameraDevices.length === 0) await getCameraDevices();
-  if (cameraDevices.length <= 1) {
-    showToast('此裝置只有一個鏡頭');
-    return;
-  }
-  currentDeviceIdx = (currentDeviceIdx + 1) % cameraDevices.length;
-  await startCamera(cameraDevices[currentDeviceIdx].deviceId);
+async function flipCam() {
+  if (camDevices.length < 2) { toast('此裝置只有一個鏡頭'); return; }
+  camIdx = (camIdx + 1) % camDevices.length;
+  await startCam();
 }
 
-function startDetection() {
+function runDetect() {
   const video = document.getElementById('video');
-  const overlay = document.getElementById('overlay');
-  const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
-  detectionLoop = setInterval(async () => {
+  const canvas = document.getElementById('overlay');
+  const opts = new faceapi.TinyFaceDetectorOptions({inputSize:224,scoreThreshold:0.5});
+  detLoop = setInterval(async()=>{
     if (!video.videoWidth) return;
-    overlay.width = video.videoWidth;
-    overlay.height = video.videoHeight;
-    const ctx = overlay.getContext('2d');
-    ctx.clearRect(0, 0, overlay.width, overlay.height);
-    const detections = await faceapi.detectAllFaces(video, opts).withFaceLandmarks(true);
-    const btn = document.getElementById('checkInBtn');
-    if (detections.length > 0) {
-      faceapi.draw.drawDetections(overlay, detections);
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    const dets = await faceapi.detectAllFaces(video,opts).withFaceLandmarks(true);
+    const btn = document.getElementById('checkBtn');
+    if (dets.length > 0) {
+      faceapi.draw.drawDetections(canvas, dets);
       btn.disabled = false;
-      document.getElementById('cameraHint').textContent = '✅ 偵測到臉部，請按打卡';
+      document.getElementById('camHint').textContent = '✅ 偵測到臉部，請按打卡';
     } else {
       btn.disabled = true;
-      document.getElementById('cameraHint').textContent = '請將臉部對準圓框';
+      document.getElementById('camHint').textContent = '請將臉部對準圓框';
     }
   }, 500);
 }
 
-// ==================== FACE MATCHER ====================
-async function buildFaceMatcher() {
-  if (students.length === 0) { faceMatcher = null; return; }
-  const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.3 });
-  const labeledDescriptors = [];
-  for (const s of students) {
-    if (!s.photoData) continue;
-    try {
-      const img = await loadImage(s.photoData);
-      const det = await faceapi.detectSingleFace(img, opts).withFaceLandmarks(true).withFaceDescriptor();
-      if (det) {
-        labeledDescriptors.push(new faceapi.LabeledFaceDescriptors(s.id, [det.descriptor]));
-      }
-    } catch(e) { console.warn('Skip student', s.name, e); }
-  }
-  if (labeledDescriptors.length > 0) {
-    faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.55);
-  } else {
-    faceMatcher = null;
-  }
-}
-
-function loadImage(src) {
-  return new Promise((res, rej) => {
-    const img = new Image();
-    img.onload = () => res(img);
-    img.onerror = rej;
-    img.src = src;
-  });
-}
-
-// ==================== CHECK-IN ====================
+// ── 打卡 ──────────────────────────────────────────
 async function doCheckin() {
   const video = document.getElementById('video');
-  const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
-  const btn = document.getElementById('checkInBtn');
-  btn.disabled = true;
-  btn.textContent = '辨識中…';
-
-  const det = await faceapi.detectSingleFace(video, opts).withFaceLandmarks(true).withFaceDescriptor();
-
-  if (!det) {
-    showResult(false, '未偵測到臉部', '請重新對準鏡頭', 0);
-    btn.disabled = false; btn.textContent = '📸 確認打卡';
-    return;
-  }
-
-  if (!faceMatcher) {
-    showResult(false, '尚未建立學員資料', '請先在「學員」頁新增學員並拍照', 0);
-    btn.disabled = false; btn.textContent = '📸 確認打卡';
-    return;
-  }
-
+  const btn = document.getElementById('checkBtn');
+  btn.disabled = true; btn.textContent = '辨識中…';
+  const opts = new faceapi.TinyFaceDetectorOptions({inputSize:224,scoreThreshold:0.5});
+  const det = await faceapi.detectSingleFace(video,opts).withFaceLandmarks(true).withFaceDescriptor();
+  if (!det) { showResult(false,'未偵測到臉部','請重新對準鏡頭',0); reset(); return; }
+  if (!faceMatcher) { showResult(false,'尚未建立學員資料','請先新增學員',0); reset(); return; }
   const match = faceMatcher.findBestMatch(det.descriptor);
-  const confidence = Math.max(0, Math.round((1 - match.distance) * 100));
-
-  if (match.label === 'unknown' || confidence < 45) {
-    showResult(false, '辨識失敗', '找不到符合的學員（相似度：' + confidence + '%）', confidence);
-    btn.disabled = false; btn.textContent = '📸 確認打卡';
-    return;
-  }
-
-  const student = students.find(s => s.id === match.label);
-  if (!student) {
-    showResult(false, '系統錯誤', '找不到學員資料', 0);
-    btn.disabled = false; btn.textContent = '📸 確認打卡';
-    return;
-  }
-
-  // Record
+  const conf = Math.max(0, Math.round((1-match.distance)*100));
+  if (match.label==='unknown'||conf<45) { showResult(false,'辨識失敗','找不到符合學員（相似度：'+conf+'%）',conf); reset(); return; }
+  const stu = students.find(s=>s.id===match.label);
+  if (!stu) { showResult(false,'系統錯誤','找不到學員資料',0); reset(); return; }
   const now = new Date();
-  const record = {
-    id: Date.now().toString(),
-    studentId: student.id,
-    studentName: student.name,
-    studentGroup: student.group || '',
-    studentPhoto: student.photoData,
-    time: now.toISOString(),
-    type: 'in'
+  records.unshift({id:Date.now()+'',studentId:stu.id,studentName:stu.name,studentGroup:stu.group||'',studentPhoto:stu.photoData,time:now.toISOString()});
+  saveRec();
+  showResult(true,stu.name,fmtDT(now)+'　相似度：'+conf+'%',conf);
+  setTimeout(reset, 4000);
+}
+function reset(){ const btn=document.getElementById('checkBtn'); btn.textContent='📸 確認打卡'; btn.disabled=false; }
+function showResult(ok,name,time,conf){
+  const b=document.getElementById('resultBox');
+  b.style.display='block'; b.className=ok?'ok':'fail';
+  document.getElementById('resultIcon').textContent=ok?'✅':'❌';
+  document.getElementById('resultName').textContent=name;
+  document.getElementById('resultTime').textContent=time;
+  document.getElementById('cfill').style.width=conf+'%';
+  document.getElementById('clabel').textContent='辨識信心度：'+conf+'%';
+  if(ok) toast('✅ '+name+' 打卡成功！');
+}
+
+// ── FaceMatcher ───────────────────────────────────
+async function buildMatcher(){
+  if (!students.length){ faceMatcher=null; return; }
+  const opts = new faceapi.TinyFaceDetectorOptions({inputSize:224,scoreThreshold:0.3});
+  const descs = [];
+  for(const s of students){
+    if(!s.photoData) continue;
+    try{
+      const img = await loadImg(s.photoData);
+      const d = await faceapi.detectSingleFace(img,opts).withFaceLandmarks(true).withFaceDescriptor();
+      if(d) descs.push(new faceapi.LabeledFaceDescriptors(s.id,[d.descriptor]));
+    }catch(e){}
+  }
+  faceMatcher = descs.length ? new faceapi.FaceMatcher(descs,0.55) : null;
+}
+function loadImg(src){ return new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=src; }); }
+
+// ── 學員管理 ──────────────────────────────────────
+function renderStu(){
+  const el=document.getElementById('stuList');
+  if(!students.length){ el.innerHTML='<div class="empty"><div class="ei">👤</div>尚未新增學員</div>'; return; }
+  el.innerHTML=students.map(s=>`
+    <div class="stu-item">
+      ${s.photoData?`<img class="stu-av" src="${s.photoData}">`:'<div class="stu-ph">👤</div>'}
+      <div style="flex:1">
+        <div class="stu-name">${s.name}</div>
+        <div class="stu-meta">${s.group||'未設定組別'} ｜ 人臉${s.photoData?'✅':'❌'}</div>
+      </div>
+      <button class="del-btn" onclick="delStu('${s.id}')">🗑</button>
+    </div>`).join('');
+}
+function delStu(id){
+  if(!confirm('確定刪除？')) return;
+  students=students.filter(s=>s.id!==id);
+  saveStuData(); buildMatcher(); renderStu(); toast('已刪除');
+}
+function openModal(){
+  document.getElementById('modal').style.display='block';
+  document.getElementById('fName').value='';
+  document.getElementById('fGroup').value='';
+  clearPhoto();
+}
+function closeModal(){ document.getElementById('modal').style.display='none'; }
+function loadPhoto(e){
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    photoData=ev.target.result;
+    const img=document.getElementById('prevImg');
+    img.src=photoData; img.style.display='block';
+    document.getElementById('reBtn').style.display='block';
   };
-  records.unshift(record);
-  saveRecords();
-
-  showResult(true, student.name, formatDateTime(now) + '　相似度：' + confidence + '%', confidence);
-  btn.textContent = '📸 確認打卡';
-  setTimeout(() => { btn.disabled = false; }, 3000);
+  r.readAsDataURL(f);
+}
+function clearPhoto(){
+  photoData=null;
+  document.getElementById('prevImg').style.display='none';
+  document.getElementById('reBtn').style.display='none';
+}
+async function saveStu(){
+  const name=document.getElementById('fName').value.trim();
+  if(!name){ toast('❌ 請輸入姓名'); return; }
+  if(!photoData){ toast('❌ 請提供照片'); return; }
+  toast('⏳ 分析照片中…');
+  const img=await loadImg(photoData);
+  const opts=new faceapi.TinyFaceDetectorOptions({inputSize:224,scoreThreshold:0.3});
+  const det=await faceapi.detectSingleFace(img,opts);
+  if(!det){ toast('❌ 照片未偵測到臉部，請重新拍照'); return; }
+  const stu={id:'S'+Date.now(),name,group:document.getElementById('fGroup').value.trim(),photoData,createdAt:new Date().toISOString()};
+  students.push(stu);
+  saveStuData();
+  await buildMatcher();
+  renderStu(); closeModal(); toast('✅ 已新增：'+name);
 }
 
-function showResult(success, name, time, conf) {
-  const box = document.getElementById('resultBox');
-  box.style.display = 'block';
-  box.className = success ? 'success' : 'fail';
-  document.getElementById('resultIcon').textContent = success ? '✅' : '❌';
-  document.getElementById('resultName').textContent = name;
-  document.getElementById('resultTime').textContent = time;
-  document.getElementById('confBar').style.width = conf + '%';
-  document.getElementById('confLabel').textContent = '辨識信心度：' + conf + '%';
-  if (success) showToast('✅ ' + name + ' 打卡成功！');
+// ── 紀錄 ──────────────────────────────────────────
+function renderRec(){
+  const el=document.getElementById('recList');
+  const df=document.getElementById('dateFilter').value;
+  const list=df?records.filter(r=>r.time.startsWith(df)):records;
+  if(!list.length){ el.innerHTML='<div class="empty"><div class="ei">📋</div>尚無打卡紀錄</div>'; return; }
+  el.innerHTML=list.map(r=>`
+    <div class="rec-item">
+      ${r.studentPhoto?`<img class="rec-av" src="${r.studentPhoto}">`:'<div style="width:34px;height:34px;border-radius:50%;background:var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;">👤</div>'}
+      <div style="flex:1"><div class="rec-name">${r.studentName}</div><div class="rec-time">${r.studentGroup?r.studentGroup+'　':''}${fmtDT(new Date(r.time))}</div></div>
+      <span class="badge">簽到</span>
+    </div>`).join('');
+}
+function exportCSV(){
+  const df=document.getElementById('dateFilter').value;
+  const list=df?records.filter(r=>r.time.startsWith(df)):records;
+  if(!list.length){ toast('❌ 無資料'); return; }
+  const BOM='\uFEFF';
+  const rows=list.map(r=>{ const d=new Date(r.time); return [r.studentName,r.studentGroup||'',d.toLocaleDateString('zh-TW'),d.toLocaleTimeString('zh-TW'),'簽到'].map(v=>`"${v}"`).join(','); });
+  const csv=BOM+['姓名,組別,日期,時間,類型',...rows].join('\n');
+  const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'})),download:`出席紀錄_${df||'全部'}.csv`});
+  a.click(); toast('✅ 匯出成功');
 }
 
-// ==================== STUDENTS ====================
-function renderStudents() {
-  const el = document.getElementById('studentList');
-  if (students.length === 0) {
-    el.innerHTML = '<div class="empty-state"><div class="icon">👤</div><div>尚未新增任何學員<br>請點上方按鈕新增</div></div>';
-    return;
-  }
-  el.innerHTML = students.map(s => `
-    <div class="student-item">
-      ${s.photoData
-        ? `<img class="student-avatar" src="${s.photoData}" alt="${s.name}">`
-        : `<div class="student-avatar-placeholder">👤</div>`}
-      <div class="student-info">
-        <div class="student-name">${s.name}</div>
-        <div class="student-meta">${s.group || '未設定組別'} ｜ 已建立人臉${s.photoData ? '✅' : '❌'}</div>
-      </div>
-      <div class="student-actions">
-        <button class="icon-btn" onclick="deleteStudent('${s.id}')">🗑</button>
-      </div>
-    </div>
-  `).join('');
+// ── 統計 ──────────────────────────────────────────
+function renderStats(){
+  const td=toDay();
+  const todayR=records.filter(r=>r.time.startsWith(td));
+  const uniq=[...new Set(todayR.map(r=>r.studentId))].length;
+  document.getElementById('statsGrid').innerHTML=`
+    <div class="stat-card"><div class="stat-num">${uniq}</div><div class="stat-lbl">今日出席人數</div></div>
+    <div class="stat-card"><div class="stat-num">${students.length}</div><div class="stat-lbl">學員總數</div></div>
+    <div class="stat-card"><div class="stat-num">${todayR.length}</div><div class="stat-lbl">今日打卡次數</div></div>
+    <div class="stat-card"><div class="stat-num">${records.length}</div><div class="stat-lbl">累計紀錄</div></div>`;
+  const mon=new Date().toISOString().slice(0,7);
+  const monR=records.filter(r=>r.time.startsWith(mon));
+  const ps={};
+  students.forEach(s=>{ps[s.id]={name:s.name,c:0};});
+  monR.forEach(r=>{ if(ps[r.studentId]) ps[r.studentId].c++; });
+  const rows=Object.values(ps).sort((a,b)=>b.c-a.c);
+  const mx=Math.max(...rows.map(r=>r.c),1);
+  document.getElementById('monthStats').innerHTML=rows.length
+    ? rows.map(r=>`<div style="margin-bottom:9px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px"><span>${r.name}</span><span style="color:var(--accent)">${r.c} 次</span></div><div class="cbar"><div class="cfill" style="width:${Math.round(r.c/mx*100)}%"></div></div></div>`).join('')
+    : '<div class="empty">尚無本月資料</div>';
 }
 
-function deleteStudent(id) {
-  if (!confirm('確定刪除此學員？')) return;
-  students = students.filter(s => s.id !== id);
-  saveStudents();
-  buildFaceMatcher();
-  renderStudents();
-  showToast('已刪除學員');
+// ── 工具 ──────────────────────────────────────────
+function goTab(name,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  btn.classList.add('active');
+  if(name==='records') renderRec();
+  if(name==='stats') renderStats();
 }
+function saveStuData(){ localStorage.setItem('att_s',JSON.stringify(students)); }
+function saveRec(){ localStorage.setItem('att_r',JSON.stringify(records)); }
+function toDay(){ return new Date().toISOString().slice(0,10); }
+function fmtDT(d){ return d.toLocaleDateString('zh-TW')+' '+d.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}); }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),3000); }
 
-function showAddModal() {
-  document.getElementById('addModal').style.display = 'block';
-  document.getElementById('newName').value = '';
-  document.getElementById('newGroup').value = '';
-  capturedPhotoData = null;
-  document.getElementById('capturePreview').style.display = 'none';
-  document.getElementById('retakeBtn').style.display = 'none';
-}
-
-function hideAddModal() {
-  document.getElementById('addModal').style.display = 'none';
-  if (addStream) { addStream.getTracks().forEach(t => t.stop()); addStream = null; }
-}
-
-async function startAddCamera(facing) {
-  if (!facing) facing = addCurrentFacing;
-  addCurrentFacing = facing;
-  document.getElementById('photoArea').style.display = 'none';
-  document.getElementById('addCameraOuter').style.display = 'block';
-  document.getElementById('snapBtn').style.display = 'block';
-  if (addStream) { addStream.getTracks().forEach(t => t.stop()); addStream = null; }
-  const addVideo = document.getElementById('addVideo');
-  addVideo.srcObject = null;
-  try {
-    const constraints = { video: { facingMode: { ideal: facing } } };
-    addStream = await navigator.mediaDevices.getUserMedia(constraints);
-    addVideo.style.transform = facing === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
-    addVideo.srcObject = addStream;
-  } catch(e) {
-    showToast('❌ 無法開啟相機：' + e.message);
-  }
-}
-
-function snapPhoto() {
-  const video = document.getElementById('addVideo');
-  const canvas = document.getElementById('addCanvas');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  const ctx = canvas.getContext('2d');
-  if (addCurrentFacing === 'user') {
-    ctx.save(); ctx.scale(-1, 1); ctx.drawImage(video, -canvas.width, 0); ctx.restore();
-  } else {
-    ctx.drawImage(video, 0, 0);
-  }
-  capturedPhotoData = canvas.toDataURL('image/jpeg', 0.8);
-  document.getElementById('capturePreview').src = capturedPhotoData;
-  document.getElementById('capturePreview').style.display = 'block';
-  document.getElementById('addCameraWrap').style.display = 'none';
-  document.getElementById('snapBtn').style.display = 'none';
-  document.getElementById('retakeBtn').style.display = 'block';
-  if (addStream) { addStream.getTracks().forEach(t => t.stop()); addStream = null; }
-}
-
-function retakePhoto() {
-  capturedPhotoData = null;
-  document.getElementById('capturePreview').style.display = 'none';
-  document.getElementById('retakeBtn').style.display = 'none';
-}
-
-function loadPhotoFile(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    capturedPhotoData = e.target.result;
-    const prev = document.getElementById('capturePreview');
-    prev.src = capturedPhotoData;
-    prev.style.display = 'block';
-    document.getElementById('retakeBtn').style.display = 'block';
-  };
-  reader.readAsDataURL(file);
-}
-
-async function saveStudent() {
-  const name = document.getElementById('newName').value.trim();
-  if (!name) { showToast('❌ 請輸入姓名'); return; }
-  if (!capturedPhotoData) { showToast('❌ 請提供照片'); return; }
-
-  // Verify face in photo
-  showToast('⏳ 分析照片中…');
-  const img = await loadImage(capturedPhotoData);
-  const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.3 });
-  const det = await faceapi.detectSingleFace(img, opts);
-  if (!det) {
-    showToast('❌ 照片中未偵測到臉部，請重新拍照');
-    return;
-  }
-
-  const student = {
-    id: 'S' + Date.now(),
-    name,
-    group: document.getElementById('newGroup').value.trim(),
-    photoData: capturedPhotoData,
-    createdAt: new Date().toISOString()
-  };
-  students.push(student);
-  saveStudents();
-  await buildFaceMatcher();
-  renderStudents();
-  hideAddModal();
-  showToast('✅ 學員 ' + name + ' 已新增');
-}
-
-// ==================== RECORDS ====================
-function renderRecords() {
-  const el = document.getElementById('recordList');
-  const dateFilter = document.getElementById('filterDate').value;
-  let filtered = records;
-  if (dateFilter) {
-    filtered = records.filter(r => r.time.startsWith(dateFilter));
-  }
-  if (filtered.length === 0) {
-    el.innerHTML = '<div class="empty-state"><div class="icon">📋</div><div>尚無打卡紀錄</div></div>';
-    return;
-  }
-  el.innerHTML = filtered.map(r => `
-    <div class="record-item">
-      ${r.studentPhoto
-        ? `<img class="record-avatar" src="${r.studentPhoto}" alt="">`
-        : `<div style="width:36px;height:36px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0">👤</div>`}
-      <div class="record-info">
-        <div class="record-name">${r.studentName}</div>
-        <div class="record-time">${r.studentGroup ? r.studentGroup + '　' : ''}${formatDateTime(new Date(r.time))}</div>
-      </div>
-      <span class="record-badge badge-in">簽到</span>
-    </div>
-  `).join('');
-}
-
-function clearDateFilter() {
-  document.getElementById('filterDate').value = '';
-  renderRecords();
-}
-
-// ==================== STATS ====================
-function renderStats() {
-  const todayStr = today();
-  const todayRecords = records.filter(r => r.time.startsWith(todayStr));
-  const uniqueToday = [...new Set(todayRecords.map(r => r.studentId))].length;
-
-  document.getElementById('statsGrid').innerHTML = `
-    <div class="stat-card"><div class="stat-num">${uniqueToday}</div><div class="stat-label">今日出席人數</div></div>
-    <div class="stat-card"><div class="stat-num">${students.length}</div><div class="stat-label">學員總數</div></div>
-    <div class="stat-card"><div class="stat-num">${todayRecords.length}</div><div class="stat-label">今日打卡次數</div></div>
-    <div class="stat-card"><div class="stat-num">${records.length}</div><div class="stat-label">累計打卡紀錄</div></div>
-  `;
-
-  // Monthly per-student stats
-  const now = new Date();
-  const monthStr = now.toISOString().slice(0, 7);
-  const monthRecs = records.filter(r => r.time.startsWith(monthStr));
-  const perStudent = {};
-  students.forEach(s => { perStudent[s.id] = { name: s.name, count: 0 }; });
-  monthRecs.forEach(r => {
-    if (perStudent[r.studentId]) perStudent[r.studentId].count++;
-  });
-
-  const rows = Object.values(perStudent).sort((a, b) => b.count - a.count);
-  if (rows.length === 0) {
-    document.getElementById('monthlyStats').innerHTML = '<div class="empty-state">尚無本月資料</div>';
-    return;
-  }
-  const maxCount = Math.max(...rows.map(r => r.count), 1);
-  document.getElementById('monthlyStats').innerHTML = rows.map(r => `
-    <div style="margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
-        <span>${r.name}</span><span style="color:var(--accent)">${r.count} 次</span>
-      </div>
-      <div class="confidence-bar">
-        <div class="confidence-fill" style="width:${Math.round(r.count/maxCount*100)}%"></div>
-      </div>
-    </div>
-  `).join('');
-}
-
-// ==================== EXPORT ====================
-function exportExcel() {
-  const dateFilter = document.getElementById('filterDate').value;
-  let filtered = records;
-  if (dateFilter) filtered = records.filter(r => r.time.startsWith(dateFilter));
-
-  if (filtered.length === 0) { showToast('❌ 無資料可匯出'); return; }
-
-  // Build CSV (UTF-8 BOM for Excel)
-  const BOM = '\uFEFF';
-  const header = ['姓名', '組別', '日期', '時間', '類型'];
-  const rows = filtered.map(r => {
-    const d = new Date(r.time);
-    return [
-      r.studentName,
-      r.studentGroup || '',
-      d.toLocaleDateString('zh-TW'),
-      d.toLocaleTimeString('zh-TW'),
-      '簽到'
-    ];
-  });
-  const csv = BOM + [header, ...rows].map(row => row.map(v => `"${v}"`).join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `出席紀錄_${dateFilter || '全部'}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-  showToast('✅ 已匯出 CSV（可用 Excel 開啟）');
-}
-
-// ==================== UTILS ====================
-function switchTab(name) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('page-' + name).classList.add('active');
-  event.currentTarget.classList.add('active');
-  if (name === 'records') renderRecords();
-  if (name === 'stats') renderStats();
-}
-
-function saveStudents() { localStorage.setItem('att_students', JSON.stringify(students)); }
-function saveRecords() { localStorage.setItem('att_records', JSON.stringify(records)); }
-function today() { return new Date().toISOString().slice(0, 10); }
-function formatDateTime(d) {
-  return d.toLocaleDateString('zh-TW') + ' ' + d.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
-}
-
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(t._timer);
-  t._timer = setTimeout(() => t.classList.remove('show'), 3000);
-}
-
-// ==================== START ====================
-function waitForFaceApi(cb) {
-  if (typeof faceapi !== 'undefined') { cb(); }
-  else { setTimeout(() => waitForFaceApi(cb), 100); }
-}
-window.addEventListener('load', () => waitForFaceApi(init));
+function waitFaceApi(cb){ typeof faceapi!=='undefined'?cb():setTimeout(()=>waitFaceApi(cb),100); }
+window.addEventListener('load',()=>waitFaceApi(init));
 </script>
 </body>
 </html>
