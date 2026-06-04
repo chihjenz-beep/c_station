@@ -487,17 +487,18 @@ let addCurrentFacing = 'user';   // 新增學員相機
 async function startCamera(facing) {
   if (!facing) facing = currentFacing;
   currentFacing = facing;
-  if (stream) { stream.getTracks().forEach(t => t.stop()); }
   clearInterval(detectionLoop);
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing, width: 640, height: 480 } });
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: facing }, width: { ideal: 640 }, height: { ideal: 480 } } });
     const video = document.getElementById('video');
-    // 前鏡頭水平翻轉，後鏡頭不翻
     video.style.transform = facing === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
     document.getElementById('overlay').style.transform = facing === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
+    video.srcObject = null;
     video.srcObject = stream;
-    await video.play();
-    startDetection();
+    video.onloadedmetadata = () => {
+      video.play().then(() => startDetection()).catch(() => {});
+    };
   } catch(e) {
     document.getElementById('cameraHint').textContent = '無法開啟相機：' + e.message;
   }
@@ -691,12 +692,17 @@ async function startAddCamera(facing) {
   document.getElementById('photoArea').style.display = 'none';
   document.getElementById('addCameraWrap').style.display = 'block';
   document.getElementById('snapBtn').style.display = 'block';
-  if (addStream) { addStream.getTracks().forEach(t => t.stop()); }
-  addStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing } });
-  const addVideo = document.getElementById('addVideo');
-  addVideo.style.transform = facing === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
-  addVideo.srcObject = addStream;
-  await addVideo.play();
+  if (addStream) { addStream.getTracks().forEach(t => t.stop()); addStream = null; }
+  try {
+    addStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: facing } } });
+    const addVideo = document.getElementById('addVideo');
+    addVideo.style.transform = facing === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
+    addVideo.srcObject = null;
+    addVideo.srcObject = addStream;
+    addVideo.onloadedmetadata = () => { addVideo.play().catch(() => {}); };
+  } catch(e) {
+    showToast('❌ 無法開啟相機：' + e.message);
+  }
 }
 
 function snapPhoto() {
