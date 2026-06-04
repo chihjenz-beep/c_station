@@ -152,7 +152,8 @@ input[type=text]:focus{outline:none;border-color:var(--accent);}
 
 <!-- 學員 -->
 <div class="page" id="page-students">
-  <button class="btn btn-primary" onclick="openModal()" style="margin-bottom:14px">➕ 新增學員</button>
+  <button class="btn btn-primary" onclick="openModal()" style="margin-bottom:10px">➕ 新增學員</button>
+  <button onclick="clearAll()" style="display:block;width:100%;padding:10px;border-radius:9px;background:none;border:1px solid var(--warn);color:var(--warn);cursor:pointer;font-size:13px;margin-bottom:14px;">🗑 清除所有資料（重置）</button>
   <div id="stuList"></div>
 </div>
 
@@ -338,7 +339,7 @@ async function doCheckin() {
     const stu = students.find(s=>s.id===match.label);
     if (!stu) { showResult(false,'系統錯誤','找不到學員資料',0); reset(); return; }
     const now = new Date();
-    records.unshift({id:Date.now()+'',studentId:stu.id,studentName:stu.name,studentGroup:stu.group||'',studentPhoto:stu.photoData,time:now.toISOString()});
+    records.unshift({id:Date.now()+'',studentId:stu.id,studentName:stu.name,studentGroup:stu.group||'',time:now.toISOString()});
     saveRec();
     showResult(true,stu.name,fmtDT(now)+'　相似度：'+conf+'%',conf);
     reset(); // 立即重置，不再延遲
@@ -407,14 +408,35 @@ function loadPhoto(e){
   const f=e.target.files[0]; if(!f) return;
   const r=new FileReader();
   r.onload=ev=>{
-    photoData=ev.target.result;
-    const img=document.getElementById('prevImg');
-    img.src=photoData; img.style.display='block';
-    document.getElementById('reBtn').style.display='block';
+    const tmpImg=new Image();
+    tmpImg.onload=()=>{
+      const canvas=document.createElement('canvas');
+      const MAX=160; // 更小的尺寸
+      let w=tmpImg.width, h=tmpImg.height;
+      if(w>h){ h=Math.round(h*MAX/w); w=MAX; } else { w=Math.round(w*MAX/h); h=MAX; }
+      canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(tmpImg,0,0,w,h);
+      photoData=canvas.toDataURL('image/jpeg',0.6);
+      const img=document.getElementById('prevImg');
+      img.src=photoData; img.style.display='block';
+      document.getElementById('reBtn').style.display='block';
+      // 顯示壓縮後大小
+      const kb=Math.round(photoData.length*0.75/1024);
+      toast('照片已壓縮：約 '+kb+' KB');
+    };
+    tmpImg.src=ev.target.result;
   };
   r.readAsDataURL(f);
 }
-function clearPhoto(){
+function clearAll(){
+  if(!confirm('確定清除所有學員與打卡紀錄？此操作無法復原')) return;
+  localStorage.removeItem('att_s');
+  localStorage.removeItem('att_r');
+  students=[]; records=[];
+  faceMatcher=null;
+  renderStu(); renderRec(); renderStats();
+  toast('✅ 已清除所有資料');
+}
   photoData=null;
   document.getElementById('prevImg').style.display='none';
   document.getElementById('reBtn').style.display='none';
@@ -443,7 +465,7 @@ function renderRec(){
   if(!list.length){ el.innerHTML='<div class="empty"><div class="ei">📋</div>尚無打卡紀錄</div>'; return; }
   el.innerHTML=list.map(r=>`
     <div class="rec-item">
-      ${r.studentPhoto?`<img class="rec-av" src="${r.studentPhoto}">`:'<div style="width:34px;height:34px;border-radius:50%;background:var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;">👤</div>'}
+      <div style="width:34px;height:34px;border-radius:50%;background:var(--accent);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#000;">${r.studentName.slice(0,1)}</div>
       <div style="flex:1"><div class="rec-name">${r.studentName}</div><div class="rec-time">${r.studentGroup?r.studentGroup+'　':''}${fmtDT(new Date(r.time))}</div></div>
       <span class="badge">簽到</span>
     </div>`).join('');
@@ -490,8 +512,25 @@ function goTab(name,btn){
   if(name==='records') renderRec();
   if(name==='stats') renderStats();
 }
-function saveStuData(){ localStorage.setItem('att_s',JSON.stringify(students)); }
-function saveRec(){ localStorage.setItem('att_r',JSON.stringify(records)); }
+function saveStuData(){
+  try {
+    localStorage.setItem('att_s', JSON.stringify(students));
+  } catch(e) {
+    toast('⚠️ 儲存失敗，照片可能太大，請重新拍照');
+  }
+}
+function saveRec(){
+  // 只保留最近 500 筆，避免 localStorage 超出限制
+  if(records.length > 500) records = records.slice(0, 500);
+  try {
+    localStorage.setItem('att_r', JSON.stringify(records));
+  } catch(e) {
+    // 空間不足：清除一半舊紀錄後重試
+    records = records.slice(0, 200);
+    try { localStorage.setItem('att_r', JSON.stringify(records)); } catch(e2) {}
+    toast('⚠️ 儲存空間不足，已自動清理舊紀錄');
+  }
+}
 function toDay(){ return new Date().toISOString().slice(0,10); }
 function fmtDT(d){ return d.toLocaleDateString('zh-TW')+' '+d.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}); }
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),3000); }
