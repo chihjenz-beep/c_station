@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>學員出席打卡系統</title>
-<script defer src="https://unpkg.com/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/face-api.js/dist/face-api.min.js"></script>
 <style>
   :root {
     --bg: #0f1923;
@@ -489,20 +489,16 @@ async function startCamera(facing) {
   currentFacing = facing;
   clearInterval(detectionLoop);
   if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  const video = document.getElementById('video');
+  video.srcObject = null;
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: facing }, width: { ideal: 640 }, height: { ideal: 480 } } });
-    const video = document.getElementById('video');
+    const constraints = { video: { facingMode: { ideal: facing } } };
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
     video.style.transform = facing === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
     document.getElementById('overlay').style.transform = facing === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
-    video.srcObject = null;
-    await new Promise(r => setTimeout(r, 100));
     video.srcObject = stream;
-    await new Promise(r => setTimeout(r, 200));
-    try { await video.play(); } catch(pe) {
-      await new Promise(r => setTimeout(r, 300));
-      await video.play();
-    }
-    startDetection();
+    // 等待可播放後再偵測
+    video.oncanplay = () => { startDetection(); video.oncanplay = null; };
   } catch(e) {
     document.getElementById('cameraHint').textContent = '無法開啟相機：' + e.message;
   }
@@ -697,19 +693,13 @@ async function startAddCamera(facing) {
   document.getElementById('addCameraWrap').style.display = 'block';
   document.getElementById('snapBtn').style.display = 'block';
   if (addStream) { addStream.getTracks().forEach(t => t.stop()); addStream = null; }
+  const addVideo = document.getElementById('addVideo');
+  addVideo.srcObject = null;
   try {
-    addStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: facing } } });
-    const addVideo = document.getElementById('addVideo');
+    const constraints = { video: { facingMode: { ideal: facing } } };
+    addStream = await navigator.mediaDevices.getUserMedia(constraints);
     addVideo.style.transform = facing === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
-    addVideo.srcObject = null;
-    await new Promise(r => setTimeout(r, 100));
     addVideo.srcObject = addStream;
-    await new Promise(r => setTimeout(r, 200));
-    try { await addVideo.play(); } catch(pe) {
-      // retry once
-      await new Promise(r => setTimeout(r, 300));
-      await addVideo.play();
-    }
   } catch(e) {
     showToast('❌ 無法開啟相機：' + e.message);
   }
@@ -916,7 +906,11 @@ function showToast(msg) {
 }
 
 // ==================== START ====================
-window.addEventListener('load', init);
+function waitForFaceApi(cb) {
+  if (typeof faceapi !== 'undefined') { cb(); }
+  else { setTimeout(() => waitForFaceApi(cb), 100); }
+}
+window.addEventListener('load', () => waitForFaceApi(init));
 </script>
 </body>
 </html>
