@@ -237,9 +237,9 @@ async function init() {
 // ── 相機（打卡用） ─────────────────────────────────
 async function initCam() {
   try {
-    // 先用預設取得權限，同時取得裝置清單
     const tmp = await navigator.mediaDevices.getUserMedia({video:true});
     tmp.getTracks().forEach(t=>t.stop());
+    await new Promise(r=>setTimeout(r,150));
     const all = await navigator.mediaDevices.enumerateDevices();
     camDevices = all.filter(d=>d.kind==='videoinput');
     camIdx = 0;
@@ -264,12 +264,22 @@ async function startCam() {
     stream = await navigator.mediaDevices.getUserMedia(constraints);
     const track = stream.getVideoTracks()[0];
     const s = track.getSettings();
-    // 前鏡頭(user)才需要水平翻轉
     const isFront = (s.facingMode === 'user') || (camDevices.length > 1 && camIdx === 0);
     video.style.transform = isFront ? 'scaleX(-1)' : 'none';
     document.getElementById('overlay').style.transform = isFront ? 'scaleX(-1)' : 'none';
+
+    // 多重保險：同時用 onloadedmetadata、oncanplay、以及延遲 play()
+    let started = false;
+    const tryStart = () => {
+      if (started) return; started = true;
+      video.play().catch(()=>{});
+      runDetect();
+    };
+    video.onloadedmetadata = tryStart;
+    video.oncanplay = tryStart;
     video.srcObject = stream;
-    video.oncanplay = () => { runDetect(); video.oncanplay=null; };
+    // 300ms 後強制啟動（保險用）
+    setTimeout(tryStart, 300);
   } catch(e) {
     document.getElementById('camHint').textContent = '無法開啟相機：'+e.message;
   }
