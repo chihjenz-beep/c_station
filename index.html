@@ -45,11 +45,10 @@
 <header>
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
   <h1>C據點長輩建檔工具</h1>
-  <span class="sub">face-api 本地版</span>
+  <span class="sub">tiny 模型版</span>
 </header>
 <div class="wrap">
   <div class="mstatus" id="mstatus">⏳ 正在載入人臉辨識模型...</div>
-
   <div class="card">
     <div class="lbl"><span class="step">步驟一</span>貼上長輩名單（每行一位）</div>
     <textarea id="ni" placeholder="王大明
@@ -59,79 +58,57 @@
     <div style="margin-top:8px"><button class="btn btn-dark" onclick="load()">載入名單</button></div>
     <div class="hint">載入後點每人頭像拍照，系統自動擷取人臉特徵</div>
   </div>
-
   <div id="psec" style="display:none">
     <div class="lbl" style="margin-bottom:8px"><span class="step">步驟二</span>點頭像為每位長輩拍照（需清楚正面）</div>
     <div class="stats" id="stats"></div>
     <div id="plist"></div>
   </div>
-
   <div class="export-box" id="expbox" style="display:none">
     <h3>步驟三：下載點名系統</h3>
-    <p>人臉特徵向量已嵌入。下載後上傳 GitHub 為 <b>attend.html</b>，手機每天開固定網址自動掃描點名，完全離線運作。</p>
+    <p>人臉特徵已嵌入。下載後上傳 GitHub 為 <b>attend.html</b>，手機每天開固定網址自動掃描點名。</p>
     <button class="btn btn-green" onclick="gen()">⬇ 下載點名系統 HTML</button>
   </div>
 </div>
-
 <canvas id="hidden-canvas" style="display:none"></canvas>
-
 <script>
-// 模型路徑與副檔名設定
 const MODEL_URL = './models';
-// 攔截 fetch，讓模型所有請求（含 .json 和無副檔名 shard）都改成 .htm
-const _origFetch = window.fetch;
-window.fetch = function(url, opts) {
-  if(typeof url === 'string' && url.includes('/models/')) {
-    if(url.endsWith('.json')) {
-      url = url.replace('.json', '.htm');
-    } else if(!url.endsWith('.htm') && !url.endsWith('.bin')) {
-      url = url + '.htm';
-    }
-  }
-  return _origFetch(url, opts);
-};
+let people=[], descriptors={}, photos={}, modelsReady=false;
 
-let people = [], descriptors = {}, photos = {};
-let modelsReady = false;
-
-async function loadModels() {
-  const st = document.getElementById('mstatus');
-  try {
+async function loadModels(){
+  const st=document.getElementById('mstatus');
+  try{
     await Promise.all([
-      faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-      faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+      faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+      faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
       faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
     ]);
-    modelsReady = true;
-    st.textContent = '✅ 人臉辨識模型已就緒，可以開始建檔';
-    st.className = 'mstatus ok';
-  } catch(e) {
-    st.textContent = '❌ 模型載入失敗：' + e.message;
-    st.className = 'mstatus err';
-    console.error(e);
+    modelsReady=true;
+    st.textContent='✅ 模型已就緒，可以開始建檔';
+    st.className='mstatus ok';
+  }catch(e){
+    st.textContent='❌ 模型載入失敗：'+e.message;
+    st.className='mstatus err';
   }
 }
 loadModels();
 
-function load() {
-  const raw = document.getElementById('ni').value.trim();
-  if(!raw){ alert('請先貼上名單'); return; }
-  const names = raw.split(/[\n,，、]+/).map(s=>s.trim()).filter(Boolean);
-  if(!names.length){ alert('找不到名字'); return; }
-  people = names; descriptors = {}; photos = {};
-  document.getElementById('psec').style.display = 'block';
-  document.getElementById('expbox').style.display = 'block';
+function load(){
+  const raw=document.getElementById('ni').value.trim();
+  if(!raw){alert('請先貼上名單');return;}
+  const names=raw.split(/[\n,，、]+/).map(s=>s.trim()).filter(Boolean);
+  if(!names.length){alert('找不到名字');return;}
+  people=names;descriptors={};photos={};
+  document.getElementById('psec').style.display='block';
+  document.getElementById('expbox').style.display='block';
   render();
 }
 
-function render() {
-  document.getElementById('plist').innerHTML = people.map((name,i) => {
-    const has = !!descriptors[name];
+function render(){
+  document.getElementById('plist').innerHTML=people.map((name,i)=>{
+    const has=!!descriptors[name];
     return `<div class="pcard ${has?'ok':''}" id="pc${i}">
       <label class="photo-label">
-        ${photos[name]
-          ? `<img src="${photos[name]}" alt="${name}"/>`
-          : `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span>拍照</span>`}
+        ${photos[name]?`<img src="${photos[name]}" alt="${name}"/>`:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span>拍照</span>`}
         <input type="file" accept="image/*" capture="environment" onchange="onPhoto(event,${i})">
       </label>
       <div style="flex:1">
@@ -141,65 +118,62 @@ function render() {
       <button class="del" onclick="rm(${i})">×</button>
     </div>`;
   }).join('');
-  const done = people.filter(n=>descriptors[n]).length;
-  document.getElementById('stats').innerHTML = `
+  const done=people.filter(n=>descriptors[n]).length;
+  document.getElementById('stats').innerHTML=`
     <div class="chip">總人數 <b>${people.length}</b></div>
     <div class="chip">已建特徵 <b style="color:var(--green)">${done}</b></div>
     <div class="chip">待拍 <b style="color:var(--accent)">${people.length-done}</b></div>`;
 }
 
-async function onPhoto(e, i) {
-  const file = e.target.files[0]; if(!file) return;
-  if(!modelsReady){ alert('模型尚未載入完成，請稍候再試'); return; }
-  const name = people[i];
-  const img = await loadImg(file);
-  photos[name] = compressImg(img, 300);
-  const det = await faceapi
-    .detectSingleFace(img, new faceapi.SsdMobilenetv1Options({minConfidence:0.3}))
-    .withFaceLandmarks().withFaceDescriptor();
-  if(!det) {
-    alert(`「${name}」未偵測到人臉，請重拍清楚正面照`);
-    photos[name] = null; render(); return;
-  }
-  descriptors[name] = Array.from(det.descriptor);
+async function onPhoto(e,i){
+  const file=e.target.files[0];if(!file)return;
+  if(!modelsReady){alert('模型尚未載入完成，請稍候');return;}
+  const name=people[i];
+  const img=await loadImg(file);
+  photos[name]=compressImg(img,300);
+  const det=await faceapi
+    .detectSingleFace(img,new faceapi.TinyFaceDetectorOptions({inputSize:224,scoreThreshold:0.3}))
+    .withFaceLandmarks(true).withFaceDescriptor();
+  if(!det){alert(`「${name}」未偵測到人臉，請重拍清楚正面照`);photos[name]=null;render();return;}
+  descriptors[name]=Array.from(det.descriptor);
   render();
 }
 
-function loadImg(file) {
-  return new Promise(res => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => { URL.revokeObjectURL(url); res(img); };
-    img.src = url;
+function loadImg(file){
+  return new Promise(res=>{
+    const url=URL.createObjectURL(file);
+    const img=new Image();
+    img.onload=()=>{URL.revokeObjectURL(url);res(img);};
+    img.src=url;
   });
 }
 
-function compressImg(img, max) {
-  const c = document.getElementById('hidden-canvas');
-  let w=img.width, h=img.height;
+function compressImg(img,max){
+  const c=document.getElementById('hidden-canvas');
+  let w=img.width,h=img.height;
   if(w>h){if(w>max){h=h*max/w;w=max;}}else{if(h>max){w=w*max/h;h=max;}}
-  c.width=w; c.height=h;
+  c.width=w;c.height=h;
   c.getContext('2d').drawImage(img,0,0,w,h);
   return c.toDataURL('image/jpeg',0.78);
 }
 
-function rm(i) {
-  if(!confirm(`移除「${people[i]}」？`)) return;
-  delete descriptors[people[i]]; delete photos[people[i]];
-  people.splice(i,1); render();
+function rm(i){
+  if(!confirm(`移除「${people[i]}」？`))return;
+  delete descriptors[people[i]];delete photos[people[i]];
+  people.splice(i,1);render();
 }
 
-function gen() {
-  const data = people.map(n=>({name:n, photo:photos[n]||null, descriptor:descriptors[n]||null}));
-  const noFace = data.filter(d=>!d.descriptor).map(d=>d.name);
-  if(noFace.length && !confirm(`以下長輩未建立人臉特徵，只能手動點名：\n${noFace.join('、')}\n\n繼續下載？`)) return;
-  const blob = new Blob([buildAttend(data)], {type:'text/html'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = 'attend.html'; a.click();
+function gen(){
+  const data=people.map(n=>({name:n,photo:photos[n]||null,descriptor:descriptors[n]||null}));
+  const noFace=data.filter(d=>!d.descriptor).map(d=>d.name);
+  if(noFace.length&&!confirm(`以下長輩未建立人臉特徵，只能手動點名：\n${noFace.join('、')}\n\n繼續下載？`))return;
+  const blob=new Blob([buildAttend(data)],{type:'text/html'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download='attend.html';a.click();
 }
 
-function buildAttend(data) {
-  const json = JSON.stringify(data);
+function buildAttend(data){
+  const json=JSON.stringify(data);
   return `<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -279,70 +253,58 @@ header h1{font-size:16px;font-weight:500;}
   <div id="list"><\/div>
   <button class="btn btn-g" onclick="copySummary()">複製今日摘要<\/button>
 <\/div>
-
 <script>
-const PEOPLE = ${json};
-const MODEL_URL = './models';
-const THRESHOLD = 0.5;
-const INTERVAL = 2500;
-let R={}, stream=null, scanTimer=null, scanning=false, modelsReady=false, matcher=null;
-
-// 攔截 fetch，讓模型 shard 檔加上 .htm
-const _of = window.fetch;
-window.fetch = function(url, opts) {
-  if(typeof url==='string' && url.includes('/models/')) {
-    if(url.endsWith('.json')) url = url.replace('.json', '.htm');
-    else if(!url.endsWith('.htm') && !url.endsWith('.bin')) url = url + '.htm';
-  }
-  return _of(url, opts);
-};
+const PEOPLE=${json};
+const MODEL_URL='./models';
+const THRESHOLD=0.5;
+const INTERVAL=2500;
+let R={},stream=null,scanTimer=null,scanning=false,modelsReady=false,matcher=null;
 
 function roc(){const d=new Date();return \`民國\${d.getFullYear()-1911}年\${d.getMonth()+1}月\${d.getDate()}日\`;}
-document.getElementById('hdt').textContent = roc();
+document.getElementById('hdt').textContent=roc();
 
-async function initModels() {
-  const bar = document.getElementById('mbar');
-  try {
+async function initModels(){
+  const bar=document.getElementById('mbar');
+  try{
     await Promise.all([
-      faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-      faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+      faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+      faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
       faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
     ]);
-    const labeled = PEOPLE.filter(p=>p.descriptor)
+    const labeled=PEOPLE.filter(p=>p.descriptor)
       .map(p=>new faceapi.LabeledFaceDescriptors(p.name,[new Float32Array(p.descriptor)]));
-    if(labeled.length) matcher = new faceapi.FaceMatcher(labeled, THRESHOLD);
-    modelsReady = true;
-    bar.textContent = \`✅ 模型就緒，已建特徵 \${labeled.length} 人\`;
-    bar.className = 'mbar ok';
-    document.getElementById('btn-start').disabled = false;
-  } catch(e) {
-    bar.textContent = '❌ 模型載入失敗：' + e.message;
-    bar.className = 'mbar err';
-    console.error(e);
+    if(labeled.length) matcher=new faceapi.FaceMatcher(labeled,THRESHOLD);
+    modelsReady=true;
+    bar.textContent=\`✅ 模型就緒，已建特徵 \${labeled.length} 人\`;
+    bar.className='mbar ok';
+    document.getElementById('btn-start').disabled=false;
+  }catch(e){
+    bar.textContent='❌ 模型載入失敗：'+e.message;
+    bar.className='mbar err';
   }
 }
 initModels();
 
-async function startScan() {
-  if(!modelsReady){ alert('模型尚未就緒'); return; }
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}},audio:false});
-    const vid = document.getElementById('video');
-    vid.srcObject = stream;
+async function startScan(){
+  if(!modelsReady){alert('模型尚未就緒');return;}
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:640},height:{ideal:480}},audio:false});
+    const vid=document.getElementById('video');
+    vid.srcObject=stream;
     await new Promise(r=>vid.onloadedmetadata=r);
-    const fc = document.getElementById('faceCanvas');
-    fc.width=vid.videoWidth; fc.height=vid.videoHeight;
+    const fc=document.getElementById('faceCanvas');
+    fc.width=vid.videoWidth;fc.height=vid.videoHeight;
     scanning=true;
     document.getElementById('btn-start').style.display='none';
     document.getElementById('btn-stop').style.display='';
     document.getElementById('ring').style.display='';
     setS('📡 掃描中，自動辨識...');
-    scanTimer = setInterval(doScan, INTERVAL);
-    setTimeout(doScan, 800);
-  } catch(e){ setS('無法開啟相機：'+e.message); }
+    scanTimer=setInterval(doScan,INTERVAL);
+    setTimeout(doScan,800);
+  }catch(e){setS('無法開啟相機：'+e.message);}
 }
 
-function stopScan() {
+function stopScan(){
   scanning=false;
   if(scanTimer){clearInterval(scanTimer);scanTimer=null;}
   if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
@@ -357,14 +319,13 @@ function stopScan() {
 
 function setS(msg){document.getElementById('sstatus').textContent=msg;}
 
-async function doScan() {
-  if(!scanning||!matcher) return;
+async function doScan(){
+  if(!scanning||!matcher)return;
   const vid=document.getElementById('video');
-  if(!vid.videoWidth) return;
-  try {
-    const dets = await faceapi
-      .detectAllFaces(vid, new faceapi.SsdMobilenetv1Options({minConfidence:0.4}))
-      .withFaceLandmarks().withFaceDescriptors();
+  if(!vid.videoWidth)return;
+  try{
+    const opts=new faceapi.TinyFaceDetectorOptions({inputSize:224,scoreThreshold:0.4});
+    const dets=await faceapi.detectAllFaces(vid,opts).withFaceLandmarks(true).withFaceDescriptors();
     const fc=document.getElementById('faceCanvas');
     const ctx=fc.getContext('2d');
     ctx.clearRect(0,0,fc.width,fc.height);
@@ -378,9 +339,8 @@ async function doScan() {
       ctx.lineWidth=2;
       ctx.strokeRect(box.x,box.y,box.width,box.height);
       const label=known?match.label:'未知';
-      const tw=ctx.measureText(label).width+10;
       ctx.fillStyle=known?'#3a7d5a':'#555';
-      ctx.fillRect(box.x,box.y-24,tw,24);
+      ctx.fillRect(box.x,box.y-24,label.length*14+10,24);
       ctx.fillStyle='#fff';
       ctx.font='bold 14px sans-serif';
       ctx.fillText(label,box.x+5,box.y-6);
@@ -392,7 +352,7 @@ async function doScan() {
     });
     if(!dets.length) setS('未偵測到人臉，請對準長輩');
     else setS(\`偵測到 \${dets.length} 張臉\${found.length?' ✅ '+found.join('、'):' — 無符合'}\`);
-  } catch(e){ setS('辨識錯誤：'+e.message); }
+  }catch(e){setS('辨識錯誤：'+e.message);}
 }
 
 function rl(){
@@ -409,15 +369,11 @@ function rl(){
     <\/div>\`;
   }).join('');
 }
-
 function mk(i,s,ai=false){
   const nm=PEOPLE[i].name;
   if(!R[nm])R[nm]={};
   if(!ai&&R[nm].s===s){R[nm]={n:R[nm].n||''};}
-  else{
-    const d=new Date();
-    R[nm]={s,t:s==='P'?d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0'):null,n:R[nm].n||'',ai};
-  }
+  else{const d=new Date();R[nm]={s,t:s==='P'?d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0'):null,n:R[nm].n||'',ai};}
   ur(i);us();
 }
 function ur(i){
