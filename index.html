@@ -78,16 +78,15 @@
 <script>
 // 模型路徑與副檔名設定
 const MODEL_URL = './models';
-// face-api 預設讀無副檔名，但你的檔案是 .htm，需覆寫 fetch
+// 攔截 fetch，讓模型所有請求（含 .json 和無副檔名 shard）都改成 .htm
 const _origFetch = window.fetch;
 window.fetch = function(url, opts) {
-  // 只攔截 models 路徑下、無副檔名或 .json 以外的請求
   if(typeof url === 'string' && url.includes('/models/')) {
-    // manifest json 不動
-    if(!url.endsWith('.json') && !url.endsWith('.htm') && !url.endsWith('.bin')) {
+    if(url.endsWith('.json')) {
+      url = url.replace('.json', '.htm');
+    } else if(!url.endsWith('.htm') && !url.endsWith('.bin')) {
       url = url + '.htm';
     }
-    // weights_manifest.json 也可能被要求
   }
   return _origFetch(url, opts);
 };
@@ -292,7 +291,8 @@ let R={}, stream=null, scanTimer=null, scanning=false, modelsReady=false, matche
 const _of = window.fetch;
 window.fetch = function(url, opts) {
   if(typeof url==='string' && url.includes('/models/')) {
-    if(!url.match(/\\.json$|\\.htm$|\\.bin$/)) url = url + '.htm';
+    if(url.endsWith('.json')) url = url.replace('.json', '.htm');
+    else if(!url.endsWith('.htm') && !url.endsWith('.bin')) url = url + '.htm';
   }
   return _of(url, opts);
 };
