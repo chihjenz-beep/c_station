@@ -478,7 +478,8 @@ async function init() {
     document.getElementById('loadingOverlay').style.display = 'none';
     document.getElementById('statusLabel').textContent = '就緒';
     document.getElementById('statusDot').classList.add('ready');
-    await startCamera();
+    await getCameraDevices();
+    await startCamera(cameraDevices.length > 0 ? cameraDevices[0].deviceId : null);
     await buildFaceMatcher();
     renderStudents();
     renderRecords();
@@ -490,23 +491,36 @@ async function init() {
 }
 
 // ==================== CAMERA ====================
-let currentFacing = 'user';      // 打卡相機
-let addCurrentFacing = 'user';   // 新增學員相機
+let currentFacing = 'user';
+let cameraDevices = [];    // 所有視訊裝置
+let currentDeviceIdx = 0;  // 目前使用的裝置索引
 
-async function startCamera(facing) {
-  if (!facing) facing = currentFacing;
-  currentFacing = facing;
+async function getCameraDevices() {
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  cameraDevices = devices.filter(d => d.kind === 'videoinput');
+}
+
+async function startCamera(deviceId) {
   clearInterval(detectionLoop);
   if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
   const video = document.getElementById('video');
   video.srcObject = null;
+
   try {
-    const constraints = { video: { facingMode: { ideal: facing } } };
+    const constraints = deviceId
+      ? { video: { deviceId: { exact: deviceId } } }
+      : { video: { facingMode: { ideal: 'user' } } };
+
     stream = await navigator.mediaDevices.getUserMedia(constraints);
-    video.style.transform = facing === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
-    document.getElementById('overlay').style.transform = facing === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
+
+    // 判斷是否為前鏡頭（前鏡頭才需要水平翻轉）
+    const track = stream.getVideoTracks()[0];
+    const settings = track.getSettings();
+    const isFront = settings.facingMode === 'user' || !settings.facingMode;
+    video.style.transform = isFront ? 'scaleX(-1)' : 'scaleX(1)';
+    document.getElementById('overlay').style.transform = isFront ? 'scaleX(-1)' : 'scaleX(1)';
+
     video.srcObject = stream;
-    // 等待可播放後再偵測
     video.oncanplay = () => { startDetection(); video.oncanplay = null; };
   } catch(e) {
     document.getElementById('cameraHint').textContent = '無法開啟相機：' + e.message;
@@ -514,13 +528,13 @@ async function startCamera(facing) {
 }
 
 async function flipCamera() {
-  currentFacing = currentFacing === 'user' ? 'environment' : 'user';
-  await startCamera(currentFacing);
-}
-
-async function flipAddCamera() {
-  addCurrentFacing = addCurrentFacing === 'user' ? 'environment' : 'user';
-  await startAddCamera(addCurrentFacing);
+  if (cameraDevices.length === 0) await getCameraDevices();
+  if (cameraDevices.length <= 1) {
+    showToast('此裝置只有一個鏡頭');
+    return;
+  }
+  currentDeviceIdx = (currentDeviceIdx + 1) % cameraDevices.length;
+  await startCamera(cameraDevices[currentDeviceIdx].deviceId);
 }
 
 function startDetection() {
