@@ -319,20 +319,34 @@ async function doCheckin() {
   const video = document.getElementById('video');
   const btn = document.getElementById('checkBtn');
   btn.disabled = true; btn.textContent = '辨識中…';
-  const opts = new faceapi.TinyFaceDetectorOptions({inputSize:224,scoreThreshold:0.5});
-  const det = await faceapi.detectSingleFace(video,opts).withFaceLandmarks(true).withFaceDescriptor();
-  if (!det) { showResult(false,'未偵測到臉部','請重新對準鏡頭',0); reset(); return; }
-  if (!faceMatcher) { showResult(false,'尚未建立學員資料','請先新增學員',0); reset(); return; }
-  const match = faceMatcher.findBestMatch(det.descriptor);
-  const conf = Math.max(0, Math.round((1-match.distance)*100));
-  if (match.label==='unknown'||conf<45) { showResult(false,'辨識失敗','找不到符合學員（相似度：'+conf+'%）',conf); reset(); return; }
-  const stu = students.find(s=>s.id===match.label);
-  if (!stu) { showResult(false,'系統錯誤','找不到學員資料',0); reset(); return; }
-  const now = new Date();
-  records.unshift({id:Date.now()+'',studentId:stu.id,studentName:stu.name,studentGroup:stu.group||'',studentPhoto:stu.photoData,time:now.toISOString()});
-  saveRec();
-  showResult(true,stu.name,fmtDT(now)+'　相似度：'+conf+'%',conf);
-  setTimeout(reset, 4000);
+
+  // 逾時保護：10秒後強制重置
+  const timeout = setTimeout(() => {
+    reset();
+    toast('⚠️ 辨識逾時，請再試一次');
+  }, 10000);
+
+  try {
+    const opts = new faceapi.TinyFaceDetectorOptions({inputSize:224,scoreThreshold:0.5});
+    const det = await faceapi.detectSingleFace(video,opts).withFaceLandmarks(true).withFaceDescriptor();
+    clearTimeout(timeout);
+    if (!det) { showResult(false,'未偵測到臉部','請重新對準鏡頭',0); reset(); return; }
+    if (!faceMatcher) { showResult(false,'尚未建立學員資料','請先新增學員',0); reset(); return; }
+    const match = faceMatcher.findBestMatch(det.descriptor);
+    const conf = Math.max(0, Math.round((1-match.distance)*100));
+    if (match.label==='unknown'||conf<45) { showResult(false,'辨識失敗','找不到符合學員（相似度：'+conf+'%）',conf); reset(); return; }
+    const stu = students.find(s=>s.id===match.label);
+    if (!stu) { showResult(false,'系統錯誤','找不到學員資料',0); reset(); return; }
+    const now = new Date();
+    records.unshift({id:Date.now()+'',studentId:stu.id,studentName:stu.name,studentGroup:stu.group||'',studentPhoto:stu.photoData,time:now.toISOString()});
+    saveRec();
+    showResult(true,stu.name,fmtDT(now)+'　相似度：'+conf+'%',conf);
+    reset(); // 立即重置，不再延遲
+  } catch(e) {
+    clearTimeout(timeout);
+    reset();
+    toast('❌ 辨識錯誤：' + e.message);
+  }
 }
 function reset(){ const btn=document.getElementById('checkBtn'); btn.textContent='📸 確認打卡'; btn.disabled=false; }
 function showResult(ok,name,time,conf){
