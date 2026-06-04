@@ -4,438 +4,471 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>C據點長輩建檔工具</title>
+<script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <style>
-  :root {
-    --bg: #f5f0e8;
-    --card: #fffef9;
-    --border: #d4c9b0;
-    --text: #2c2416;
-    --muted: #7a6e5f;
-    --green: #3a7d5a;
-    --green-light: #eaf4ee;
-    --red: #b94040;
-    --red-light: #fdf0f0;
-    --blue: #2a5f8f;
-    --blue-light: #eaf2fa;
-    --accent: #c07830;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); font-family: 'Noto Sans TC', 'PingFang TC', sans-serif; color: var(--text); min-height: 100vh; }
-  header { background: var(--text); color: #f5f0e8; padding: 1.2rem 1.5rem; display: flex; align-items: center; gap: 12px; }
-  header h1 { font-size: 18px; font-weight: 500; letter-spacing: 0.05em; }
-  header .sub { font-size: 13px; color: #b0a48a; margin-left: auto; }
-  .container { max-width: 700px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1.2rem; margin-bottom: 1rem; }
-  .card-title { font-size: 14px; font-weight: 500; color: var(--muted); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
-  textarea { width: 100%; height: 120px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 15px; font-family: inherit; background: var(--bg); color: var(--text); resize: vertical; }
-  textarea:focus { outline: 2px solid var(--accent); border-color: transparent; }
-  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 14px; font-family: inherit; cursor: pointer; transition: all 0.15s; }
-  .btn:hover { background: var(--bg); }
-  .btn-primary { background: var(--text); color: #f5f0e8; border-color: var(--text); }
-  .btn-primary:hover { background: #3d3020; }
-  .btn-green { background: var(--green); color: #fff; border-color: var(--green); }
-  .btn-green:hover { background: #2d6147; }
-  .btn-accent { background: var(--accent); color: #fff; border-color: var(--accent); }
-  .btn-accent:hover { background: #9e6020; }
-  .person-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; margin-bottom: 10px; display: flex; gap: 12px; align-items: flex-start; }
-  .person-card.has-photo { border-color: var(--green); background: var(--green-light); }
-  .photo-slot { width: 72px; height: 72px; border-radius: 8px; border: 2px dashed var(--border); background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; flex-shrink: 0; font-size: 11px; color: var(--muted); text-align: center; gap: 4px; transition: border-color 0.15s; }
-  .photo-slot:hover { border-color: var(--accent); }
-  .photo-slot img { width: 100%; height: 100%; object-fit: cover; }
-  .person-info { flex: 1; }
-  .person-name { font-size: 16px; font-weight: 500; margin-bottom: 6px; }
-  .person-status { font-size: 12px; color: var(--muted); }
-  .person-status.ok { color: var(--green); }
-  .delete-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; padding: 4px; border-radius: 4px; }
-  .delete-btn:hover { color: var(--red); background: var(--red-light); }
-  .step-badge { display: inline-block; background: var(--accent); color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 20px; margin-right: 6px; }
-  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
-  .stats-bar { display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; }
-  .stat-chip { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; font-size: 13px; color: var(--muted); }
-  .stat-chip b { color: var(--text); }
-  .export-zone { background: var(--blue-light); border: 1px solid #b5d0e8; border-radius: 10px; padding: 1.2rem; margin-top: 1.5rem; }
-  .export-zone h3 { font-size: 15px; font-weight: 500; margin-bottom: 8px; color: var(--blue); }
-  .export-zone p { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
-  #file-hidden { display: none; }
-  .section-gap { height: 1.5rem; }
-  .empty-hint { text-align: center; padding: 2rem; color: var(--muted); font-size: 14px; border: 1px dashed var(--border); border-radius: 10px; background: var(--card); }
+  :root{--bg:#f5f0e8;--card:#fffef9;--border:#d4c9b0;--text:#2c2416;--muted:#7a6e5f;--green:#3a7d5a;--gl:#eaf4ee;--red:#b94040;--accent:#c07830;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);font-family:'Noto Sans TC','PingFang TC',sans-serif;color:var(--text);}
+  header{background:var(--text);color:#f5f0e8;padding:1rem 1.2rem;display:flex;align-items:center;gap:10px;}
+  header h1{font-size:17px;font-weight:500;}
+  header .sub{font-size:12px;color:#b0a48a;margin-left:auto;}
+  .wrap{max-width:640px;margin:0 auto;padding:1rem 1rem 4rem;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.2rem;margin-bottom:1rem;}
+  .lbl{font-size:13px;color:var(--muted);margin-bottom:6px;}
+  .step{display:inline-block;background:var(--accent);color:#fff;font-size:11px;padding:1px 8px;border-radius:20px;margin-right:6px;}
+  textarea{width:100%;height:110px;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:15px;font-family:inherit;background:var(--bg);color:var(--text);resize:vertical;}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 20px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:14px;font-family:inherit;cursor:pointer;}
+  .btn-dark{background:var(--text);color:#f5f0e8;border-color:var(--text);}
+  .btn-green{background:var(--green);color:#fff;border-color:var(--green);font-size:15px;padding:12px 24px;width:100%;}
+  .hint{font-size:12px;color:var(--muted);margin-top:6px;}
+  .stats{display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;}
+  .chip{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:13px;color:var(--muted);}
+  .chip b{color:var(--text);}
+  .pcard{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;}
+  .pcard.ok{border-color:var(--green);background:var(--gl);}
+  .photo-label{width:64px;height:64px;border-radius:8px;border:2px dashed var(--border);background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;flex-shrink:0;font-size:10px;color:var(--muted);text-align:center;gap:3px;}
+  .photo-label img{width:100%;height:100%;object-fit:cover;}
+  .photo-label input{display:none;}
+  .pname{flex:1;font-size:15px;font-weight:500;}
+  .pst{font-size:12px;color:var(--muted);}
+  .pst.ok{color:var(--green);}
+  .del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:4px 6px;}
+  .export-box{background:#eaf2fa;border:1px solid #b5d0e8;border-radius:10px;padding:1.2rem;margin-top:1rem;}
+  .export-box h3{font-size:15px;color:#2a5f8f;margin-bottom:6px;}
+  .export-box p{font-size:13px;color:var(--muted);margin-bottom:12px;}
+  .model-status{font-size:13px;padding:8px 12px;border-radius:8px;background:var(--bg);border:1px solid var(--border);margin-bottom:1rem;color:var(--muted);}
+  .model-status.ok{border-color:var(--green);color:var(--green);background:var(--gl);}
+  .model-status.err{border-color:var(--red);color:var(--red);}
 </style>
 </head>
 <body>
 <header>
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
   <h1>C據點長輩建檔工具</h1>
-  <span class="sub">建檔後下載點名 HTML</span>
+  <span class="sub">face-api 版</span>
 </header>
+<div class="wrap">
 
-<div class="container">
+  <div class="model-status" id="mstatus">⏳ 正在載入人臉辨識模型...</div>
 
   <div class="card">
-    <div class="card-title"><span class="step-badge">步驟一</span>貼上長輩名單</div>
-    <textarea id="name-input" placeholder="每行一位，例如：
-王大明
+    <div class="lbl"><span class="step">步驟一</span>貼上長輩名單（每行一位）</div>
+    <textarea id="ni" placeholder="王大明
 李小花
 陳阿嬤
 張伯伯"></textarea>
-    <div style="margin-top:8px;display:flex;gap:8px">
-      <button class="btn btn-primary" onclick="loadNames()">載入名單</button>
-    </div>
-    <div class="hint">載入後可逐一為每位長輩拍照建檔</div>
+    <div style="margin-top:8px"><button class="btn btn-dark" onclick="load()">載入名單</button></div>
+    <div class="hint">載入後點每人頭像拍照，系統自動擷取人臉特徵</div>
   </div>
 
-  <div id="person-section" style="display:none">
-    <div class="card-title" style="margin-bottom:8px"><span class="step-badge">步驟二</span>為每位長輩拍照（點頭像區域）</div>
-    <div class="stats-bar" id="stats-bar"></div>
-    <div id="person-list"></div>
-    <input type="file" id="file-hidden" accept="image/*" capture="environment"/>
+  <div id="psec" style="display:none">
+    <div class="lbl" style="margin-bottom:8px"><span class="step">步驟二</span>點頭像為每位長輩拍照（需清楚正面）</div>
+    <div class="stats" id="stats"></div>
+    <div id="plist"></div>
   </div>
 
-  <div class="export-zone" id="export-zone" style="display:none">
+  <div class="export-box" id="expbox" style="display:none">
     <h3>步驟三：下載點名系統</h3>
-    <p>建檔完成後，下載含參考照的點名 HTML，之後每天用那個檔案拍照點名即可。照片未建檔的長輩仍可手動點名。</p>
-    <button class="btn btn-green" onclick="generateAttendanceHTML()" style="font-size:15px;padding:11px 22px">
-      ⬇ 下載點名系統 HTML
-    </button>
+    <p>人臉特徵向量已嵌入。下載後上傳 GitHub 為 <b>attend.html</b>，手機每天開固定網址自動掃描點名，<b>完全離線運作</b>。</p>
+    <button class="btn btn-green" onclick="gen()">⬇ 下載點名系統 HTML</button>
   </div>
-
 </div>
 
-<script>
-let people = [];
-let photos = {};
-let currentEditIndex = null;
+<canvas id="hidden-canvas" style="display:none"></canvas>
 
-function loadNames(){
-  const raw = document.getElementById('name-input').value.trim();
+<script>
+const MODEL_URL = './models';
+let people = [], descriptors = {}, photos = {};
+let modelsReady = false;
+
+// 載入模型
+async function loadModels() {
+  const st = document.getElementById('mstatus');
+  try {
+    await Promise.all([
+      faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+      faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+      faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+    ]);
+    modelsReady = true;
+    st.textContent = '✅ 人臉辨識模型已就緒';
+    st.className = 'model-status ok';
+  } catch(e) {
+    st.textContent = '❌ 模型載入失敗：' + e.message;
+    st.className = 'model-status err';
+  }
+}
+loadModels();
+
+function load() {
+  const raw = document.getElementById('ni').value.trim();
   if(!raw){ alert('請先貼上名單'); return; }
   const names = raw.split(/[\n,，、]+/).map(s=>s.trim()).filter(Boolean);
   if(!names.length){ alert('找不到名字'); return; }
-  people = names;
-  photos = {};
-  document.getElementById('person-section').style.display='block';
-  document.getElementById('export-zone').style.display='block';
-  renderAll();
+  people = names; descriptors = {}; photos = {};
+  document.getElementById('psec').style.display = 'block';
+  document.getElementById('expbox').style.display = 'block';
+  render();
 }
 
-function renderAll(){
-  renderList();
-  renderStats();
-}
-
-function renderList(){
-  const list = document.getElementById('person-list');
-  if(!people.length){ list.innerHTML='<div class="empty-hint">名單是空的</div>'; return; }
-  list.innerHTML = people.map((name,i)=>{
-    const hasPhoto = !!photos[name];
-    return `<div class="person-card ${hasPhoto?'has-photo':''}" id="pc-${i}">
-      <div class="photo-slot" onclick="startPhoto(${i})" title="點擊拍照">
-        ${hasPhoto
-          ? `<img src="${photos[name]}" alt="${name}的照片"/>`
-          : `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span>點擊拍照</span>`
+function render() {
+  document.getElementById('plist').innerHTML = people.map((name, i) => {
+    const hasFace = !!descriptors[name];
+    return `<div class="pcard ${hasFace?'ok':''}" id="pc${i}">
+      <label class="photo-label">
+        ${photos[name]
+          ? `<img src="${photos[name]}" alt="${name}"/>`
+          : `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span>拍照</span>`
         }
+        <input type="file" accept="image/*" capture="environment" onchange="onPhoto(event,${i})">
+      </label>
+      <div style="flex:1">
+        <div class="pname">${name}</div>
+        <div class="pst ${hasFace?'ok':''}">${hasFace?'✓ 特徵已建立':'未拍照'}</div>
       </div>
-      <div class="person-info">
-        <div class="person-name">${name}</div>
-        <div class="person-status ${hasPhoto?'ok':''}">${hasPhoto?'✓ 已建照片':'尚未拍照'}</div>
-      </div>
-      <button class="delete-btn" onclick="removePerson(${i})" title="移除">×</button>
+      <button class="del" onclick="rm(${i})">×</button>
     </div>`;
   }).join('');
+  const done = people.filter(n=>descriptors[n]).length;
+  document.getElementById('stats').innerHTML = `
+    <div class="chip">總人數 <b>${people.length}</b></div>
+    <div class="chip">已建特徵 <b style="color:var(--green)">${done}</b></div>
+    <div class="chip">待拍 <b style="color:var(--accent)">${people.length-done}</b></div>`;
 }
 
-function renderStats(){
-  const done = people.filter(n=>photos[n]).length;
-  document.getElementById('stats-bar').innerHTML = `
-    <div class="stat-chip">總人數 <b>${people.length}</b></div>
-    <div class="stat-chip">已建照片 <b style="color:var(--green)">${done}</b></div>
-    <div class="stat-chip">待拍照 <b style="color:var(--accent)">${people.length-done}</b></div>
-  `;
+async function onPhoto(e, i) {
+  const file = e.target.files[0]; if(!file) return;
+  if(!modelsReady){ alert('模型尚未載入完成，請稍候'); return; }
+  const name = people[i];
+  const img = await loadImage(file);
+  // 縮圖存照片
+  photos[name] = compressImg(img, 300);
+  // 擷取人臉特徵
+  const detection = await faceapi
+    .detectSingleFace(img, new faceapi.SsdMobilenetv1Options({minConfidence:0.3}))
+    .withFaceLandmarks()
+    .withFaceDescriptor();
+  if(!detection) {
+    alert(`「${name}」的照片未偵測到人臉，請重拍清楚正面照`);
+    photos[name] = null;
+    render(); return;
+  }
+  descriptors[name] = Array.from(detection.descriptor);
+  render();
 }
 
-function startPhoto(i){
-  currentEditIndex = i;
-  const inp = document.getElementById('file-hidden');
-  inp.onchange = e => {
-    const file = e.target.files[0]; if(!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => {
-      compressImage(ev.target.result, compressed => {
-        photos[people[currentEditIndex]] = compressed;
-        renderAll();
-      });
-    };
-    reader.readAsDataURL(file);
-    inp.value='';
-  };
-  inp.click();
+function loadImage(file) {
+  return new Promise(res => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); res(img); };
+    img.src = url;
+  });
 }
 
-function compressImage(dataUrl, cb){
-  const img = new Image();
-  img.onload = () => {
-    const canvas = document.createElement('canvas');
-    const MAX = 300;
-    let w = img.width, h = img.height;
-    if(w>h){ if(w>MAX){h=h*MAX/w;w=MAX;} } else { if(h>MAX){w=w*MAX/h;h=MAX;} }
-    canvas.width=w; canvas.height=h;
-    canvas.getContext('2d').drawImage(img,0,0,w,h);
-    cb(canvas.toDataURL('image/jpeg',0.75));
-  };
-  img.src=dataUrl;
+function compressImg(img, maxSize) {
+  const c = document.getElementById('hidden-canvas');
+  let w = img.width, h = img.height;
+  if(w>h){ if(w>maxSize){h=h*maxSize/w;w=maxSize;} } else { if(h>maxSize){w=w*maxSize/h;h=maxSize;} }
+  c.width=w; c.height=h;
+  c.getContext('2d').drawImage(img,0,0,w,h);
+  return c.toDataURL('image/jpeg', 0.78);
 }
 
-function removePerson(i){
-  if(!confirm(`確定移除「${people[i]}」？`)) return;
-  delete photos[people[i]];
-  people.splice(i,1);
-  renderAll();
+function rm(i) {
+  if(!confirm(`移除「${people[i]}」？`)) return;
+  delete descriptors[people[i]]; delete photos[people[i]];
+  people.splice(i,1); render();
 }
 
-function generateAttendanceHTML(){
-  const peopleData = people.map(name=>({ name, photo: photos[name]||null }));
-  const dataJSON = JSON.stringify(peopleData);
-  const today = new Date().toISOString().slice(0,10);
+function gen() {
+  const data = people.map(n=>({
+    name: n,
+    photo: photos[n]||null,
+    descriptor: descriptors[n]||null
+  }));
+  const noFace = data.filter(d=>!d.descriptor).map(d=>d.name);
+  if(noFace.length && !confirm(`以下長輩未建立人臉特徵，只能手動點名：\n${noFace.join('、')}\n\n繼續下載？`)) return;
+  const blob = new Blob([buildAttend(data)], {type:'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'attend.html'; a.click();
+}
 
-  const html = `<!DOCTYPE html>
+function buildAttend(data) {
+  const json = JSON.stringify(data);
+  return `<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>C據點每日點名</title>
+<script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"><\/script>
 <style>
-  :root{--bg:#f5f0e8;--card:#fffef9;--border:#d4c9b0;--text:#2c2416;--muted:#7a6e5f;--green:#3a7d5a;--green-light:#eaf4ee;--red:#b94040;--red-light:#fdf0f0;--blue:#2a5f8f;--accent:#c07830;}
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{background:var(--bg);font-family:'Noto Sans TC','PingFang TC',sans-serif;color:var(--text);min-height:100vh;}
-  header{background:var(--text);color:#f5f0e8;padding:1rem 1.2rem;display:flex;align-items:center;gap:10px;}
-  header h1{font-size:17px;font-weight:500;}
-  header .date{font-size:13px;color:#b0a48a;margin-left:auto;}
-  .container{max-width:680px;margin:0 auto;padding:1rem 1rem 4rem;}
-  .cam-zone{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.2rem;margin-bottom:1rem;}
-  .cam-zone h2{font-size:14px;font-weight:500;color:var(--muted);margin-bottom:10px;}
-  #preview{width:100%;max-height:280px;object-fit:contain;border-radius:8px;margin-bottom:10px;display:none;}
-  .btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:14px;font-family:inherit;cursor:pointer;transition:all 0.15s;}
-  .btn:hover{background:var(--bg);}
-  .btn-cam{background:var(--text);color:#f5f0e8;border-color:var(--text);width:100%;justify-content:center;font-size:16px;padding:12px;}
-  .btn-green{background:var(--green);color:#fff;border-color:var(--green);}
-  .loading{height:4px;background:#ddd;border-radius:2px;overflow:hidden;display:none;margin:8px 0;}
-  .loading-bar{height:100%;background:var(--green);width:0;border-radius:2px;transition:width 0.3s;}
-  .ai-box{background:var(--green-light);border:1px solid #aad4ba;border-radius:8px;padding:10px 14px;font-size:13px;display:none;margin-top:8px;white-space:pre-wrap;color:var(--text);}
-  .stats-row{display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;}
-  .stat{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:5px 14px;font-size:13px;color:var(--muted);}
-  .stat b{color:var(--text);}
-  .list{display:flex;flex-direction:column;gap:8px;}
-  .prow{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;border:1px solid var(--border);background:var(--card);transition:all 0.2s;}
-  .prow.present{border-color:var(--green);background:var(--green-light);}
-  .prow.absent{border-color:var(--red);background:var(--red-light);}
-  .avatar{width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0;background:var(--bg);border:1px solid var(--border);}
-  .avatar-placeholder{width:48px;height:48px;border-radius:8px;background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:18px;flex-shrink:0;}
-  .pname{flex:1;font-size:15px;font-weight:500;}
-  .ptime{font-size:12px;color:var(--green);min-width:46px;}
-  .ai-tag{font-size:11px;background:var(--green);color:#fff;padding:1px 7px;border-radius:20px;margin-left:4px;}
-  .note-inp{font-size:13px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;width:80px;background:var(--bg);color:var(--text);}
-  .tog{padding:5px 12px;font-size:13px;border:1px solid var(--border);border-radius:7px;cursor:pointer;background:var(--bg);color:var(--muted);font-family:inherit;}
-  .tog.p{background:var(--green);color:#fff;border-color:var(--green);}
-  .tog.a{background:var(--red);color:#fff;border-color:var(--red);}
-  .action-bar{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
-  .section-label{font-size:13px;color:var(--muted);margin:1rem 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border);}
-  #file-inp{display:none;}
-  .copy-btn{margin-top:1rem;}
-</style>
-</head>
+:root{--bg:#f5f0e8;--card:#fffef9;--border:#d4c9b0;--text:#2c2416;--muted:#7a6e5f;--green:#3a7d5a;--gl:#eaf4ee;--red:#b94040;--rl:#fdf0f0;--accent:#c07830;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);font-family:'Noto Sans TC','PingFang TC',sans-serif;color:var(--text);overflow-x:hidden;}
+header{background:var(--text);color:#f5f0e8;padding:.9rem 1.2rem;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100;}
+header h1{font-size:16px;font-weight:500;}
+header .dt{font-size:12px;color:#b0a48a;margin-left:auto;}
+.wrap{max-width:680px;margin:0 auto;padding:.8rem 1rem 4rem;}
+.mbar{font-size:13px;padding:7px 12px;border-radius:8px;background:var(--bg);border:1px solid var(--border);margin-bottom:.8rem;color:var(--muted);}
+.mbar.ok{border-color:var(--green);color:var(--green);background:var(--gl);}
+.mbar.err{border-color:var(--red);color:var(--red);}
+.scan-zone{background:#111;border-radius:12px;overflow:hidden;margin-bottom:.8rem;position:relative;}
+#video{width:100%;display:block;max-height:55vw;object-fit:cover;background:#000;}
+#faceCanvas{position:absolute;top:0;left:0;width:100%;height:100%;}
+.overlay{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:10px;pointer-events:none;}
+.scan-status{background:rgba(0,0,0,.65);color:#fff;font-size:13px;padding:5px 14px;border-radius:20px;margin-bottom:6px;text-align:center;max-width:92%;}
+.scan-btns{display:flex;gap:8px;pointer-events:all;}
+.sbtn{padding:8px 16px;border-radius:8px;border:none;font-size:13px;font-family:inherit;cursor:pointer;font-weight:500;}
+.sbtn-start{background:var(--green);color:#fff;}
+.sbtn-stop{background:#555;color:#fff;}
+.ring{position:absolute;top:10px;right:10px;width:10px;height:10px;border-radius:50%;background:#4f4;animation:pulse 1s infinite;display:none;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.2;}}
+.stats{display:flex;gap:6px;margin-bottom:.8rem;flex-wrap:wrap;}
+.chip{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:13px;color:var(--muted);}
+.chip b{color:var(--text);}
+.sec{font-size:13px;color:var(--muted);margin:.8rem 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border);}
+.abar{display:flex;gap:6px;margin-bottom:.8rem;flex-wrap:wrap;}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:13px;font-family:inherit;cursor:pointer;}
+.btn-g{background:var(--green);color:#fff;border-color:var(--green);margin-top:.8rem;width:100%;justify-content:center;font-size:14px;padding:11px;}
+.prow{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--card);margin-bottom:6px;transition:all .2s;}
+.prow.P{border-color:var(--green);background:var(--gl);}
+.prow.A{border-color:var(--red);background:var(--rl);}
+.av{width:44px;height:44px;border-radius:7px;object-fit:cover;flex-shrink:0;border:1px solid var(--border);}
+.av-ph{width:44px;height:44px;border-radius:7px;background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.pn{flex:1;font-size:14px;font-weight:500;}
+.pt{font-size:11px;color:var(--green);min-width:40px;}
+.ni{font-size:12px;padding:3px 7px;border:1px solid var(--border);border-radius:6px;width:68px;background:var(--bg);color:var(--text);font-family:inherit;}
+.tog{padding:5px 10px;font-size:12px;border:1px solid var(--border);border-radius:7px;cursor:pointer;background:var(--bg);color:var(--muted);font-family:inherit;}
+.tog.p{background:var(--green);color:#fff;border-color:var(--green);}
+.tog.a{background:var(--red);color:#fff;border-color:var(--red);}
+<\/style>
+<\/head>
 <body>
 <header>
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
   <h1>C據點每日點名</h1>
-  <span class="date" id="hdr-date"></span>
-</header>
-<div class="container">
+  <span class="dt" id="hdt"><\/span>
+<\/header>
+<div class="wrap">
+  <div class="mbar" id="mbar">⏳ 載入人臉辨識模型中...<\/div>
 
-  <div class="cam-zone">
-    <h2>拍照辨識（AI 比對參考照自動點名）</h2>
-    <img id="preview" alt="預覽"/>
-    <div class="loading" id="loading"><div class="loading-bar" id="lbar"></div></div>
-    <div class="ai-box" id="ai-box"></div>
-    <button class="btn btn-cam" onclick="document.getElementById('file-inp').click()" style="margin-top:8px">
-      📷 拍照 / 上傳照片
-    </button>
-    <input type="file" id="file-inp" accept="image/*" capture="environment" onchange="handlePhoto(this)"/>
-  </div>
+  <div class="scan-zone">
+    <video id="video" autoplay playsinline muted><\/video>
+    <canvas id="faceCanvas"><\/canvas>
+    <div class="overlay">
+      <div class="scan-status" id="sstatus">請先載入模型再開始掃描<\/div>
+      <div class="scan-btns">
+        <button class="sbtn sbtn-start" id="btn-start" onclick="startScan()">▶ 開始掃描<\/button>
+        <button class="sbtn sbtn-stop" id="btn-stop" onclick="stopScan()" style="display:none">■ 停止<\/button>
+      <\/div>
+    <\/div>
+    <div class="ring" id="ring"><\/div>
+  <\/div>
 
-  <div class="stats-row" id="stats-row"></div>
-
-  <div class="section-label">名單（可手動調整）</div>
-  <div class="action-bar">
-    <button class="btn" onclick="markAll('present')" style="font-size:13px">全部出席</button>
-    <button class="btn" onclick="resetAll()" style="font-size:13px">清除全部</button>
-  </div>
-  <div class="list" id="list"></div>
-  <button class="btn btn-green copy-btn" onclick="copySummary()">複製今日摘要</button>
-</div>
+  <div class="stats" id="stats"><\/div>
+  <div class="sec">名單（可手動調整）<\/div>
+  <div class="abar">
+    <button class="btn" onclick="markAll()">全部出席<\/button>
+    <button class="btn" onclick="resetAll()">清除全部<\/button>
+  <\/div>
+  <div id="list"><\/div>
+  <button class="btn btn-g" onclick="copySummary()">複製今日摘要<\/button>
+<\/div>
 
 <script>
-const PEOPLE = ${dataJSON};
-let records = {};
+const PEOPLE = ${json};
+const MODEL_URL = './models';
+let R = {}, stream = null, scanTimer = null, scanning = false, modelsReady = false;
+let matcher = null;
+const THRESHOLD = 0.5; // 距離閾值，越小越嚴格
+const INTERVAL = 2500; // 每2.5秒掃一次
 
-function todayROC(){
-  const d=new Date();
-  return \`民國\${d.getFullYear()-1911}年\${d.getMonth()+1}月\${d.getDate()}日\`;
+function roc(){const d=new Date();return \`民國\${d.getFullYear()-1911}年\${d.getMonth()+1}月\${d.getDate()}日\`;}
+document.getElementById('hdt').textContent = roc();
+
+// 載入模型 & 建立比對器
+async function initModels() {
+  const bar = document.getElementById('mbar');
+  try {
+    await Promise.all([
+      faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+      faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+      faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+    ]);
+    // 建立已知臉孔比對器
+    const labeled = PEOPLE
+      .filter(p => p.descriptor)
+      .map(p => new faceapi.LabeledFaceDescriptors(p.name, [new Float32Array(p.descriptor)]));
+    if(labeled.length > 0) {
+      matcher = new faceapi.FaceMatcher(labeled, THRESHOLD);
+    }
+    modelsReady = true;
+    bar.textContent = \`✅ 模型就緒，已建特徵 \${labeled.length} 人\`;
+    bar.className = 'mbar ok';
+    document.getElementById('btn-start').disabled = false;
+  } catch(e) {
+    bar.textContent = '❌ 模型載入失敗：' + e.message;
+    bar.className = 'mbar err';
+  }
 }
-document.getElementById('hdr-date').textContent = todayROC();
+initModels();
 
-function renderList(){
-  const el=document.getElementById('list');
-  el.innerHTML=PEOPLE.map((p,i)=>{
-    const r=records[p.name]||{};
-    const rc=r.status==='present'?'present':r.status==='absent'?'absent':'';
-    const pCls=r.status==='present'?'p':'';
-    const aCls=r.status==='absent'?'a':'';
-    const avatar=p.photo
-      ? \`<img class="avatar" src="\${p.photo}" alt="\${p.name}"/>\`
-      : \`<div class="avatar-placeholder">👤</div>\`;
-    const aiTag=r.byAI?'<span class="ai-tag">AI</span>':'';
-    return \`<div class="prow \${rc}" id="pr\${i}">
-      \${avatar}
-      <span class="pname">\${p.name}\${aiTag}</span>
-      <span class="ptime" id="pt\${i}">\${r.time?'⏱'+r.time:''}</span>
-      <input class="note-inp" placeholder="備註" value="\${r.note||''}" oninput="setNote(\${i},this.value)"/>
-      <button class="tog \${pCls}" onclick="mark(\${i},'present')">出席</button>
-      <button class="tog \${aCls}" onclick="mark(\${i},'absent')">缺席</button>
-    </div>\`;
+// 掃描控制
+async function startScan() {
+  if(!modelsReady){ alert('模型尚未載入'); return; }
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:'environment', width:{ideal:1280}, height:{ideal:720}}, audio:false
+    });
+    const video = document.getElementById('video');
+    video.srcObject = stream;
+    await new Promise(r => video.onloadedmetadata = r);
+    // 調整 canvas 大小
+    const fc = document.getElementById('faceCanvas');
+    fc.width = video.videoWidth; fc.height = video.videoHeight;
+    scanning = true;
+    document.getElementById('btn-start').style.display = 'none';
+    document.getElementById('btn-stop').style.display = '';
+    document.getElementById('ring').style.display = '';
+    setStatus('📡 掃描中，自動辨識...');
+    scanTimer = setInterval(doScan, INTERVAL);
+    setTimeout(doScan, 800);
+  } catch(e) {
+    setStatus('無法開啟相機：' + e.message);
+  }
+}
+
+function stopScan() {
+  scanning = false;
+  if(scanTimer){ clearInterval(scanTimer); scanTimer = null; }
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream = null; }
+  document.getElementById('video').srcObject = null;
+  document.getElementById('btn-start').style.display = '';
+  document.getElementById('btn-stop').style.display = 'none';
+  document.getElementById('ring').style.display = 'none';
+  // 清除畫布
+  const fc = document.getElementById('faceCanvas');
+  fc.getContext('2d').clearRect(0,0,fc.width,fc.height);
+  setStatus('已停止掃描');
+}
+
+function setStatus(msg){ document.getElementById('sstatus').textContent = msg; }
+
+async function doScan() {
+  if(!scanning || !matcher) return;
+  const video = document.getElementById('video');
+  if(!video.videoWidth) return;
+  try {
+    const detections = await faceapi
+      .detectAllFaces(video, new faceapi.SsdMobilenetv1Options({minConfidence:0.4}))
+      .withFaceLandmarks()
+      .withFaceDescriptors();
+
+    // 畫框
+    const fc = document.getElementById('faceCanvas');
+    const ctx = fc.getContext('2d');
+    ctx.clearRect(0,0,fc.width,fc.height);
+    const displaySize = {width: video.videoWidth, height: video.videoHeight};
+    const resized = faceapi.resizeResults(detections, displaySize);
+
+    let newMarked = 0;
+    const names = [];
+
+    resized.forEach(det => {
+      const match = matcher.findBestMatch(det.descriptor);
+      const name = match.label;
+      const dist = match.distance;
+      const isKnown = name !== 'unknown' && dist < THRESHOLD;
+      const box = det.detection.box;
+      // 畫框
+      ctx.strokeStyle = isKnown ? '#3a7d5a' : '#aaa';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(box.x, box.y, box.width, box.height);
+      // 名字標籤
+      ctx.fillStyle = isKnown ? '#3a7d5a' : '#555';
+      ctx.fillRect(box.x, box.y - 22, isKnown ? name.length*14+8 : 60, 22);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.fillText(isKnown ? name : '未知', box.x+4, box.y-5);
+
+      if(isKnown) {
+        names.push(name);
+        const idx = PEOPLE.findIndex(p=>p.name===name);
+        if(idx>=0 && R[name]?.s !== 'P') { mk(idx,'P',true); newMarked++; }
+      }
+    });
+
+    if(detections.length === 0) {
+      setStatus('未偵測到人臉，請對準長輩');
+    } else {
+      setStatus(\`偵測到 \${detections.length} 張臉\${names.length?' | 辨識：'+names.join('、'):' | 無符合'}\${newMarked?' | 新標記 '+newMarked+'人':''}\`);
+    }
+  } catch(e) { setStatus('辨識錯誤：'+e.message); }
+}
+
+// 名單
+function rl() {
+  document.getElementById('list').innerHTML = PEOPLE.map((p,i)=>{
+    const r = R[p.name]||{};
+    const av = p.photo
+      ? \`<img class="av" src="\${p.photo}" alt="\${p.name}"/>\`
+      : \`<div class="av-ph">👤<\/div>\`;
+    return \`<div class="prow \${r.s||''}" id="r\${i}">
+      \${av}
+      <span class="pn">\${p.name}\${r.ai?'<span style="font-size:10px;background:var(--green);color:#fff;padding:1px 5px;border-radius:20px;margin-left:3px">AI<\/span>':''}<\/span>
+      <span class="pt" id="t\${i}">\${r.t?'⏱'+r.t:''}<\/span>
+      <input class="ni" placeholder="備註" value="\${r.n||''}" oninput="sn(\${i},this.value)"/>
+      <button class="tog \${r.s==='P'?'p':''}" onclick="mk(\${i},'P')">出席<\/button>
+      <button class="tog \${r.s==='A'?'a':''}" onclick="mk(\${i},'A')">缺席<\/button>
+    <\/div>\`;
   }).join('');
 }
 
-function mark(i,status,byAI=false){
-  const name=PEOPLE[i].name;
-  if(!records[name]) records[name]={};
-  if(!byAI && records[name].status===status){
-    records[name]={};
-  } else {
-    const now=new Date();
-    records[name]={
-      status,
-      time: status==='present'?now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0'):null,
-      note: records[name].note||'',
-      byAI
-    };
+function mk(i,s,ai=false){
+  const nm=PEOPLE[i].name;
+  if(!R[nm])R[nm]={};
+  if(!ai&&R[nm].s===s){R[nm]={n:R[nm].n||''};}
+  else{
+    const d=new Date();
+    R[nm]={s,t:s==='P'?d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0'):null,n:R[nm].n||'',ai};
   }
-  updateRow(i); updateStats();
+  ur(i); us();
 }
-
-function updateRow(i){
-  const r=records[PEOPLE[i].name]||{};
-  const row=document.getElementById('pr'+i); if(!row)return;
-  row.className='prow '+(r.status||'');
-  const togs=row.querySelectorAll('.tog');
-  togs[0].className='tog'+(r.status==='present'?' p':'');
-  togs[1].className='tog'+(r.status==='absent'?' a':'');
-  document.getElementById('pt'+i).textContent=r.time?'⏱'+r.time:'';
-  const nameEl=row.querySelector('.pname');
-  nameEl.innerHTML=PEOPLE[i].name+(r.byAI?'<span class="ai-tag">AI</span>':'');
+function ur(i){
+  const r=R[PEOPLE[i].name]||{};
+  const row=document.getElementById('r'+i); if(!row)return;
+  row.className='prow '+(r.s||'');
+  const tg=row.querySelectorAll('.tog');
+  tg[0].className='tog'+(r.s==='P'?' p':'');
+  tg[1].className='tog'+(r.s==='A'?' a':'');
+  document.getElementById('t'+i).textContent=r.t?'⏱'+r.t:'';
+  row.querySelector('.pn').innerHTML=PEOPLE[i].name+(r.ai?'<span style="font-size:10px;background:var(--green);color:#fff;padding:1px 5px;border-radius:20px;margin-left:3px">AI<\/span>':'');
 }
-
-function setNote(i,v){ if(!records[PEOPLE[i].name])records[PEOPLE[i].name]={}; records[PEOPLE[i].name].note=v; }
-function markAll(s){ PEOPLE.forEach((_,i)=>{ if(!records[PEOPLE[i].name]?.status) mark(i,s); }); }
-function resetAll(){ if(!confirm('確定清除？'))return; records={}; renderList(); updateStats(); }
-
-function updateStats(){
+function sn(i,v){if(!R[PEOPLE[i].name])R[PEOPLE[i].name]={};R[PEOPLE[i].name].n=v;}
+function markAll(){PEOPLE.forEach((_,i)=>{if(!R[PEOPLE[i].name]?.s)mk(i,'P');});}
+function resetAll(){if(!confirm('確定清除？'))return;R={};rl();us();}
+function us(){
   let p=0,a=0;
-  PEOPLE.forEach(({name})=>{ const s=records[name]?.status; if(s==='present')p++; else if(s==='absent')a++; });
-  document.getElementById('stats-row').innerHTML=\`
-    <div class="stat">出席 <b style="color:var(--green)">\${p}</b></div>
-    <div class="stat">缺席 <b style="color:var(--red)">\${a}</b></div>
-    <div class="stat">未記錄 <b>\${PEOPLE.length-p-a}</b></div>
-    <div class="stat">共 <b>\${PEOPLE.length}</b> 人</div>\`;
+  PEOPLE.forEach(({name})=>{const s=R[name]?.s;if(s==='P')p++;else if(s==='A')a++;});
+  document.getElementById('stats').innerHTML=\`<div class="chip">出席 <b style="color:var(--green)">\${p}<\/b><\/div><div class="chip">缺席 <b style="color:var(--red)">\${a}<\/b><\/div><div class="chip">未記錄 <b>\${PEOPLE.length-p-a}<\/b><\/div><div class="chip">共 <b>\${PEOPLE.length}<\/b> 人<\/div>\`;
 }
-
-function handlePhoto(inp){
-  const file=inp.files[0]; if(!file)return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    document.getElementById('preview').src=e.target.result;
-    document.getElementById('preview').style.display='block';
-    analyzePhoto(e.target.result.split(',')[1]);
-  };
-  reader.readAsDataURL(file);
-  inp.value='';
-}
-
-async function analyzePhoto(b64){
-  const loading=document.getElementById('loading');
-  const lbar=document.getElementById('lbar');
-  const aiBox=document.getElementById('ai-box');
-  loading.style.display='block'; aiBox.style.display='none';
-  let w=0; const timer=setInterval(()=>{ w=Math.min(w+3,90); lbar.style.width=w+'%'; },200);
-
-  const refData = PEOPLE.filter(p=>p.photo).map(p=>({
-    name: p.name,
-    photo: p.photo
-  }));
-
-  const msgContent = [];
-
-  refData.forEach(p=>{
-    msgContent.push({type:'text', text:\`參考照 - \${p.name}：\`});
-    msgContent.push({type:'image', source:{type:'base64', media_type:'image/jpeg', data:p.photo.split(',')[1]}});
-  });
-
-  msgContent.push({type:'text', text:\`以上是長輩的參考照。下面是今日拍攝的照片，請比對辨識哪些長輩出現在照片中。\n\n請回覆純 JSON，格式：{"present":["姓名1","姓名2"],"uncertain":[],"notes":"說明"}\n不要加其他文字。\`});
-  msgContent.push({type:'image', source:{type:'base64', media_type:'image/jpeg', data:b64}});
-
-  try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,messages:[{role:'user',content:msgContent}]})
-    });
-    const data=await resp.json();
-    clearInterval(timer); lbar.style.width='100%';
-    setTimeout(()=>loading.style.display='none',400);
-    const text=data.content?.map(c=>c.text||'').join('').trim();
-    let parsed;
-    try{ parsed=JSON.parse(text.replace(/\`\`\`json|\`\`\`/g,'').trim()); }catch(e){}
-    aiBox.style.display='block';
-    if(parsed){
-      const present=parsed.present||[];
-      let matched=0;
-      PEOPLE.forEach((p,i)=>{
-        if(present.some(n=>n.includes(p.name)||p.name.includes(n))){
-          mark(i,'present',true); matched++;
-        }
-      });
-      aiBox.textContent=\`✅ 辨識完成：找到 \${present.length} 位（\${present.join('、')}）\\n自動標記出席：\${matched} 位\${parsed.uncertain?.length?' | 不確定：'+parsed.uncertain.join('、'):''}\\n\${parsed.notes||''}\`;
-    } else {
-      aiBox.textContent='AI 回覆（無法解析）：\\n'+text;
-    }
-  } catch(err){
-    clearInterval(timer); loading.style.display='none';
-    aiBox.style.display='block'; aiBox.textContent='連線失敗：'+err.message;
-  }
-}
-
 function copySummary(){
-  const pList=PEOPLE.filter(p=>records[p.name]?.status==='present');
-  const aList=PEOPLE.filter(p=>records[p.name]?.status==='absent');
-  const nList=PEOPLE.filter(p=>!records[p.name]?.status);
-  let txt=\`C據點出席紀錄\\n\${todayROC()}\\n\\n\`;
-  txt+=\`出席（\${pList.length}人）：\\n\`;
-  pList.forEach(p=>{const r=records[p.name];txt+=\`  \${p.name}\${r.time?' '+r.time:''}\${r.note?' 【'+r.note+'】':''}\\n\`;});
-  txt+=\`\\n缺席（\${aList.length}人）：\\n\`;
-  aList.forEach(p=>{const r=records[p.name];txt+=\`  \${p.name}\${r.note?' 【'+r.note+'】':''}\\n\`;});
-  if(nList.length){txt+=\`\\n未記錄（\${nList.length}人）：\\n\`;nList.forEach(p=>txt+=\`  \${p.name}\\n\`);}
-  navigator.clipboard.writeText(txt).then(()=>alert('已複製！')).catch(()=>alert(txt));
+  const pl=PEOPLE.filter(p=>R[p.name]?.s==='P');
+  const al=PEOPLE.filter(p=>R[p.name]?.s==='A');
+  const nl=PEOPLE.filter(p=>!R[p.name]?.s);
+  let t=\`C據點出席紀錄\\n\${roc()}\\n\\n出席（\${pl.length}人）：\\n\`;
+  pl.forEach(p=>{const r=R[p.name];t+=\`  \${p.name}\${r.t?' '+r.t:''}\${r.n?' 【'+r.n+'】':''}\\n\`;});
+  t+=\`\\n缺席（\${al.length}人）：\\n\`;
+  al.forEach(p=>{const r=R[p.name];t+=\`  \${p.name}\${r.n?' 【'+r.n+'】':''}\\n\`;});
+  if(nl.length){t+=\`\\n未記錄（\${nl.length}人）：\\n\`;nl.forEach(p=>t+=\`  \${p.name}\\n\`);}
+  navigator.clipboard.writeText(t).then(()=>alert('已複製！')).catch(()=>alert(t));
 }
-
-renderList(); updateStats();
+rl(); us();
 <\/script>
-</body>
-</html>`;
-
-  const blob = new Blob([html], {type:'text/html'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href=url; a.download='C據點點名系統.html';
-  a.click();
-  URL.revokeObjectURL(url);
+<\/body>
+<\/html>`;
 }
 </script>
 </body>
