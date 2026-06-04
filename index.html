@@ -2,414 +2,874 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>C據點長輩建檔工具</title>
-<script src="./face-api.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>學員出席打卡系統</title>
+<script defer src="https://unpkg.com/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <style>
-  :root{--bg:#f5f0e8;--card:#fffef9;--border:#d4c9b0;--text:#2c2416;--muted:#7a6e5f;--green:#3a7d5a;--gl:#eaf4ee;--red:#b94040;--accent:#c07830;}
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{background:var(--bg);font-family:'Noto Sans TC','PingFang TC',sans-serif;color:var(--text);}
-  header{background:var(--text);color:#f5f0e8;padding:1rem 1.2rem;display:flex;align-items:center;gap:10px;}
-  header h1{font-size:17px;font-weight:500;}
-  header .sub{font-size:12px;color:#b0a48a;margin-left:auto;}
-  .wrap{max-width:640px;margin:0 auto;padding:1rem 1rem 4rem;}
-  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.2rem;margin-bottom:1rem;}
-  .lbl{font-size:13px;color:var(--muted);margin-bottom:6px;}
-  .step{display:inline-block;background:var(--accent);color:#fff;font-size:11px;padding:1px 8px;border-radius:20px;margin-right:6px;}
-  textarea{width:100%;height:110px;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:15px;font-family:inherit;background:var(--bg);color:var(--text);resize:vertical;}
-  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 20px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:14px;font-family:inherit;cursor:pointer;}
-  .btn-dark{background:var(--text);color:#f5f0e8;border-color:var(--text);}
-  .btn-green{background:var(--green);color:#fff;border-color:var(--green);font-size:15px;padding:12px 24px;width:100%;}
-  .hint{font-size:12px;color:var(--muted);margin-top:6px;}
-  .stats{display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;}
-  .chip{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:13px;color:var(--muted);}
-  .chip b{color:var(--text);}
-  .pcard{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;}
-  .pcard.ok{border-color:var(--green);background:var(--gl);}
-  .photo-label{width:64px;height:64px;border-radius:8px;border:2px dashed var(--border);background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;flex-shrink:0;font-size:10px;color:var(--muted);text-align:center;gap:3px;}
-  .photo-label img{width:100%;height:100%;object-fit:cover;}
-  .photo-label input{display:none;}
-  .pname{flex:1;font-size:15px;font-weight:500;}
-  .pst{font-size:12px;color:var(--muted);}
-  .pst.ok{color:var(--green);}
-  .del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:4px 6px;}
-  .export-box{background:#eaf2fa;border:1px solid #b5d0e8;border-radius:10px;padding:1.2rem;margin-top:1rem;}
-  .export-box h3{font-size:15px;color:#2a5f8f;margin-bottom:6px;}
-  .export-box p{font-size:13px;color:var(--muted);margin-bottom:12px;}
-  .mstatus{font-size:13px;padding:8px 12px;border-radius:8px;background:var(--bg);border:1px solid var(--border);margin-bottom:1rem;color:var(--muted);}
-  .mstatus.ok{border-color:var(--green);color:var(--green);background:var(--gl);}
-  .mstatus.err{border-color:var(--red);color:var(--red);background:#fdf0f0;}
+  :root {
+    --bg: #0f1923;
+    --card: #1a2a3a;
+    --accent: #00c9a7;
+    --accent2: #0099ff;
+    --warn: #ff6b6b;
+    --text: #e8f0fe;
+    --muted: #8a9bb0;
+    --border: #2a3f55;
+    --success: #00e676;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+    min-height: 100vh;
+    padding-bottom: 80px;
+  }
+  header {
+    background: linear-gradient(135deg, #0d2137 0%, #1a3a5c 100%);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.4);
+  }
+  header h1 { font-size: 18px; font-weight: 700; color: var(--accent); letter-spacing: 1px; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--warn); animation: pulse 1.5s infinite; }
+  .status-dot.ready { background: var(--success); }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:0.6;transform:scale(1.3);} }
+
+  /* Nav Tabs */
+  .nav-tabs {
+    display: flex;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .nav-tabs::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    flex: 1; min-width: 80px;
+    padding: 13px 8px;
+    background: none; border: none;
+    color: var(--muted); font-size: 13px;
+    cursor: pointer; transition: all 0.2s;
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+  }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-btn .icon { display: block; font-size: 20px; margin-bottom: 2px; }
+
+  .page { display: none; padding: 16px; }
+  .page.active { display: block; }
+
+  /* Cards */
+  .card {
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .card-title { font-size: 13px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+
+  /* Camera */
+  #cameraWrap {
+    position: relative;
+    width: 100%; max-width: 400px;
+    margin: 0 auto 14px;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: #000;
+    aspect-ratio: 3/4;
+  }
+  #video {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+    transform: scaleX(-1);
+  }
+  #overlay {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    transform: scaleX(-1);
+  }
+  .face-guide {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 200px; height: 240px;
+    border: 2px dashed rgba(0,201,167,0.5);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+  .camera-hint {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 12px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.8));
+    text-align: center; font-size: 13px; color: #fff;
+  }
+
+  /* Buttons */
+  .btn {
+    display: block; width: 100%;
+    padding: 14px;
+    border-radius: 10px;
+    border: none; cursor: pointer;
+    font-size: 15px; font-weight: 600;
+    transition: all 0.2s;
+  }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; }
+  .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.4; transform: none; cursor: not-allowed; }
+  .btn-danger { background: var(--warn); color: #fff; }
+  .btn-outline {
+    background: none; border: 1.5px solid var(--border);
+    color: var(--text); margin-top: 10px;
+  }
+
+  /* Result display */
+  #resultBox {
+    text-align: center; padding: 16px;
+    border-radius: var(--radius);
+    margin-top: 14px;
+    display: none;
+  }
+  #resultBox.success { background: rgba(0,230,118,0.12); border: 1px solid var(--success); }
+  #resultBox.fail { background: rgba(255,107,107,0.12); border: 1px solid var(--warn); }
+  #resultBox .result-name { font-size: 22px; font-weight: 700; margin: 6px 0; }
+  #resultBox .result-time { font-size: 13px; color: var(--muted); }
+
+  /* Student list */
+  .student-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px;
+    background: var(--card);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    margin-bottom: 10px;
+  }
+  .student-avatar {
+    width: 50px; height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--accent);
+    flex-shrink: 0;
+  }
+  .student-avatar-placeholder {
+    width: 50px; height: 50px;
+    border-radius: 50%;
+    background: var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0;
+  }
+  .student-info { flex: 1; }
+  .student-name { font-size: 15px; font-weight: 600; }
+  .student-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .student-actions { display: flex; gap: 8px; }
+  .icon-btn {
+    background: none; border: 1px solid var(--border);
+    color: var(--muted); border-radius: 8px;
+    padding: 6px 10px; cursor: pointer; font-size: 14px;
+    transition: all 0.2s;
+  }
+  .icon-btn:hover { color: var(--warn); border-color: var(--warn); }
+
+  /* Form */
+  .form-group { margin-bottom: 14px; }
+  label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px; }
+  input[type=text], select {
+    width: 100%; padding: 12px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text);
+    font-size: 15px;
+  }
+  input[type=text]:focus, select:focus { outline: none; border-color: var(--accent); }
+
+  /* Photo capture */
+  #capturePreview {
+    width: 120px; height: 120px;
+    border-radius: 50%; object-fit: cover;
+    border: 3px solid var(--accent);
+    display: none; margin: 10px auto;
+  }
+  .photo-area {
+    text-align: center;
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    cursor: pointer;
+  }
+  .photo-area:hover { border-color: var(--accent); }
+
+  /* Records */
+  .record-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 8px;
+    border-left: 3px solid var(--accent);
+    margin-bottom: 8px;
+  }
+  .record-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    object-fit: cover; flex-shrink: 0;
+  }
+  .record-info { flex: 1; }
+  .record-name { font-size: 14px; font-weight: 600; }
+  .record-time { font-size: 12px; color: var(--muted); }
+  .record-badge {
+    font-size: 11px; padding: 3px 8px;
+    border-radius: 20px; font-weight: 600;
+  }
+  .badge-in { background: rgba(0,201,167,0.2); color: var(--accent); }
+  .badge-out { background: rgba(255,107,107,0.2); color: var(--warn); }
+
+  /* Stats */
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat-card {
+    background: rgba(255,255,255,0.05);
+    border-radius: 10px; padding: 14px;
+    text-align: center;
+  }
+  .stat-num { font-size: 28px; font-weight: 700; color: var(--accent); }
+  .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* Loading */
+  #loadingOverlay {
+    position: fixed; inset: 0;
+    background: rgba(15,25,35,0.95);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 999;
+  }
+  .spinner {
+    width: 50px; height: 50px;
+    border: 4px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .load-text { color: var(--muted); font-size: 14px; }
+
+  /* Date filter */
+  .date-bar {
+    display: flex; gap: 8px; align-items: center;
+    margin-bottom: 14px; flex-wrap: wrap;
+  }
+  .date-bar input[type=date] {
+    flex: 1; min-width: 140px; padding: 8px 12px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-size: 14px;
+  }
+  .date-bar button {
+    padding: 8px 14px; border-radius: 8px;
+    background: var(--accent); color: #000;
+    border: none; cursor: pointer; font-weight: 600; font-size: 13px;
+  }
+
+  /* Export btn */
+  #exportBtn {
+    background: linear-gradient(135deg, #00c9a7, #0099ff);
+    color: #fff; border: none;
+    padding: 10px 20px; border-radius: 8px;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    margin-left: auto; display: block; margin-bottom: 12px;
+  }
+
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 14px; }
+  .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+
+  .toast {
+    position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+    background: #1e3a5f; color: #fff;
+    padding: 10px 20px; border-radius: 30px;
+    font-size: 14px; z-index: 200;
+    opacity: 0; transition: opacity 0.3s;
+    border: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+
+  /* Add student camera */
+  #addCameraWrap {
+    position: relative; width: 200px; height: 200px;
+    margin: 0 auto; border-radius: 50%; overflow: hidden;
+    background: #000; display: none;
+  }
+  #addVideo { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+
+  .confidence-bar-wrap { margin: 8px 0; }
+  .confidence-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .confidence-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.3s; }
+  .confidence-label { font-size: 11px; color: var(--muted); margin-top: 3px; }
 </style>
 </head>
 <body>
+
+<!-- Loading -->
+<div id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="load-text" id="loadText">載入人臉辨識模型中…</div>
+</div>
+
+<!-- Header -->
 <header>
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-  <h1>C據點長輩建檔工具</h1>
-  <span class="sub">tiny 模型版</span>
+  <h1>🏠 學員出席打卡</h1>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <span style="font-size:12px;color:var(--muted)" id="statusLabel">初始化中</span>
+    <div class="status-dot" id="statusDot"></div>
+  </div>
 </header>
-<div class="wrap">
-  <div class="mstatus" id="mstatus">⏳ 正在載入人臉辨識模型...</div>
-  <div class="card">
-    <div class="lbl"><span class="step">步驟一</span>貼上長輩名單（每行一位）</div>
-    <textarea id="ni" placeholder="王大明
-李小花
-陳阿嬤
-張伯伯"></textarea>
-    <div style="margin-top:8px"><button class="btn btn-dark" onclick="load()">載入名單</button></div>
-    <div class="hint">載入後點每人頭像拍照，系統自動擷取人臉特徵</div>
+
+<!-- Tabs -->
+<div class="nav-tabs">
+  <button class="tab-btn active" onclick="switchTab('checkin')">
+    <span class="icon">📷</span>打卡
+  </button>
+  <button class="tab-btn" onclick="switchTab('students')">
+    <span class="icon">👥</span>學員
+  </button>
+  <button class="tab-btn" onclick="switchTab('records')">
+    <span class="icon">📋</span>紀錄
+  </button>
+  <button class="tab-btn" onclick="switchTab('stats')">
+    <span class="icon">📊</span>統計
+  </button>
+</div>
+
+<!-- ===== PAGE: CHECK-IN ===== -->
+<div class="page active" id="page-checkin">
+  <div id="cameraWrap">
+    <video id="video" autoplay muted playsinline></video>
+    <canvas id="overlay"></canvas>
+    <div class="face-guide"></div>
+    <div class="camera-hint" id="cameraHint">請將臉部對準圓框</div>
   </div>
-  <div id="psec" style="display:none">
-    <div class="lbl" style="margin-bottom:8px"><span class="step">步驟二</span>點頭像為每位長輩拍照（需清楚正面）</div>
-    <div class="stats" id="stats"></div>
-    <div id="plist"></div>
-  </div>
-  <div class="export-box" id="expbox" style="display:none">
-    <h3>步驟三：下載點名系統</h3>
-    <p>人臉特徵已嵌入。下載後上傳 GitHub 為 <b>attend.html</b>，手機每天開固定網址自動掃描點名。</p>
-    <button class="btn btn-green" onclick="gen()">⬇ 下載點名系統 HTML</button>
+
+  <button class="btn btn-primary" id="checkInBtn" onclick="doCheckin()" disabled>
+    📸 確認打卡
+  </button>
+
+  <div id="resultBox">
+    <div id="resultIcon" style="font-size:40px"></div>
+    <div class="result-name" id="resultName"></div>
+    <div class="result-time" id="resultTime"></div>
+    <div class="confidence-bar-wrap">
+      <div class="confidence-bar"><div class="confidence-fill" id="confBar" style="width:0%"></div></div>
+      <div class="confidence-label" id="confLabel"></div>
+    </div>
   </div>
 </div>
-<canvas id="hidden-canvas" style="display:none"></canvas>
-<script>
-const MODEL_URL = './models';
-let people=[], descriptors={}, photos={}, modelsReady=false;
 
-async function loadModels(){
-  const st=document.getElementById('mstatus');
-  try{
+<!-- ===== PAGE: STUDENTS ===== -->
+<div class="page" id="page-students">
+  <button class="btn btn-primary" onclick="showAddModal()" style="margin-bottom:16px">
+    ➕ 新增學員
+  </button>
+  <div id="studentList"></div>
+</div>
+
+<!-- ===== PAGE: RECORDS ===== -->
+<div class="page" id="page-records">
+  <div class="date-bar">
+    <input type="date" id="filterDate" onchange="renderRecords()">
+    <button onclick="clearDateFilter()">全部</button>
+  </div>
+  <button id="exportBtn" onclick="exportExcel()">📥 匯出 Excel</button>
+  <div id="recordList"></div>
+</div>
+
+<!-- ===== PAGE: STATS ===== -->
+<div class="page" id="page-stats">
+  <div class="card">
+    <div class="card-title">今日統計</div>
+    <div class="stats-grid" id="statsGrid"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">本月出席率</div>
+    <div id="monthlyStats"></div>
+  </div>
+</div>
+
+<!-- ===== ADD STUDENT MODAL ===== -->
+<div id="addModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:300;overflow-y:auto;padding:20px;">
+  <div style="max-width:400px;margin:0 auto;background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:20px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h2 style="font-size:17px;">新增學員</h2>
+      <button onclick="hideAddModal()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;">✕</button>
+    </div>
+
+    <div class="form-group">
+      <label>姓名 *</label>
+      <input type="text" id="newName" placeholder="請輸入學員姓名">
+    </div>
+    <div class="form-group">
+      <label>組別</label>
+      <input type="text" id="newGroup" placeholder="例：A組、日間班">
+    </div>
+
+    <!-- Photo section -->
+    <div class="form-group">
+      <label>人臉照片 *</label>
+      <div class="photo-area" id="photoArea" onclick="startAddCamera()">
+        <div style="font-size:36px">📷</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:6px">點擊開啟相機拍照</div>
+      </div>
+      <div id="addCameraWrap">
+        <video id="addVideo" autoplay muted playsinline></video>
+      </div>
+      <img id="capturePreview" alt="預覽">
+      <button class="btn btn-outline" id="snapBtn" onclick="snapPhoto()" style="display:none;margin-top:10px">📸 拍照</button>
+      <button class="btn btn-outline" id="retakeBtn" onclick="retakePhoto()" style="display:none;margin-top:6px;border-color:var(--warn);color:var(--warn)">🔄 重拍</button>
+
+      <div style="margin-top:10px;text-align:center;color:var(--muted);font-size:12px">— 或 —</div>
+      <label style="display:block;margin-top:8px;text-align:center;cursor:pointer;color:var(--accent);font-size:14px;">
+        📁 從相簿選取
+        <input type="file" accept="image/*" onchange="loadPhotoFile(event)" style="display:none">
+      </label>
+    </div>
+
+    <canvas id="addCanvas" style="display:none"></canvas>
+    <button class="btn btn-primary" onclick="saveStudent()">儲存學員</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== STATE ====================
+let students = JSON.parse(localStorage.getItem('att_students') || '[]');
+let records = JSON.parse(localStorage.getItem('att_records') || '[]');
+let faceMatcher = null;
+let stream = null;
+let addStream = null;
+let capturedPhotoData = null;
+let detectionLoop = null;
+let modelsLoaded = false;
+
+// ==================== INIT ====================
+async function init() {
+  try {
+    document.getElementById('loadText').textContent = '載入人臉辨識模型中…（首次約需30秒）';
+    const MODEL_URL = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
     await Promise.all([
       faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
       faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
       faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
     ]);
-    modelsReady=true;
-    st.textContent='✅ 模型已就緒，可以開始建檔';
-    st.className='mstatus ok';
-  }catch(e){
-    st.textContent='❌ 模型載入失敗：'+e.message;
-    st.className='mstatus err';
+    modelsLoaded = true;
+    document.getElementById('loadingOverlay').style.display = 'none';
+    document.getElementById('statusLabel').textContent = '就緒';
+    document.getElementById('statusDot').classList.add('ready');
+    await startCamera();
+    await buildFaceMatcher();
+    renderStudents();
+    renderRecords();
+    renderStats();
+    document.getElementById('filterDate').value = today();
+  } catch(e) {
+    document.getElementById('loadText').textContent = '模型載入失敗：' + e.message;
   }
 }
-loadModels();
 
-function load(){
-  const raw=document.getElementById('ni').value.trim();
-  if(!raw){alert('請先貼上名單');return;}
-  const names=raw.split(/[\n,，、]+/).map(s=>s.trim()).filter(Boolean);
-  if(!names.length){alert('找不到名字');return;}
-  people=names;descriptors={};photos={};
-  document.getElementById('psec').style.display='block';
-  document.getElementById('expbox').style.display='block';
-  render();
+// ==================== CAMERA ====================
+async function startCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 } });
+    const video = document.getElementById('video');
+    video.srcObject = stream;
+    await video.play();
+    startDetection();
+  } catch(e) {
+    document.getElementById('cameraHint').textContent = '無法開啟相機：' + e.message;
+  }
 }
 
-function render(){
-  document.getElementById('plist').innerHTML=people.map((name,i)=>{
-    const has=!!descriptors[name];
-    return `<div class="pcard ${has?'ok':''}" id="pc${i}">
-      <label class="photo-label">
-        ${photos[name]?`<img src="${photos[name]}" alt="${name}"/>`:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span>拍照</span>`}
-        <input type="file" accept="image/*" capture="environment" onchange="onPhoto(event,${i})">
-      </label>
-      <div style="flex:1">
-        <div class="pname">${name}</div>
-        <div class="pst ${has?'ok':''}">${has?'✓ 特徵已建立':'未拍照'}</div>
-      </div>
-      <button class="del" onclick="rm(${i})">×</button>
-    </div>`;
-  }).join('');
-  const done=people.filter(n=>descriptors[n]).length;
-  document.getElementById('stats').innerHTML=`
-    <div class="chip">總人數 <b>${people.length}</b></div>
-    <div class="chip">已建特徵 <b style="color:var(--green)">${done}</b></div>
-    <div class="chip">待拍 <b style="color:var(--accent)">${people.length-done}</b></div>`;
+function startDetection() {
+  const video = document.getElementById('video');
+  const overlay = document.getElementById('overlay');
+  const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
+  detectionLoop = setInterval(async () => {
+    if (!video.videoWidth) return;
+    overlay.width = video.videoWidth;
+    overlay.height = video.videoHeight;
+    const ctx = overlay.getContext('2d');
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
+    const detections = await faceapi.detectAllFaces(video, opts).withFaceLandmarks(true);
+    const btn = document.getElementById('checkInBtn');
+    if (detections.length > 0) {
+      faceapi.draw.drawDetections(overlay, detections);
+      btn.disabled = false;
+      document.getElementById('cameraHint').textContent = '✅ 偵測到臉部，請按打卡';
+    } else {
+      btn.disabled = true;
+      document.getElementById('cameraHint').textContent = '請將臉部對準圓框';
+    }
+  }, 500);
 }
 
-async function onPhoto(e,i){
-  const file=e.target.files[0];if(!file)return;
-  if(!modelsReady){alert('模型尚未載入完成，請稍候');return;}
-  const name=people[i];
-  const img=await loadImg(file);
-  photos[name]=compressImg(img,300);
-  const det=await faceapi
-    .detectSingleFace(img,new faceapi.TinyFaceDetectorOptions({inputSize:224,scoreThreshold:0.3}))
-    .withFaceLandmarks(true).withFaceDescriptor();
-  if(!det){alert(`「${name}」未偵測到人臉，請重拍清楚正面照`);photos[name]=null;render();return;}
-  descriptors[name]=Array.from(det.descriptor);
-  render();
+// ==================== FACE MATCHER ====================
+async function buildFaceMatcher() {
+  if (students.length === 0) { faceMatcher = null; return; }
+  const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.3 });
+  const labeledDescriptors = [];
+  for (const s of students) {
+    if (!s.photoData) continue;
+    try {
+      const img = await loadImage(s.photoData);
+      const det = await faceapi.detectSingleFace(img, opts).withFaceLandmarks(true).withFaceDescriptor();
+      if (det) {
+        labeledDescriptors.push(new faceapi.LabeledFaceDescriptors(s.id, [det.descriptor]));
+      }
+    } catch(e) { console.warn('Skip student', s.name, e); }
+  }
+  if (labeledDescriptors.length > 0) {
+    faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.55);
+  } else {
+    faceMatcher = null;
+  }
 }
 
-function loadImg(file){
-  return new Promise(res=>{
-    const url=URL.createObjectURL(file);
-    const img=new Image();
-    img.onload=()=>{URL.revokeObjectURL(url);res(img);};
-    img.src=url;
+function loadImage(src) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => res(img);
+    img.onerror = rej;
+    img.src = src;
   });
 }
 
-function compressImg(img,max){
-  const c=document.getElementById('hidden-canvas');
-  let w=img.width,h=img.height;
-  if(w>h){if(w>max){h=h*max/w;w=max;}}else{if(h>max){w=w*max/h;h=max;}}
-  c.width=w;c.height=h;
-  c.getContext('2d').drawImage(img,0,0,w,h);
-  return c.toDataURL('image/jpeg',0.78);
-}
+// ==================== CHECK-IN ====================
+async function doCheckin() {
+  const video = document.getElementById('video');
+  const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
+  const btn = document.getElementById('checkInBtn');
+  btn.disabled = true;
+  btn.textContent = '辨識中…';
 
-function rm(i){
-  if(!confirm(`移除「${people[i]}」？`))return;
-  delete descriptors[people[i]];delete photos[people[i]];
-  people.splice(i,1);render();
-}
+  const det = await faceapi.detectSingleFace(video, opts).withFaceLandmarks(true).withFaceDescriptor();
 
-function gen(){
-  const data=people.map(n=>({name:n,photo:photos[n]||null,descriptor:descriptors[n]||null}));
-  const noFace=data.filter(d=>!d.descriptor).map(d=>d.name);
-  if(noFace.length&&!confirm(`以下長輩未建立人臉特徵，只能手動點名：\n${noFace.join('、')}\n\n繼續下載？`))return;
-  const blob=new Blob([buildAttend(data)],{type:'text/html'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);a.download='attend.html';a.click();
-}
-
-function buildAttend(data){
-  const json=JSON.stringify(data);
-  return `<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>C據點每日點名</title>
-<script src="./face-api.min.js"><\/script>
-<style>
-:root{--bg:#f5f0e8;--card:#fffef9;--border:#d4c9b0;--text:#2c2416;--muted:#7a6e5f;--green:#3a7d5a;--gl:#eaf4ee;--red:#b94040;--rl:#fdf0f0;--accent:#c07830;}
-*{box-sizing:border-box;margin:0;padding:0;}
-body{background:var(--bg);font-family:'Noto Sans TC','PingFang TC',sans-serif;color:var(--text);overflow-x:hidden;}
-header{background:var(--text);color:#f5f0e8;padding:.9rem 1.2rem;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100;}
-header h1{font-size:16px;font-weight:500;}
-.dt{font-size:12px;color:#b0a48a;margin-left:auto;}
-.wrap{max-width:680px;margin:0 auto;padding:.8rem 1rem 4rem;}
-.mbar{font-size:13px;padding:7px 12px;border-radius:8px;background:var(--bg);border:1px solid var(--border);margin-bottom:.8rem;color:var(--muted);}
-.mbar.ok{border-color:var(--green);color:var(--green);background:var(--gl);}
-.mbar.err{border-color:var(--red);color:var(--red);background:#fdf0f0;}
-.scan-zone{background:#111;border-radius:12px;overflow:hidden;margin-bottom:.8rem;position:relative;}
-#video{width:100%;display:block;max-height:55vw;object-fit:cover;}
-#faceCanvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;}
-.overlay{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:10px;pointer-events:none;}
-.sstatus{background:rgba(0,0,0,.65);color:#fff;font-size:13px;padding:5px 14px;border-radius:20px;margin-bottom:6px;text-align:center;max-width:94%;}
-.sbtns{display:flex;gap:8px;pointer-events:all;}
-.sbtn{padding:8px 18px;border-radius:8px;border:none;font-size:14px;font-family:inherit;cursor:pointer;font-weight:500;}
-.sbtn-start{background:var(--green);color:#fff;}
-.sbtn-stop{background:#555;color:#fff;}
-.ring{position:absolute;top:10px;right:10px;width:10px;height:10px;border-radius:50%;background:#4f4;animation:pulse 1s infinite;display:none;}
-@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.2;}}
-.stats{display:flex;gap:6px;margin-bottom:.8rem;flex-wrap:wrap;}
-.chip{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:13px;color:var(--muted);}
-.chip b{color:var(--text);}
-.sec{font-size:13px;color:var(--muted);margin:.8rem 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border);}
-.abar{display:flex;gap:6px;margin-bottom:.8rem;flex-wrap:wrap;}
-.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:13px;font-family:inherit;cursor:pointer;}
-.btn-g{background:var(--green);color:#fff;border-color:var(--green);margin-top:.8rem;width:100%;justify-content:center;font-size:14px;padding:11px;}
-.prow{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--card);margin-bottom:6px;transition:all .2s;}
-.prow.P{border-color:var(--green);background:var(--gl);}
-.prow.A{border-color:var(--red);background:var(--rl);}
-.av{width:44px;height:44px;border-radius:7px;object-fit:cover;flex-shrink:0;border:1px solid var(--border);}
-.av-ph{width:44px;height:44px;border-radius:7px;background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
-.pn{flex:1;font-size:14px;font-weight:500;}
-.pt{font-size:11px;color:var(--green);min-width:40px;}
-.aitag{font-size:10px;background:var(--green);color:#fff;padding:1px 5px;border-radius:20px;margin-left:3px;vertical-align:middle;}
-.ni{font-size:12px;padding:3px 7px;border:1px solid var(--border);border-radius:6px;width:68px;background:var(--bg);color:var(--text);font-family:inherit;}
-.tog{padding:5px 10px;font-size:12px;border:1px solid var(--border);border-radius:7px;cursor:pointer;background:var(--bg);color:var(--muted);font-family:inherit;}
-.tog.p{background:var(--green);color:#fff;border-color:var(--green);}
-.tog.a{background:var(--red);color:#fff;border-color:var(--red);}
-<\/style>
-<\/head>
-<body>
-<header>
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-  <h1>C據點每日點名</h1>
-  <span class="dt" id="hdt"><\/span>
-<\/header>
-<div class="wrap">
-  <div class="mbar" id="mbar">⏳ 載入人臉辨識模型中...<\/div>
-  <div class="scan-zone">
-    <video id="video" autoplay playsinline muted><\/video>
-    <canvas id="faceCanvas"><\/canvas>
-    <div class="overlay">
-      <div class="sstatus" id="sstatus">請等模型載入完成<\/div>
-      <div class="sbtns">
-        <button class="sbtn sbtn-start" id="btn-start" onclick="startScan()" disabled>▶ 開始掃描<\/button>
-        <button class="sbtn sbtn-stop" id="btn-stop" onclick="stopScan()" style="display:none">■ 停止<\/button>
-      <\/div>
-    <\/div>
-    <div class="ring" id="ring"><\/div>
-  <\/div>
-  <div class="stats" id="stats"><\/div>
-  <div class="sec">名單（可手動調整）<\/div>
-  <div class="abar">
-    <button class="btn" onclick="markAll()">全部出席<\/button>
-    <button class="btn" onclick="resetAll()">清除全部<\/button>
-  <\/div>
-  <div id="list"><\/div>
-  <button class="btn btn-g" onclick="copySummary()">複製今日摘要<\/button>
-<\/div>
-<script>
-const PEOPLE=${json};
-const MODEL_URL='./models';
-const THRESHOLD=0.5;
-const INTERVAL=2500;
-let R={},stream=null,scanTimer=null,scanning=false,modelsReady=false,matcher=null;
-
-function roc(){const d=new Date();return \`民國\${d.getFullYear()-1911}年\${d.getMonth()+1}月\${d.getDate()}日\`;}
-document.getElementById('hdt').textContent=roc();
-
-async function initModels(){
-  const bar=document.getElementById('mbar');
-  try{
-    await Promise.all([
-      faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-      faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
-      faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-    ]);
-    const labeled=PEOPLE.filter(p=>p.descriptor)
-      .map(p=>new faceapi.LabeledFaceDescriptors(p.name,[new Float32Array(p.descriptor)]));
-    if(labeled.length) matcher=new faceapi.FaceMatcher(labeled,THRESHOLD);
-    modelsReady=true;
-    bar.textContent=\`✅ 模型就緒，已建特徵 \${labeled.length} 人\`;
-    bar.className='mbar ok';
-    document.getElementById('btn-start').disabled=false;
-  }catch(e){
-    bar.textContent='❌ 模型載入失敗：'+e.message;
-    bar.className='mbar err';
+  if (!det) {
+    showResult(false, '未偵測到臉部', '請重新對準鏡頭', 0);
+    btn.disabled = false; btn.textContent = '📸 確認打卡';
+    return;
   }
-}
-initModels();
 
-async function startScan(){
-  if(!modelsReady){alert('模型尚未就緒');return;}
-  try{
-    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:640},height:{ideal:480}},audio:false});
-    const vid=document.getElementById('video');
-    vid.srcObject=stream;
-    await new Promise(r=>vid.onloadedmetadata=r);
-    const fc=document.getElementById('faceCanvas');
-    fc.width=vid.videoWidth;fc.height=vid.videoHeight;
-    scanning=true;
-    document.getElementById('btn-start').style.display='none';
-    document.getElementById('btn-stop').style.display='';
-    document.getElementById('ring').style.display='';
-    setS('📡 掃描中，自動辨識...');
-    scanTimer=setInterval(doScan,INTERVAL);
-    setTimeout(doScan,800);
-  }catch(e){setS('無法開啟相機：'+e.message);}
-}
+  if (!faceMatcher) {
+    showResult(false, '尚未建立學員資料', '請先在「學員」頁新增學員並拍照', 0);
+    btn.disabled = false; btn.textContent = '📸 確認打卡';
+    return;
+  }
 
-function stopScan(){
-  scanning=false;
-  if(scanTimer){clearInterval(scanTimer);scanTimer=null;}
-  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
-  document.getElementById('video').srcObject=null;
-  document.getElementById('btn-start').style.display='';
-  document.getElementById('btn-stop').style.display='none';
-  document.getElementById('ring').style.display='none';
-  const fc=document.getElementById('faceCanvas');
-  fc.getContext('2d').clearRect(0,0,fc.width,fc.height);
-  setS('已停止');
-}
+  const match = faceMatcher.findBestMatch(det.descriptor);
+  const confidence = Math.max(0, Math.round((1 - match.distance) * 100));
 
-function setS(msg){document.getElementById('sstatus').textContent=msg;}
+  if (match.label === 'unknown' || confidence < 45) {
+    showResult(false, '辨識失敗', '找不到符合的學員（相似度：' + confidence + '%）', confidence);
+    btn.disabled = false; btn.textContent = '📸 確認打卡';
+    return;
+  }
 
-async function doScan(){
-  if(!scanning||!matcher)return;
-  const vid=document.getElementById('video');
-  if(!vid.videoWidth)return;
-  try{
-    const opts=new faceapi.TinyFaceDetectorOptions({inputSize:224,scoreThreshold:0.4});
-    const dets=await faceapi.detectAllFaces(vid,opts).withFaceLandmarks(true).withFaceDescriptors();
-    const fc=document.getElementById('faceCanvas');
-    const ctx=fc.getContext('2d');
-    ctx.clearRect(0,0,fc.width,fc.height);
-    const sized=faceapi.resizeResults(dets,{width:vid.videoWidth,height:vid.videoHeight});
-    const found=[];
-    sized.forEach(det=>{
-      const match=matcher.findBestMatch(det.descriptor);
-      const known=match.label!=='unknown'&&match.distance<THRESHOLD;
-      const box=det.detection.box;
-      ctx.strokeStyle=known?'#3a7d5a':'#aaa';
-      ctx.lineWidth=2;
-      ctx.strokeRect(box.x,box.y,box.width,box.height);
-      const label=known?match.label:'未知';
-      ctx.fillStyle=known?'#3a7d5a':'#555';
-      ctx.fillRect(box.x,box.y-24,label.length*14+10,24);
-      ctx.fillStyle='#fff';
-      ctx.font='bold 14px sans-serif';
-      ctx.fillText(label,box.x+5,box.y-6);
-      if(known){
-        found.push(match.label);
-        const idx=PEOPLE.findIndex(p=>p.name===match.label);
-        if(idx>=0&&R[match.label]?.s!=='P') mk(idx,'P',true);
-      }
-    });
-    if(!dets.length) setS('未偵測到人臉，請對準長輩');
-    else setS(\`偵測到 \${dets.length} 張臉\${found.length?' ✅ '+found.join('、'):' — 無符合'}\`);
-  }catch(e){setS('辨識錯誤：'+e.message);}
+  const student = students.find(s => s.id === match.label);
+  if (!student) {
+    showResult(false, '系統錯誤', '找不到學員資料', 0);
+    btn.disabled = false; btn.textContent = '📸 確認打卡';
+    return;
+  }
+
+  // Record
+  const now = new Date();
+  const record = {
+    id: Date.now().toString(),
+    studentId: student.id,
+    studentName: student.name,
+    studentGroup: student.group || '',
+    studentPhoto: student.photoData,
+    time: now.toISOString(),
+    type: 'in'
+  };
+  records.unshift(record);
+  saveRecords();
+
+  showResult(true, student.name, formatDateTime(now) + '　相似度：' + confidence + '%', confidence);
+  btn.textContent = '📸 確認打卡';
+  setTimeout(() => { btn.disabled = false; }, 3000);
 }
 
-function rl(){
-  document.getElementById('list').innerHTML=PEOPLE.map((p,i)=>{
-    const r=R[p.name]||{};
-    const av=p.photo?\`<img class="av" src="\${p.photo}" alt="\${p.name}"/>\`:\`<div class="av-ph">👤<\/div>\`;
-    return \`<div class="prow \${r.s||''}" id="r\${i}">
-      \${av}
-      <span class="pn">\${p.name}\${r.ai?'<span class="aitag">AI<\/span>':''}<\/span>
-      <span class="pt" id="t\${i}">\${r.t?'⏱'+r.t:''}<\/span>
-      <input class="ni" placeholder="備註" value="\${r.n||''}" oninput="sn(\${i},this.value)"/>
-      <button class="tog \${r.s==='P'?'p':''}" onclick="mk(\${i},'P')">出席<\/button>
-      <button class="tog \${r.s==='A'?'a':''}" onclick="mk(\${i},'A')">缺席<\/button>
-    <\/div>\`;
-  }).join('');
+function showResult(success, name, time, conf) {
+  const box = document.getElementById('resultBox');
+  box.style.display = 'block';
+  box.className = success ? 'success' : 'fail';
+  document.getElementById('resultIcon').textContent = success ? '✅' : '❌';
+  document.getElementById('resultName').textContent = name;
+  document.getElementById('resultTime').textContent = time;
+  document.getElementById('confBar').style.width = conf + '%';
+  document.getElementById('confLabel').textContent = '辨識信心度：' + conf + '%';
+  if (success) showToast('✅ ' + name + ' 打卡成功！');
 }
-function mk(i,s,ai=false){
-  const nm=PEOPLE[i].name;
-  if(!R[nm])R[nm]={};
-  if(!ai&&R[nm].s===s){R[nm]={n:R[nm].n||''};}
-  else{const d=new Date();R[nm]={s,t:s==='P'?d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0'):null,n:R[nm].n||'',ai};}
-  ur(i);us();
+
+// ==================== STUDENTS ====================
+function renderStudents() {
+  const el = document.getElementById('studentList');
+  if (students.length === 0) {
+    el.innerHTML = '<div class="empty-state"><div class="icon">👤</div><div>尚未新增任何學員<br>請點上方按鈕新增</div></div>';
+    return;
+  }
+  el.innerHTML = students.map(s => `
+    <div class="student-item">
+      ${s.photoData
+        ? `<img class="student-avatar" src="${s.photoData}" alt="${s.name}">`
+        : `<div class="student-avatar-placeholder">👤</div>`}
+      <div class="student-info">
+        <div class="student-name">${s.name}</div>
+        <div class="student-meta">${s.group || '未設定組別'} ｜ 已建立人臉${s.photoData ? '✅' : '❌'}</div>
+      </div>
+      <div class="student-actions">
+        <button class="icon-btn" onclick="deleteStudent('${s.id}')">🗑</button>
+      </div>
+    </div>
+  `).join('');
 }
-function ur(i){
-  const r=R[PEOPLE[i].name]||{};
-  const row=document.getElementById('r'+i);if(!row)return;
-  row.className='prow '+(r.s||'');
-  const tg=row.querySelectorAll('.tog');
-  tg[0].className='tog'+(r.s==='P'?' p':'');
-  tg[1].className='tog'+(r.s==='A'?' a':'');
-  document.getElementById('t'+i).textContent=r.t?'⏱'+r.t:'';
-  row.querySelector('.pn').innerHTML=PEOPLE[i].name+(r.ai?'<span class="aitag">AI<\/span>':'');
+
+function deleteStudent(id) {
+  if (!confirm('確定刪除此學員？')) return;
+  students = students.filter(s => s.id !== id);
+  saveStudents();
+  buildFaceMatcher();
+  renderStudents();
+  showToast('已刪除學員');
 }
-function sn(i,v){if(!R[PEOPLE[i].name])R[PEOPLE[i].name]={};R[PEOPLE[i].name].n=v;}
-function markAll(){PEOPLE.forEach((_,i)=>{if(!R[PEOPLE[i].name]?.s)mk(i,'P');});}
-function resetAll(){if(!confirm('確定清除？'))return;R={};rl();us();}
-function us(){
-  let p=0,a=0;
-  PEOPLE.forEach(({name})=>{const s=R[name]?.s;if(s==='P')p++;else if(s==='A')a++;});
-  document.getElementById('stats').innerHTML=\`<div class="chip">出席 <b style="color:var(--green)">\${p}<\/b><\/div><div class="chip">缺席 <b style="color:var(--red)">\${a}<\/b><\/div><div class="chip">未記錄 <b>\${PEOPLE.length-p-a}<\/b><\/div><div class="chip">共 <b>\${PEOPLE.length}<\/b> 人<\/div>\`;
+
+function showAddModal() {
+  document.getElementById('addModal').style.display = 'block';
+  document.getElementById('newName').value = '';
+  document.getElementById('newGroup').value = '';
+  capturedPhotoData = null;
+  document.getElementById('capturePreview').style.display = 'none';
+  document.getElementById('snapBtn').style.display = 'none';
+  document.getElementById('retakeBtn').style.display = 'none';
+  document.getElementById('addCameraWrap').style.display = 'none';
+  document.getElementById('photoArea').style.display = 'block';
 }
-function copySummary(){
-  const pl=PEOPLE.filter(p=>R[p.name]?.s==='P');
-  const al=PEOPLE.filter(p=>R[p.name]?.s==='A');
-  const nl=PEOPLE.filter(p=>!R[p.name]?.s);
-  let t=\`C據點出席紀錄\\n\${roc()}\\n\\n出席（\${pl.length}人）：\\n\`;
-  pl.forEach(p=>{const r=R[p.name];t+=\`  \${p.name}\${r.t?' '+r.t:''}\${r.n?' 【'+r.n+'】':''}\\n\`;});
-  t+=\`\\n缺席（\${al.length}人）：\\n\`;
-  al.forEach(p=>{const r=R[p.name];t+=\`  \${p.name}\${r.n?' 【'+r.n+'】':''}\\n\`;});
-  if(nl.length){t+=\`\\n未記錄（\${nl.length}人）：\\n\`;nl.forEach(p=>t+=\`  \${p.name}\\n\`);}
-  navigator.clipboard.writeText(t).then(()=>alert('已複製！')).catch(()=>alert(t));
+
+function hideAddModal() {
+  document.getElementById('addModal').style.display = 'none';
+  if (addStream) { addStream.getTracks().forEach(t => t.stop()); addStream = null; }
 }
-rl();us();
-<\/script>
-<\/body>
-<\/html>`;
+
+async function startAddCamera() {
+  document.getElementById('photoArea').style.display = 'none';
+  document.getElementById('addCameraWrap').style.display = 'block';
+  document.getElementById('snapBtn').style.display = 'block';
+  addStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+  document.getElementById('addVideo').srcObject = addStream;
+  await document.getElementById('addVideo').play();
 }
+
+function snapPhoto() {
+  const video = document.getElementById('addVideo');
+  const canvas = document.getElementById('addCanvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.save(); ctx.scale(-1, 1); ctx.drawImage(video, -canvas.width, 0); ctx.restore();
+  capturedPhotoData = canvas.toDataURL('image/jpeg', 0.8);
+  document.getElementById('capturePreview').src = capturedPhotoData;
+  document.getElementById('capturePreview').style.display = 'block';
+  document.getElementById('addCameraWrap').style.display = 'none';
+  document.getElementById('snapBtn').style.display = 'none';
+  document.getElementById('retakeBtn').style.display = 'block';
+  if (addStream) { addStream.getTracks().forEach(t => t.stop()); addStream = null; }
+}
+
+function retakePhoto() {
+  capturedPhotoData = null;
+  document.getElementById('capturePreview').style.display = 'none';
+  document.getElementById('retakeBtn').style.display = 'none';
+  document.getElementById('photoArea').style.display = 'block';
+}
+
+function loadPhotoFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    capturedPhotoData = e.target.result;
+    document.getElementById('capturePreview').src = capturedPhotoData;
+    document.getElementById('capturePreview').style.display = 'block';
+    document.getElementById('photoArea').style.display = 'none';
+    document.getElementById('retakeBtn').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function saveStudent() {
+  const name = document.getElementById('newName').value.trim();
+  if (!name) { showToast('❌ 請輸入姓名'); return; }
+  if (!capturedPhotoData) { showToast('❌ 請提供照片'); return; }
+
+  // Verify face in photo
+  showToast('⏳ 分析照片中…');
+  const img = await loadImage(capturedPhotoData);
+  const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.3 });
+  const det = await faceapi.detectSingleFace(img, opts);
+  if (!det) {
+    showToast('❌ 照片中未偵測到臉部，請重新拍照');
+    return;
+  }
+
+  const student = {
+    id: 'S' + Date.now(),
+    name,
+    group: document.getElementById('newGroup').value.trim(),
+    photoData: capturedPhotoData,
+    createdAt: new Date().toISOString()
+  };
+  students.push(student);
+  saveStudents();
+  await buildFaceMatcher();
+  renderStudents();
+  hideAddModal();
+  showToast('✅ 學員 ' + name + ' 已新增');
+}
+
+// ==================== RECORDS ====================
+function renderRecords() {
+  const el = document.getElementById('recordList');
+  const dateFilter = document.getElementById('filterDate').value;
+  let filtered = records;
+  if (dateFilter) {
+    filtered = records.filter(r => r.time.startsWith(dateFilter));
+  }
+  if (filtered.length === 0) {
+    el.innerHTML = '<div class="empty-state"><div class="icon">📋</div><div>尚無打卡紀錄</div></div>';
+    return;
+  }
+  el.innerHTML = filtered.map(r => `
+    <div class="record-item">
+      ${r.studentPhoto
+        ? `<img class="record-avatar" src="${r.studentPhoto}" alt="">`
+        : `<div style="width:36px;height:36px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0">👤</div>`}
+      <div class="record-info">
+        <div class="record-name">${r.studentName}</div>
+        <div class="record-time">${r.studentGroup ? r.studentGroup + '　' : ''}${formatDateTime(new Date(r.time))}</div>
+      </div>
+      <span class="record-badge badge-in">簽到</span>
+    </div>
+  `).join('');
+}
+
+function clearDateFilter() {
+  document.getElementById('filterDate').value = '';
+  renderRecords();
+}
+
+// ==================== STATS ====================
+function renderStats() {
+  const todayStr = today();
+  const todayRecords = records.filter(r => r.time.startsWith(todayStr));
+  const uniqueToday = [...new Set(todayRecords.map(r => r.studentId))].length;
+
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-card"><div class="stat-num">${uniqueToday}</div><div class="stat-label">今日出席人數</div></div>
+    <div class="stat-card"><div class="stat-num">${students.length}</div><div class="stat-label">學員總數</div></div>
+    <div class="stat-card"><div class="stat-num">${todayRecords.length}</div><div class="stat-label">今日打卡次數</div></div>
+    <div class="stat-card"><div class="stat-num">${records.length}</div><div class="stat-label">累計打卡紀錄</div></div>
+  `;
+
+  // Monthly per-student stats
+  const now = new Date();
+  const monthStr = now.toISOString().slice(0, 7);
+  const monthRecs = records.filter(r => r.time.startsWith(monthStr));
+  const perStudent = {};
+  students.forEach(s => { perStudent[s.id] = { name: s.name, count: 0 }; });
+  monthRecs.forEach(r => {
+    if (perStudent[r.studentId]) perStudent[r.studentId].count++;
+  });
+
+  const rows = Object.values(perStudent).sort((a, b) => b.count - a.count);
+  if (rows.length === 0) {
+    document.getElementById('monthlyStats').innerHTML = '<div class="empty-state">尚無本月資料</div>';
+    return;
+  }
+  const maxCount = Math.max(...rows.map(r => r.count), 1);
+  document.getElementById('monthlyStats').innerHTML = rows.map(r => `
+    <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+        <span>${r.name}</span><span style="color:var(--accent)">${r.count} 次</span>
+      </div>
+      <div class="confidence-bar">
+        <div class="confidence-fill" style="width:${Math.round(r.count/maxCount*100)}%"></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ==================== EXPORT ====================
+function exportExcel() {
+  const dateFilter = document.getElementById('filterDate').value;
+  let filtered = records;
+  if (dateFilter) filtered = records.filter(r => r.time.startsWith(dateFilter));
+
+  if (filtered.length === 0) { showToast('❌ 無資料可匯出'); return; }
+
+  // Build CSV (UTF-8 BOM for Excel)
+  const BOM = '\uFEFF';
+  const header = ['姓名', '組別', '日期', '時間', '類型'];
+  const rows = filtered.map(r => {
+    const d = new Date(r.time);
+    return [
+      r.studentName,
+      r.studentGroup || '',
+      d.toLocaleDateString('zh-TW'),
+      d.toLocaleTimeString('zh-TW'),
+      '簽到'
+    ];
+  });
+  const csv = BOM + [header, ...rows].map(row => row.map(v => `"${v}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `出席紀錄_${dateFilter || '全部'}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✅ 已匯出 CSV（可用 Excel 開啟）');
+}
+
+// ==================== UTILS ====================
+function switchTab(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (name === 'records') renderRecords();
+  if (name === 'stats') renderStats();
+}
+
+function saveStudents() { localStorage.setItem('att_students', JSON.stringify(students)); }
+function saveRecords() { localStorage.setItem('att_records', JSON.stringify(records)); }
+function today() { return new Date().toISOString().slice(0, 10); }
+function formatDateTime(d) {
+  return d.toLocaleDateString('zh-TW') + ' ' + d.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ==================== START ====================
+window.addEventListener('load', init);
 </script>
 </body>
 </html>
