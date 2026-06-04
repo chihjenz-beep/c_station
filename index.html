@@ -429,25 +429,21 @@
     <!-- Photo section -->
     <div class="form-group">
       <label>人臉照片 *</label>
-      <div class="photo-area" id="photoArea" onclick="startAddCamera()">
-        <div style="font-size:36px">📷</div>
-        <div style="font-size:13px;color:var(--muted);margin-top:6px">點擊開啟相機拍照</div>
-      </div>
-      <div id="addCameraOuter">
-        <div id="addCameraWrap">
-          <video id="addVideo" autoplay muted playsinline></video>
-        </div>
-        <button id="flipAddBtn" onclick="flipAddCamera()">🔄</button>
-      </div>
-      <img id="capturePreview" alt="預覽">
-      <button class="btn btn-outline" id="snapBtn" onclick="snapPhoto()" style="display:none;margin-top:10px">📸 拍照</button>
-      <button class="btn btn-outline" id="retakeBtn" onclick="retakePhoto()" style="display:none;margin-top:6px;border-color:var(--warn);color:var(--warn)">🔄 重拍</button>
 
-      <div style="margin-top:10px;text-align:center;color:var(--muted);font-size:12px">— 或 —</div>
-      <label style="display:block;margin-top:8px;text-align:center;cursor:pointer;color:var(--accent);font-size:14px;">
-        📁 從相簿選取
-        <input type="file" accept="image/*" onchange="loadPhotoFile(event)" style="display:none">
-      </label>
+      <!-- 拍照或選相簿 -->
+      <div style="display:flex;gap:10px;margin-bottom:10px;">
+        <label style="flex:1;text-align:center;padding:14px;background:rgba(0,201,167,0.1);border:1.5px solid var(--accent);border-radius:10px;cursor:pointer;font-size:14px;color:var(--accent);">
+          📷 拍照
+          <input type="file" accept="image/*" capture="user" onchange="loadPhotoFile(event)" style="display:none">
+        </label>
+        <label style="flex:1;text-align:center;padding:14px;background:rgba(255,255,255,0.05);border:1.5px solid var(--border);border-radius:10px;cursor:pointer;font-size:14px;color:var(--text);">
+          🖼 相簿
+          <input type="file" accept="image/*" onchange="loadPhotoFile(event)" style="display:none">
+        </label>
+      </div>
+
+      <img id="capturePreview" alt="預覽" style="display:none;width:120px;height:120px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);margin:10px auto;display:none;">
+      <button class="btn btn-outline" id="retakeBtn" onclick="retakePhoto()" style="display:none;margin-top:6px;border-color:var(--warn);color:var(--warn)">🔄 重新選擇</button>
     </div>
 
     <canvas id="addCanvas" style="display:none"></canvas>
@@ -688,15 +684,11 @@ function showAddModal() {
   document.getElementById('newGroup').value = '';
   capturedPhotoData = null;
   document.getElementById('capturePreview').style.display = 'none';
-  document.getElementById('snapBtn').style.display = 'none';
   document.getElementById('retakeBtn').style.display = 'none';
-  document.getElementById('addCameraOuter').style.display = 'none';
-  document.getElementById('photoArea').style.display = 'block';
 }
 
 function hideAddModal() {
   document.getElementById('addModal').style.display = 'none';
-  document.getElementById('addCameraOuter').style.display = 'none';
   if (addStream) { addStream.getTracks().forEach(t => t.stop()); addStream = null; }
 }
 
@@ -743,7 +735,6 @@ function retakePhoto() {
   capturedPhotoData = null;
   document.getElementById('capturePreview').style.display = 'none';
   document.getElementById('retakeBtn').style.display = 'none';
-  document.getElementById('photoArea').style.display = 'block';
 }
 
 function loadPhotoFile(event) {
@@ -752,9 +743,9 @@ function loadPhotoFile(event) {
   const reader = new FileReader();
   reader.onload = e => {
     capturedPhotoData = e.target.result;
-    document.getElementById('capturePreview').src = capturedPhotoData;
-    document.getElementById('capturePreview').style.display = 'block';
-    document.getElementById('photoArea').style.display = 'none';
+    const prev = document.getElementById('capturePreview');
+    prev.src = capturedPhotoData;
+    prev.style.display = 'block';
     document.getElementById('retakeBtn').style.display = 'block';
   };
   reader.readAsDataURL(file);
