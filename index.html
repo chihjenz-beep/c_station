@@ -495,10 +495,14 @@ async function startCamera(facing) {
     video.style.transform = facing === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
     document.getElementById('overlay').style.transform = facing === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
     video.srcObject = null;
+    await new Promise(r => setTimeout(r, 100));
     video.srcObject = stream;
-    video.onloadedmetadata = () => {
-      video.play().then(() => startDetection()).catch(() => {});
-    };
+    await new Promise(r => setTimeout(r, 200));
+    try { await video.play(); } catch(pe) {
+      await new Promise(r => setTimeout(r, 300));
+      await video.play();
+    }
+    startDetection();
   } catch(e) {
     document.getElementById('cameraHint').textContent = '無法開啟相機：' + e.message;
   }
@@ -698,8 +702,14 @@ async function startAddCamera(facing) {
     const addVideo = document.getElementById('addVideo');
     addVideo.style.transform = facing === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
     addVideo.srcObject = null;
+    await new Promise(r => setTimeout(r, 100));
     addVideo.srcObject = addStream;
-    addVideo.onloadedmetadata = () => { addVideo.play().catch(() => {}); };
+    await new Promise(r => setTimeout(r, 200));
+    try { await addVideo.play(); } catch(pe) {
+      // retry once
+      await new Promise(r => setTimeout(r, 300));
+      await addVideo.play();
+    }
   } catch(e) {
     showToast('❌ 無法開啟相機：' + e.message);
   }
