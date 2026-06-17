@@ -1,0 +1,2247 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>平安診所岱江里C據點｜收支明細系統</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+
+:root {
+  --ink:      #1a1a2e;
+  --ink2:     #2d3561;
+  --gold:     #c9a84c;
+  --gold-lt:  #e8d5a3;
+  --cream:    #faf7f0;
+  --cream2:   #f0ebe0;
+  --teal:     #0d7377;
+  --teal-lt:  #e8f4f4;
+  --red:      #c0392b;
+  --green:    #1d6a40;
+  --green-lt: #e8f5ee;
+  --border:   #d4c9b0;
+  --shadow:   0 2px 16px rgba(26,26,46,.10);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Noto Sans TC', sans-serif;
+  background: var(--cream);
+  color: var(--ink);
+  min-height: 100vh;
+}
+
+/* ── Header ── */
+.site-header {
+  background: var(--ink);
+  color: var(--cream);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  height: 64px;
+  border-bottom: 3px solid var(--gold);
+  position: sticky; top: 0; z-index: 100;
+}
+.site-logo {
+  width: 38px; height: 38px;
+  border: 2px solid var(--gold);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Noto Serif TC', serif;
+  font-size: 18px; color: var(--gold);
+  flex-shrink: 0;
+}
+.site-title-group { flex: 1; }
+.site-title { font-family: 'Noto Serif TC', serif; font-size: 17px; font-weight: 700; letter-spacing: .08em; color: var(--cream); }
+.site-sub   { font-size: 11px; color: var(--gold-lt); letter-spacing: .12em; margin-top: 1px; }
+.header-meta { font-size: 12px; color: #aaa; text-align: right; line-height: 1.6; }
+
+/* ── Layout ── */
+.app-body { display: flex; min-height: calc(100vh - 64px); }
+
+.sidebar {
+  width: 200px; flex-shrink: 0;
+  background: var(--ink2);
+  padding: 20px 0;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.sidebar-label {
+  font-size: 10px; letter-spacing: .15em; color: #889;
+  padding: 12px 18px 4px; text-transform: uppercase;
+}
+.month-btn {
+  display: block; width: 100%;
+  padding: 9px 18px;
+  background: none; border: none; cursor: pointer;
+  text-align: left;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 13px; color: #bbb;
+  transition: background .15s, color .15s;
+}
+.month-btn:hover { background: rgba(201,168,76,.12); color: var(--gold-lt); }
+.month-btn.active { background: var(--gold); color: var(--ink); font-weight: 700; }
+.sidebar-add {
+  margin: 12px 14px 0;
+  padding: 8px;
+  background: none;
+  border: 1px dashed #556;
+  color: #889; font-size: 12px; cursor: pointer;
+  border-radius: 4px;
+  transition: border-color .15s, color .15s;
+}
+.sidebar-add:hover { border-color: var(--gold); color: var(--gold); }
+
+/* ── Main content ── */
+.main-area { flex: 1; padding: 24px; overflow-x: auto; }
+
+.sheet-header {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  margin-bottom: 16px; flex-wrap: wrap; gap: 12px;
+}
+.sheet-title {
+  font-family: 'Noto Serif TC', serif;
+  font-size: 22px; font-weight: 700; color: var(--ink2);
+}
+.sheet-title span { color: var(--gold); }
+.sheet-org { font-size: 12px; color: #888; margin-top: 4px; }
+
+.summary-bar {
+  display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 18px;
+}
+.summary-card {
+  flex: 1; min-width: 140px;
+  background: white; border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px 16px;
+  box-shadow: var(--shadow);
+}
+.summary-card .label { font-size: 11px; color: #888; letter-spacing: .08em; }
+.summary-card .value { font-size: 22px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.card-income .value { color: var(--green); }
+.card-expense .value { color: var(--red); }
+.card-balance .value { color: var(--teal); }
+.card-balance.negative .value { color: var(--red); }
+
+/* ── Toolbar ── */
+.toolbar {
+  display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;
+}
+.btn {
+  padding: 7px 16px; border-radius: 5px; border: none; cursor: pointer;
+  font-family: 'Noto Sans TC', sans-serif; font-size: 13px;
+  transition: opacity .15s, transform .1s;
+}
+.btn:active { transform: scale(.97); }
+.btn-primary { background: var(--ink2); color: white; }
+.btn-primary:hover { opacity: .85; }
+.btn-gold { background: var(--gold); color: var(--ink); font-weight: 700; }
+.btn-gold:hover { opacity: .85; }
+.btn-outline { background: white; border: 1px solid var(--border); color: var(--ink2); }
+.btn-outline:hover { background: var(--cream2); }
+.btn-danger { background: #fdf0ee; border: 1px solid #e8c5bf; color: var(--red); }
+.btn-danger:hover { background: #fce0dc; }
+
+/* ── Table ── */
+.table-wrap { overflow-x: auto; border-radius: 8px; box-shadow: var(--shadow); }
+table {
+  width: 100%; border-collapse: collapse;
+  background: white; font-size: 13px;
+  min-width: 900px;
+}
+thead tr { background: var(--ink2); }
+th {
+  padding: 10px 8px; color: var(--gold-lt);
+  font-weight: 500; font-size: 12px; letter-spacing: .06em;
+  text-align: center; white-space: nowrap;
+  border-right: 1px solid rgba(255,255,255,.08);
+}
+th:last-child { border-right: none; }
+tbody tr { border-bottom: 1px solid #eee; transition: background .12s; }
+tbody tr:hover { background: var(--cream); }
+tbody tr.carry-row { background: #f0f7ff; font-weight: 500; }
+tbody tr.income-row { background: #f0faf4; }
+tbody tr.subtotal-row { background: var(--cream2); font-weight: 700; border-top: 2px solid var(--border); border-bottom: 2px solid var(--border); }
+td {
+  padding: 7px 8px; border-right: 1px solid #eee;
+  vertical-align: middle;
+}
+td:last-child { border-right: none; }
+.td-date   { text-align: center; white-space: nowrap; width: 80px; }
+.td-voucher{ white-space: nowrap; font-size: 11px; color: #666; }
+.td-amt    { text-align: right; font-variant-numeric: tabular-nums; width: 80px; }
+.td-qty    { text-align: center; width: 48px; }
+.td-price  { text-align: right; width: 60px; }
+.td-note   { font-size: 12px; color: #666; }
+.td-income { color: var(--green); font-weight: 600; }
+.td-expense{ color: var(--red); }
+.td-balance{ font-weight: 700; color: var(--teal); }
+.td-balance.neg { color: var(--red); }
+.td-actions { text-align: center; width: 64px; }
+
+.icon-btn {
+  background: none; border: none; cursor: pointer; padding: 3px 5px;
+  border-radius: 4px; font-size: 14px; opacity: .6; transition: opacity .15s;
+}
+.icon-btn:hover { opacity: 1; background: #f0f0f0; }
+
+/* ── Modal ── */
+.modal-bg {
+  display: none; position: fixed; inset: 0;
+  background: rgba(10,10,20,.55); backdrop-filter: blur(3px);
+  z-index: 200; align-items: center; justify-content: center;
+}
+.modal-bg.open { display: flex; }
+.modal {
+  background: white; border-radius: 12px;
+  padding: 28px 28px 24px;
+  width: 560px; max-width: 96vw; max-height: 92vh; overflow-y: auto;
+  box-shadow: 0 8px 40px rgba(0,0,0,.22);
+  animation: slide-up .22s ease;
+}
+@keyframes slide-up { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+.modal-title {
+  font-family: 'Noto Serif TC', serif;
+  font-size: 18px; font-weight: 700; color: var(--ink2);
+  margin-bottom: 20px; padding-bottom: 12px;
+  border-bottom: 2px solid var(--gold);
+}
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group.full { grid-column: 1 / -1; }
+label { font-size: 12px; color: #666; font-weight: 500; }
+input, select, textarea {
+  padding: 8px 10px; border: 1px solid var(--border);
+  border-radius: 6px; font-size: 13px;
+  font-family: 'Noto Sans TC', sans-serif;
+  color: var(--ink); background: white;
+  transition: border-color .15s;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none; border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(13,115,119,.12);
+}
+textarea { resize: vertical; min-height: 60px; }
+.form-row { display: flex; gap: 8px; align-items: flex-end; margin-top: 4px; }
+.modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+/* ── Print ── */
+.sheet-footer {
+  margin-top: 20px; padding: 12px 0;
+  border-top: 1px solid var(--border);
+  font-size: 13px; color: #666;
+  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+}
+
+/* ── Empty state ── */
+.empty-row td { text-align: center; padding: 32px; color: #aaa; font-size: 13px; }
+
+/* ── Responsive ── */
+@media (max-width: 700px) {
+  .sidebar { width: 56px; }
+  .month-btn { padding: 10px; font-size: 11px; writing-mode: vertical-rl; }
+  .sidebar-label { display: none; }
+  .main-area { padding: 12px; }
+}
+
+@media print {
+  .sidebar, .toolbar, .td-actions, th:last-child, .site-header { display: none !important; }
+  .main-area { padding: 0; }
+  .app-body { display: block; }
+  table { font-size: 11px; }
+  .modal-bg { display: none !important; }
+  body { background: white; }
+  .summary-card { box-shadow: none; border: 1px solid #ccc; }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="site-header">
+  <div class="site-logo">平</div>
+  <div class="site-title-group">
+    <div class="site-title">平安診所岱江里C據點</div>
+    <div class="site-sub">收支明細管理系統</div>
+  </div>
+  <div class="header-meta" id="headerMeta"></div>
+</header>
+
+<div class="app-body">
+  <!-- Sidebar -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-label">月份帳冊</div>
+    <div id="monthList"></div>
+    <button class="sidebar-add" onclick="addMonth()">＋ 新增月份</button>
+  </nav>
+
+  <!-- Main -->
+  <main class="main-area">
+    <div class="sheet-header">
+      <div>
+        <div class="sheet-title" id="sheetTitle">請選擇月份</div>
+        <div class="sheet-org">平安診所岱江里C據點｜製表：林智仁</div>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="summary-bar">
+      <div class="summary-card card-income">
+        <div class="label">本月收入</div>
+        <div class="value" id="sumIncome">—</div>
+      </div>
+      <div class="summary-card card-expense">
+        <div class="label">本月支出</div>
+        <div class="value" id="sumExpense">—</div>
+      </div>
+      <div class="summary-card card-balance" id="balCard">
+        <div class="label">期末結餘</div>
+        <div class="value" id="sumBalance">—</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">期初結餘</div>
+        <div class="value" id="sumCarry" style="color:var(--ink2)">—</div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <button class="btn btn-gold" onclick="openAdd()">＋ 新增明細</button>
+      <button class="btn btn-primary" onclick="openCarry()">設定期初結餘</button>
+      <button class="btn btn-outline" onclick="window.print()">🖨 列印</button>
+      <button class="btn btn-outline" onclick="exportCSV()">📥 匯出 CSV</button>
+      <label class="btn btn-outline" style="cursor:pointer">📂 匯入 CSV<input type="file" accept=".csv" style="display:none" onchange="importCSV(event)"></label>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <table id="ledgerTable">
+        <thead>
+          <tr>
+            <th>日期</th>
+            <th>憑證編號</th>
+            <th>憑證金額</th>
+            <th>摘要</th>
+            <th>數量</th>
+            <th>單價</th>
+            <th>收入金額</th>
+            <th>支出金額</th>
+            <th>結餘</th>
+            <th>備註</th>
+            <th class="no-print">操作</th>
+          </tr>
+        </thead>
+        <tbody id="ledgerBody">
+          <tr class="empty-row"><td colspan="11">請先從左側選擇或新增月份</td></tr>
+        </tbody>
+        <tfoot id="ledgerFoot"></tfoot>
+      </table>
+    </div>
+
+    <div class="sheet-footer" id="sheetFooter"></div>
+  </main>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal-bg" id="entryModal">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">新增明細</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>日期</label>
+        <input type="date" id="fDate">
+      </div>
+      <div class="form-group">
+        <label>類型</label>
+        <select id="fType" onchange="onTypeChange()">
+          <option value="expense">支出</option>
+          <option value="income">收入（零用金／補助）</option>
+          <option value="note">備查（贊助 / 不動帳）</option>
+        </select>
+      </div>
+      <div class="form-group full">
+        <label>摘要</label>
+        <input type="text" id="fDesc" placeholder="品項名稱或說明">
+      </div>
+      <div class="form-group">
+        <label>憑證編號</label>
+        <input type="text" id="fVoucher" placeholder="如 RW42145542 或 無">
+      </div>
+      <div class="form-group">
+        <label>憑證金額</label>
+        <input type="number" id="fVoucherAmt" min="0" placeholder="0">
+      </div>
+      <div class="form-group" id="grpQty">
+        <label>數量</label>
+        <input type="number" id="fQty" min="0" placeholder="1" oninput="calcAmt()">
+      </div>
+      <div class="form-group" id="grpPrice">
+        <label>單價</label>
+        <input type="number" id="fPrice" min="0" placeholder="0" oninput="calcAmt()">
+      </div>
+      <div class="form-group" id="grpAmt">
+        <label id="amtLabel">金額（自動計算）</label>
+        <input type="number" id="fAmt" min="0" placeholder="0">
+      </div>
+      <div class="form-group full">
+        <label>備註</label>
+        <input type="text" id="fNote" placeholder="附記說明">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('entryModal')">取消</button>
+      <button class="btn btn-gold" onclick="saveEntry()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Carry Modal -->
+<div class="modal-bg" id="carryModal">
+  <div class="modal" style="width:360px">
+    <div class="modal-title">設定期初結餘</div>
+    <div class="form-group">
+      <label>上月結餘（元）</label>
+      <input type="number" id="fCarry" placeholder="0">
+    </div>
+    <div class="form-group" style="margin-top:12px">
+      <label>上月說明</label>
+      <input type="text" id="fCarryLabel" placeholder="如：5月份結餘">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('carryModal')">取消</button>
+      <button class="btn btn-gold" onclick="saveCarry()">確定</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Month Modal -->
+<div class="modal-bg" id="addMonthModal">
+  <div class="modal" style="width:360px">
+    <div class="modal-title">新增月份帳冊</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>民國年</label>
+        <input type="number" id="mYear" placeholder="115" min="100" max="200">
+      </div>
+      <div class="form-group">
+        <label>月份</label>
+        <select id="mMonth">
+          <option>1</option><option>2</option><option>3</option>
+          <option>4</option><option>5</option><option>6</option>
+          <option>7</option><option>8</option><option>9</option>
+          <option>10</option><option>11</option>
+          <option value="12" selected>12</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('addMonthModal')">取消</button>
+      <button class="btn btn-gold" onclick="confirmAddMonth()">建立</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Storage ──────────────────────────────────────────────────────────────
+const KEY = 'pingAn_ledger_v9';
+
+// localStorage wrapper - falls back to memory if blocked (e.g. file://)
+const _memStore = {};
+const storage = {
+  getItem(k) { try { return localStorage.getItem(k); } catch(e) { return _memStore[k]||null; } },
+  setItem(k,v) { try { localStorage.setItem(k,v); } catch(e) { _memStore[k]=v; } }
+};
+
+let db = JSON.parse(storage.getItem(KEY) || '{}');
+// db = { ... }
+
+function save() { storage.setItem(KEY, JSON.stringify(db)); }
+
+// ── Seed historical data ──────────────────────────────────────────────────
+function seedIfEmpty() {
+  if (Object.keys(db).length) return;
+
+  const seed = {
+  "114-9": {
+    "carry": 1911,
+    "carryLabel": "8月份結餘",
+    "entries": [
+      {
+        "id": 1,
+        "date": "2025-09-04",
+        "type": "expense",
+        "desc": "四號電池16顆",
+        "voucher": "SA-69323292",
+        "voucherAmt": 99,
+        "qty": 1,
+        "price": 99,
+        "amt": 99,
+        "note": "額溫槍"
+      },
+      {
+        "id": 2,
+        "date": "2025-09-04",
+        "type": "expense",
+        "desc": "花盆",
+        "voucher": "RW42145542",
+        "voucherAmt": 110,
+        "qty": 2,
+        "price": 10,
+        "amt": 20,
+        "note": "園藝"
+      },
+      {
+        "id": 3,
+        "date": "",
+        "type": "expense",
+        "desc": "種子",
+        "voucher": "RW42145542",
+        "voucherAmt": 0,
+        "qty": 1,
+        "price": 20,
+        "amt": 20,
+        "note": "園藝"
+      },
+      {
+        "id": 4,
+        "date": "",
+        "type": "expense",
+        "desc": "土壤",
+        "voucher": "RW42145542",
+        "voucherAmt": 0,
+        "qty": 1,
+        "price": 70,
+        "amt": 70,
+        "note": "園藝"
+      },
+      {
+        "id": 5,
+        "date": "2025-09-07",
+        "type": "expense",
+        "desc": "鐵鍊",
+        "voucher": "RW42146431",
+        "voucherAmt": 129,
+        "qty": 1,
+        "price": 79,
+        "amt": 79,
+        "note": "教具室"
+      },
+      {
+        "id": 6,
+        "date": "",
+        "type": "expense",
+        "desc": "鎖頭",
+        "voucher": "RW42146431",
+        "voucherAmt": 0,
+        "qty": 1,
+        "price": 50,
+        "amt": 50,
+        "note": "教具室"
+      },
+      {
+        "id": 7,
+        "date": "2025-09-10",
+        "type": "expense",
+        "desc": "橡膠手套",
+        "voucher": "RW42147110",
+        "voucherAmt": 170,
+        "qty": 2,
+        "price": 35,
+        "amt": 70,
+        "note": "食農"
+      },
+      {
+        "id": 8,
+        "date": "",
+        "type": "expense",
+        "desc": "浴帽",
+        "voucher": "RW42147110",
+        "voucherAmt": 0,
+        "qty": 4,
+        "price": 25,
+        "amt": 100,
+        "note": "食農"
+      },
+      {
+        "id": 9,
+        "date": "2025-09-10",
+        "type": "expense",
+        "desc": "食農課蔬菜",
+        "voucher": "無",
+        "voucherAmt": 420,
+        "qty": 1,
+        "price": 120,
+        "amt": 120,
+        "note": "長輩購買"
+      },
+      {
+        "id": 10,
+        "date": "",
+        "type": "expense",
+        "desc": "麵條",
+        "voucher": "無",
+        "voucherAmt": 0,
+        "qty": 1,
+        "price": 100,
+        "amt": 100,
+        "note": "長輩購買"
+      },
+      {
+        "id": 11,
+        "date": "",
+        "type": "expense",
+        "desc": "豬肉",
+        "voucher": "無",
+        "voucherAmt": 0,
+        "qty": 1,
+        "price": 200,
+        "amt": 200,
+        "note": "長輩購買"
+      },
+      {
+        "id": 12,
+        "date": "2025-09-10",
+        "type": "expense",
+        "desc": "36色丙烯馬克筆",
+        "voucher": "TF53771701",
+        "voucherAmt": 268,
+        "qty": 2,
+        "price": 134,
+        "amt": 268,
+        "note": ""
+      },
+      {
+        "id": 13,
+        "date": "2025-09-11",
+        "type": "expense",
+        "desc": "花盆",
+        "voucher": "RW42147285",
+        "voucherAmt": 178,
+        "qty": 1,
+        "price": 59,
+        "amt": 59,
+        "note": ""
+      },
+      {
+        "id": 14,
+        "date": "",
+        "type": "expense",
+        "desc": "垃圾袋",
+        "voucher": "RW42147285",
+        "voucherAmt": 0,
+        "qty": 1,
+        "price": 119,
+        "amt": 119,
+        "note": ""
+      },
+      {
+        "id": 15,
+        "date": "2025-09-12",
+        "type": "income",
+        "desc": "零用金",
+        "voucher": "",
+        "voucherAmt": 0,
+        "qty": 0,
+        "price": 0,
+        "amt": 2000,
+        "note": ""
+      },
+      {
+        "id": 16,
+        "date": "2025-09-13",
+        "type": "expense",
+        "desc": "便當",
+        "voucher": "收據",
+        "voucherAmt": 1425,
+        "qty": 19,
+        "price": 75,
+        "amt": 1425,
+        "note": "週六補課"
+      },
+      {
+        "id": 17,
+        "date": "2025-09-17",
+        "type": "expense",
+        "desc": "寬版膠帶",
+        "voucher": "RW42167616",
+        "voucherAmt": 100,
+        "qty": 1,
+        "price": 50,
+        "amt": 50,
+        "note": ""
+      },
+      {
+        "id": 18,
+        "date": "",
+        "type": "expense",
+        "desc": "保麗龍膠",
+        "voucher": "RW42167616",
+        "voucherAmt": 0,
+        "qty": 1,
+        "price": 50,
+        "amt": 50,
+        "note": ""
+      },
+      {
+        "id": 19,
+        "date": "2025-09-18",
+        "type": "expense",
+        "desc": "光泉黑芝麻牛乳(一組6瓶)",
+        "voucher": "SA-69339280",
+        "voucherAmt": 228,
+        "qty": 3,
+        "price": 78,
+        "amt": 228,
+        "note": "折扣6元(食農)"
+      },
+      {
+        "id": 20,
+        "date": "",
+        "type": "expense",
+        "desc": "3孔轉2孔電源插座",
+        "voucher": "RW42148702",
+        "voucherAmt": 99,
+        "qty": 1,
+        "price": 99,
+        "amt": 99,
+        "note": ""
+      },
+      {
+        "id": 21,
+        "date": "2025-09-18",
+        "type": "income",
+        "desc": "零用金",
+        "voucher": "",
+        "voucherAmt": 0,
+        "qty": 0,
+        "price": 0,
+        "amt": 2000,
+        "note": ""
+      },
+      {
+        "id": 22,
+        "date": "2025-09-18",
+        "type": "expense",
+        "desc": "寬拖把",
+        "voucher": "TD91724654",
+        "voucherAmt": 335,
+        "qty": 1,
+        "price": 335,
+        "amt": 335,
+        "note": ""
+      },
+      {
+        "id": 23,
+        "date": "",
+        "type": "expense",
+        "desc": "8CM見方小方巾(藍染使用)",
+        "voucher": "收據",
+        "voucherAmt": 176,
+        "qty": 25,
+        "price": 8,
+        "amt": 176,
+        "note": "折扣24元"
+      },
+      {
+        "id": 24,
+        "date": "2025-09-13",
+        "type": "expense",
+        "desc": "A4尺寸沙畫",
+        "voucher": "SX-99594927",
+        "voucherAmt": 200,
+        "qty": 20,
+        "price": 10,
+        "amt": 200,
+        "note": ""
+      },
+      {
+        "id": 25,
+        "date": "2025-09-22",
+        "type": "expense",
+        "desc": "恩米36色丙烯馬克筆",
+        "voucher": "TD83152722",
+        "voucherAmt": 233,
+        "qty": 2,
+        "price": 119,
+        "amt": 233,
+        "note": "折扣5元"
+      },
+      {
+        "id": 26,
+        "date": "",
+        "type": "expense",
+        "desc": "500克馬卡龍泡沫球",
+        "voucher": "收據",
+        "voucherAmt": 312,
+        "qty": 1,
+        "price": 312,
+        "amt": 312,
+        "note": ""
+      },
+      {
+        "id": 27,
+        "date": "2025-09-25",
+        "type": "expense",
+        "desc": "豬肉、鮮蚵、韭菜、竹筍、吻仔魚、薑母",
+        "voucher": "無",
+        "voucherAmt": 0,
+        "qty": 1,
+        "price": 550,
+        "amt": 550,
+        "note": "超支，超額由萌雲贊助"
+      },
+      {
+        "id": 28,
+        "date": "2025-09-23",
+        "type": "expense",
+        "desc": "薰衣草種子",
+        "voucher": "RW42149912",
+        "voucherAmt": 20,
+        "qty": 1,
+        "price": 20,
+        "amt": 20,
+        "note": ""
+      },
+      {
+        "id": 29,
+        "date": "2025-09-29",
+        "type": "expense",
+        "desc": "紮染顏料",
+        "voucher": "RT34211882",
+        "voucherAmt": 299,
+        "qty": 10,
+        "price": 32,
+        "amt": 299,
+        "note": ""
+      }
+    ]
+  },
+  "114-10": {
+    "carry": 560,
+    "carryLabel": "9月份結餘",
+    "entries": [
+      {
+        "id": 1,
+        "date": "2025-10-01",
+        "type": "income",
+        "desc": "入零用金",
+        "voucher": "",
+        "voucherAmt": 0,
+        "qty": 0,
+        "price": 0,
+        "amt": 2000,
+        "note": ""
+      },
+      {
+        "id": 2,
+        "date": "2025-10-01",
+        "type": "expense",
+        "desc": "洗碗精",
+        "voucher": "收據",
+        "voucherAmt": 180,
+        "qty": 1,
+        "price": 180,
+        "amt": 180,
+        "note": "秀枝購買"
+      },
+      {
+        "id": 3,
+        "date": "2025-10-01",
+        "type": "expense",
+        "desc": "壓克力顏料",
+        "voucher": "RW42151658",
+        "voucherAmt": 105,
+        "qty": 3,
+        "price": 35,
+        "amt": 105,
+        "note": ""
+      },
+      {
+        "id": 4,
+        "date": "2025-10-02",
+        "type": "expense",
+        "desc": "食農",
+        "voucher": "無",
+        "voucherAmt": 0,
+        "qty": 1,
+        "price": 0,
+        "amt": 0,
+        "note": "全部支出由秀枝贊助"
+      },
+      {
+        "id": 5,
+        "date": "2025-10-09",
+        "type": "expense",
+        "desc": "麵條、鮮蚵、豬肉、青菜、香菇、紅蔥頭",
+        "voucher": "無",
+        "voucherAmt": 0,
+        "qty": 1,
+        "price": 550,
+        "amt": 550,
+        "note": "食農超支，超額部分由燕雪贊助"
+      },
+      {
+        "id": 6,
+        "date": "2025-10-07",
+        "type": "expense",
+        "desc": "10條裝純棉白色小方巾",
+        "voucher": "無",
+        "voucherAmt": 0,
+        "qty": 2,
+        "price": 237,
+        "amt": 474,
+        "note": "共20條，手工藝，店家無法開立發票。供兩堂課使用"
+      },
+      {
+        "id": 7,
+        "date": "2025-10-14",
+        "type": "expense",
+        "desc": "白膠",
+        "voucher": "RW42155122",
+        "voucherAmt": 413,
+        "qty": 1,
+        "price": 70,
+        "amt": 70,
+        "note": ""
+      },
+      {
+        "id": 8,
+        "date": "",
+        "type": "expense",
+        "desc": "棉花棒",
+        "voucher": "RW42155122",
+        "voucherAmt": 0,
+        "qty": 1,
+        "price": 39,
+        "amt": 39,
+        "note": ""
+      },
+      {
+        "id": 9,
+        "date": "",
+        "type": "expense",
+        "desc": "口紅膠",
+        "voucher": "RW42155122",
+        "voucherAmt": 0,
+        "qty": 7,
+        "price": 15,
+        "amt": 105,
+        "note": ""
+      },
+      {
+        "id": 10,
+        "date": "",
+        "type": "expense",
+        "desc": "漏勺",
+        "voucher": "RW42155122",
+        "voucherAmt": 0,
+        "qty": 1,
+        "price": 199,
+        "amt": 199,
+        "note": ""
+      },
+      {
+        "id": 11,
+        "date": "2025-10-17",
+        "type": "expense",
+        "desc": "香菇、雞蛋、青菜、胡椒粉、青蔥",
+        "voucher": "SB-25884756",
+        "voucherAmt": 288,
+        "qty": 1,
+        "price": 288,
+        "amt": 288,
+        "note": "食農"
+      },
+      {
+        "id": 12,
+        "date": "2025-10-22",
+        "type": "expense",
+        "desc": "鮮奶",
+        "voucher": "RW43383071",
+        "voucherAmt": 234,
+        "qty": 1,
+        "price": 149,
+        "amt": 149,
+        "note": "延緩地中海飲食，淑萍購買"
+      },
+      {
+        "id": 13,
+        "date": "",
+        "type": "expense",
+        "desc": "香蕉",
+        "voucher": "RW43383071",
+        "voucherAmt": 0,
+        "qty": 1,
+        "price": 30,
+        "amt": 30,
+        "note": "延緩地中海飲食，淑萍購買"
+      },
+      {
+        "id": 14,
+        "date": "",
+        "type": "expense",
+        "desc": "雞蛋",
+        "voucher": "RW43383071",
+        "voucherAmt": 0,
+        "qty": 1,
+        "price": 55,
+        "amt": 55,
+        "note": "延緩地中海飲食，淑萍購買"
+      },
+      {
+        "id": 15,
+        "date": "2025-10-23",
+        "type": "expense",
+        "desc": "食農",
+        "voucher": "無",
+        "voucherAmt": 0,
+        "qty": 1,
+        "price": 0,
+        "amt": 0,
+        "note": "戀娥、淑女贊助"
+      },
+      {
+        "id": 16,
+        "date": "2025-10-28",
+        "type": "expense",
+        "desc": "鹽酸",
+        "voucher": "RW42177602",
+        "voucherAmt": 90,
+        "qty": 5,
+        "price": 18,
+        "amt": 90,
+        "note": ""
+      },
+      {
+        "id": 17,
+        "date": "2025-10-31",
+        "type": "expense",
+        "desc": "高麗菜、胡蘿蔔、韭菜、高湯、蝦米、肉丸",
+        "voucher": "無",
+        "voucherAmt": 0,
+        "qty": 1,
+        "price": 550,
+        "amt": 550,
+        "note": "食農超支，超額部分由秀枝贊助"
+      },
+      {
+        "id": 18,
+        "date": "2025-10-31",
+        "type": "income",
+        "desc": "入零用金",
+        "voucher": "",
+        "voucherAmt": 0,
+        "qty": 0,
+        "price": 0,
+        "amt": 2000,
+        "note": ""
+      }
+    ]
+  },
+  "114-11": {
+    "carry": 1676,
+    "carryLabel": "10月份結餘",
+    "entries": [
+      {
+        "id": 2,
+        "date": "2025-11-04",
+        "type": "expense",
+        "desc": "鰹魚粉",
+        "voucher": "UA-69381982",
+        "voucherAmt": 65,
+        "qty": 1,
+        "price": 65,
+        "amt": 65,
+        "note": ""
+      },
+      {
+        "id": 3,
+        "date": "2025-11-05",
+        "type": "expense",
+        "desc": "香菇",
+        "voucher": "UA-69384088",
+        "voucherAmt": 98,
+        "qty": 2,
+        "price": 49,
+        "amt": 98,
+        "note": ""
+      },
+      {
+        "id": 4,
+        "date": "2025-11-05",
+        "type": "expense",
+        "desc": "蝦米、青蔥、肉丸、米粉、紅蘿蔔、舒跑",
+        "voucher": "無",
+        "voucherAmt": 0,
+        "qty": 1,
+        "price": 0,
+        "amt": 0,
+        "note": "食農，淑女、春菊、金蓮、戀娥贊助"
+      },
+      {
+        "id": 5,
+        "date": "2025-11-06",
+        "type": "expense",
+        "desc": "棉花棒",
+        "voucher": "TW41008485",
+        "voucherAmt": 155,
+        "qty": 3,
+        "price": 30,
+        "amt": 90,
+        "note": ""
+      },
+      {
+        "id": 6,
+        "date": "",
+        "type": "expense",
+        "desc": "修正帶",
+        "voucher": "TW41008485",
+        "voucherAmt": 0,
+        "qty": 1,
+        "price": 65,
+        "amt": 65,
+        "note": ""
+      },
+      {
+        "id": 7,
+        "date": "2025-11-14",
+        "type": "expense",
+        "desc": "光泉高鈣牛乳1組6瓶",
+        "voucher": "UA-69394006",
+        "voucherAmt": 228,
+        "qty": 3,
+        "price": 78,
+        "amt": 228,
+        "note": "折扣6元"
+      },
+      {
+        "id": 8,
+        "date": "2025-11-14",
+        "type": "expense",
+        "desc": "雞蛋、菜鋪、蒜苗",
+        "voucher": "無",
+        "voucherAmt": 0,
+        "qty": 1,
+        "price": 0,
+        "amt": 0,
+        "note": "食農，萌雲、秀枝贊助"
+      },
+      {
+        "id": 9,
+        "date": "2025-11-18",
+        "type": "expense",
+        "desc": "雞蛋、豆腐、白蝦仁",
+        "voucher": "UA-69399826",
+        "voucherAmt": 439,
+        "qty": 1,
+        "price": 439,
+        "amt": 439,
+        "note": ""
+      },
+      {
+        "id": 10,
+        "date": "2025-11-25",
+        "type": "expense",
+        "desc": "緞帶",
+        "voucher": "TW41013171",
+        "voucherAmt": 234,
+        "qty": 2,
+        "price": 20,
+        "amt": 40,
+        "note": ""
+      },
+      {
+        "id": 11,
+        "date": "",
+        "type": "expense",
+        "desc": "雲彩紙20入",
+        "voucher": "TW41013171",
+        "voucherAmt": 0,
+        "qty": 1,
+        "price": 49,
+        "amt": 49,
+        "note": ""
+      },
+      {
+        "id": 12,
+        "date": "",
+        "type": "expense",
+        "desc": "包裝紙A",
+        "voucher": "TW41013171",
+        "voucherAmt": 0,
+        "qty": 2,
+        "price": 35,
+        "amt": 70,
+        "note": ""
+      },
+      {
+        "id": 13,
+        "date": "",
+        "type": "expense",
+        "desc": "包裝紙B",
+        "voucher": "TW41013171",
+        "voucherAmt": 0,
+        "qty": 3,
+        "price": 25,
+        "amt": 75,
+        "note": ""
+      },
+      {
+        "id": 14,
+        "date": "2025-11-26",
+        "type": "expense",
+        "desc": "鹽酸",
+        "voucher": "TW40998830",
+        "voucherAmt": 90,
+        "qty": 5,
+        "price": 18,
+        "amt": 90,
+        "note": ""
+      },
+      {
+        "id": 15,
+        "date": "2025-11-28",
+        "type": "expense",
+        "desc": "湯圓",
+        "voucher": "收據",
+        "voucherAmt": 500,
+        "qty": 1,
+        "price": 500,
+        "amt": 500,
+        "note": "食農海源代課，無照片"
+      },
+      {
+        "id": 16,
+        "date": "2025-11-28",
+        "type": "expense",
+        "desc": "瓦斯",
+        "voucher": "無",
+        "voucherAmt": 190,
+        "qty": 1,
+        "price": 190,
+        "amt": 190,
+        "note": "食農，秀枝購買，只有估價單無收據，已告知以後向榮茂瓦斯行買，有發票"
+      },
+      {
+        "id": 17,
+        "date": "2025-11-30",
+        "type": "income",
+        "desc": "入基金",
+        "voucher": "",
+        "voucherAmt": 0,
+        "qty": 0,
+        "price": 0,
+        "amt": 2000,
+        "note": ""
+      }
+    ]
+  },
+  "114-12": {
+    "carry": 1677,
+    "carryLabel": "11月份結餘",
+    "entries": [
+      {
+        "id": 2,
+        "date": "2025-12-02",
+        "type": "expense",
+        "desc": "紅蔥醬、芝麻醬",
+        "voucher": "UB-00946371",
+        "voucherAmt": 328,
+        "qty": 1,
+        "price": 328,
+        "amt": 328,
+        "note": "食農"
+      },
+      {
+        "id": 3,
+        "date": "2025-12-10",
+        "type": "expense",
+        "desc": "起酥片、牛乳",
+        "voucher": "UB-07505898",
+        "voucherAmt": 347,
+        "qty": 1,
+        "price": 347,
+        "amt": 347,
+        "note": "食農"
+      },
+      {
+        "id": 4,
+        "date": "2025-12-14",
+        "type": "expense",
+        "desc": "青蔥、豆腐",
+        "voucher": "UB-13673928",
+        "voucherAmt": 148,
+        "qty": 1,
+        "price": 148,
+        "amt": 148,
+        "note": "支援永安食農"
+      },
+      {
+        "id": 5,
+        "date": "2025-12-18",
+        "type": "expense",
+        "desc": "蒜頭、香菇、豆腐、青蔥",
+        "voucher": "UB-20028724",
+        "voucherAmt": 429,
+        "qty": 1,
+        "price": 429,
+        "amt": 429,
+        "note": "食農"
+      },
+      {
+        "id": 6,
+        "date": "2025-12-18",
+        "type": "expense",
+        "desc": "面膜",
+        "voucher": "收據",
+        "voucherAmt": 134,
+        "qty": 1,
+        "price": 134,
+        "amt": 134,
+        "note": "淑萍請款，延緩"
+      },
+      {
+        "id": 7,
+        "date": "2025-12-20",
+        "type": "income",
+        "desc": "領零用金",
+        "voucher": "",
+        "voucherAmt": 0,
+        "qty": 0,
+        "price": 0,
+        "amt": 2000,
+        "note": ""
+      },
+      {
+        "id": 8,
+        "date": "2025-12-10",
+        "type": "expense",
+        "desc": "輕黏土36色",
+        "voucher": "VJ-85739205",
+        "voucherAmt": 228,
+        "qty": 4,
+        "price": 57,
+        "amt": 228,
+        "note": "手作聖誕樹"
+      },
+      {
+        "id": 9,
+        "date": "2025-12-21",
+        "type": "expense",
+        "desc": "廁所清潔劑",
+        "voucher": "UB-20033052",
+        "voucherAmt": 168,
+        "qty": 1,
+        "price": 168,
+        "amt": 168,
+        "note": ""
+      },
+      {
+        "id": 10,
+        "date": "2025-12-25",
+        "type": "expense",
+        "desc": "批薩",
+        "voucher": "UB-26603628",
+        "voucherAmt": 396,
+        "qty": 4,
+        "price": 99,
+        "amt": 396,
+        "note": "食農"
+      }
+    ]
+  },
+  "115-1": {
+    "carry": 1499,
+    "carryLabel": "12月份結餘",
+    "entries": [
+      {
+        "id": 2,
+        "date": "2026-01-07",
+        "type": "expense",
+        "desc": "中藥包一份",
+        "voucher": "",
+        "voucherAmt": 0,
+        "qty": 1,
+        "price": 200,
+        "amt": 0,
+        "note": "食農，土豆仁贊助"
+      },
+      {
+        "id": 3,
+        "date": "2026-01-07",
+        "type": "expense",
+        "desc": "蘋果",
+        "voucher": "WK-29403553",
+        "voucherAmt": 208,
+        "qty": 8,
+        "price": 26,
+        "amt": 208,
+        "note": "食農"
+      },
+      {
+        "id": 4,
+        "date": "2026-01-15",
+        "type": "expense",
+        "desc": "氣炸鍋薯條",
+        "voucher": "WK-32682077",
+        "voucherAmt": 337,
+        "qty": 3,
+        "price": 119,
+        "amt": 337,
+        "note": "食農"
+      },
+      {
+        "id": 5,
+        "date": "2026-01-19",
+        "type": "expense",
+        "desc": "春聯紙",
+        "voucher": "XG-88146514",
+        "voucherAmt": 104,
+        "qty": 1,
+        "price": 64,
+        "amt": 64,
+        "note": ""
+      },
+      {
+        "id": 6,
+        "date": "",
+        "type": "expense",
+        "desc": "黃色列印紙",
+        "voucher": "XG-88146514",
+        "voucherAmt": 0,
+        "qty": 1,
+        "price": 40,
+        "amt": 40,
+        "note": ""
+      },
+      {
+        "id": 7,
+        "date": "2026-01-22",
+        "type": "expense",
+        "desc": "虱目魚丸",
+        "voucher": "XJ-53595750",
+        "voucherAmt": 200,
+        "qty": 3,
+        "price": 80,
+        "amt": 200,
+        "note": "折扣40，食農"
+      },
+      {
+        "id": 8,
+        "date": "2026-01-22",
+        "type": "expense",
+        "desc": "雞蛋、紫菜",
+        "voucher": "WK-38952052",
+        "voucherAmt": 87,
+        "qty": 1,
+        "price": 87,
+        "amt": 87,
+        "note": "食農"
+      },
+      {
+        "id": 9,
+        "date": "2026-01-25",
+        "type": "expense",
+        "desc": "麥克筆",
+        "voucher": "",
+        "voucherAmt": 0,
+        "qty": 4,
+        "price": 61,
+        "amt": 0,
+        "note": "土豆仁贊助"
+      },
+      {
+        "id": 10,
+        "date": "2026-01-29",
+        "type": "expense",
+        "desc": "白菜、豆腐",
+        "voucher": "WK-52882074",
+        "voucherAmt": 69,
+        "qty": 1,
+        "price": 69,
+        "amt": 69,
+        "note": "食農"
+      }
+    ]
+  },
+  "115-2": {
+    "carry": 494,
+    "carryLabel": "1月份結餘",
+    "entries": [
+      {
+        "id": 2,
+        "date": "2026-02-02",
+        "type": "expense",
+        "desc": "透明膠帶",
+        "voucher": "VW40617858",
+        "voucherAmt": 54,
+        "qty": 1,
+        "price": 18,
+        "amt": 18,
+        "note": ""
+      },
+      {
+        "id": 3,
+        "date": "",
+        "type": "expense",
+        "desc": "鹽酸",
+        "voucher": "VW40617858",
+        "voucherAmt": 0,
+        "qty": 2,
+        "price": 18,
+        "amt": 36,
+        "note": ""
+      },
+      {
+        "id": 4,
+        "date": "2026-02-06",
+        "type": "expense",
+        "desc": "地瓜一批",
+        "voucher": "",
+        "voucherAmt": 0,
+        "qty": 1,
+        "price": 0,
+        "amt": 0,
+        "note": "長輩贊助食農"
+      },
+      {
+        "id": 5,
+        "date": "2026-02-03",
+        "type": "expense",
+        "desc": "燈籠材料包",
+        "voucher": "XE60903593",
+        "voucherAmt": 496,
+        "qty": 18,
+        "price": 29,
+        "amt": 496,
+        "note": "折扣26元"
+      },
+      {
+        "id": 6,
+        "date": "2026-02-03",
+        "type": "income",
+        "desc": "燈籠超支贊助金",
+        "voucher": "",
+        "voucherAmt": 0,
+        "qty": 0,
+        "price": 0,
+        "amt": 54,
+        "note": "18個*3元"
+      },
+      {
+        "id": 7,
+        "date": "2026-02-05",
+        "type": "expense",
+        "desc": "噴墨紙",
+        "voucher": "VW40618396",
+        "voucherAmt": 99,
+        "qty": 1,
+        "price": 49,
+        "amt": 49,
+        "note": ""
+      },
+      {
+        "id": 8,
+        "date": "",
+        "type": "expense",
+        "desc": "色紙",
+        "voucher": "VW40618396",
+        "voucherAmt": 0,
+        "qty": 1,
+        "price": 50,
+        "amt": 50,
+        "note": ""
+      },
+      {
+        "id": 9,
+        "date": "2026-02-13",
+        "type": "expense",
+        "desc": "蔥燒肉包",
+        "voucher": "WK-65790869",
+        "voucherAmt": 228,
+        "qty": 3,
+        "price": 76,
+        "amt": 228,
+        "note": "食農"
+      },
+      {
+        "id": 10,
+        "date": "2026-02-26",
+        "type": "expense",
+        "desc": "紅豆、薏仁",
+        "voucher": "",
+        "voucherAmt": 0,
+        "qty": 1,
+        "price": 0,
+        "amt": 0,
+        "note": "秀枝贊助食農"
+      }
+    ]
+  },
+  "115-3": {
+    "carry": -329,
+    "carryLabel": "2月份結餘",
+    "entries": [
+      {
+        "id": 1,
+        "date": "2026-03-01",
+        "type": "expense",
+        "desc": "2月份結餘",
+        "voucher": "",
+        "voucherAmt": 0,
+        "qty": 0,
+        "price": 0,
+        "amt": 0,
+        "note": ""
+      },
+      {
+        "id": 2,
+        "date": "2026-03-09",
+        "type": "income",
+        "desc": "入基金",
+        "voucher": "",
+        "voucherAmt": 0,
+        "qty": 0,
+        "price": 0,
+        "amt": 2000,
+        "note": ""
+      },
+      {
+        "id": 3,
+        "date": "2026-03-09",
+        "type": "expense",
+        "desc": "鹽酸",
+        "voucher": "XY39027194",
+        "voucherAmt": 45,
+        "qty": 3,
+        "price": 15,
+        "amt": 45,
+        "note": ""
+      },
+      {
+        "id": 4,
+        "date": "2026-03-17",
+        "type": "expense",
+        "desc": "馬克筆",
+        "voucher": "ZF45468597",
+        "voucherAmt": 627,
+        "qty": 19,
+        "price": 33,
+        "amt": 627,
+        "note": ""
+      },
+      {
+        "id": 5,
+        "date": "2026-03-26",
+        "type": "expense",
+        "desc": "康寶濃湯",
+        "voucher": "YM-25709729",
+        "voucherAmt": 230,
+        "qty": 2,
+        "price": 115,
+        "amt": 230,
+        "note": ""
+      }
+    ]
+  },
+  "115-4": {
+    "carry": 769,
+    "carryLabel": "3月份結餘",
+    "entries": [
+      {
+        "id": 2,
+        "date": "2026-04-06",
+        "type": "expense",
+        "desc": "修正帶",
+        "voucher": "XY39018080",
+        "voucherAmt": 65,
+        "qty": 1,
+        "price": 65,
+        "amt": 65,
+        "note": ""
+      },
+      {
+        "id": 3,
+        "date": "2026-04-11",
+        "type": "expense",
+        "desc": "肉包",
+        "voucher": "YM-65105535",
+        "voucherAmt": 264,
+        "qty": 2,
+        "price": 132,
+        "amt": 264,
+        "note": ""
+      },
+      {
+        "id": 4,
+        "date": "2026-04-13",
+        "type": "expense",
+        "desc": "紅色印台",
+        "voucher": "XY39019364",
+        "voucherAmt": 80,
+        "qty": 1,
+        "price": 80,
+        "amt": 80,
+        "note": ""
+      },
+      {
+        "id": 5,
+        "date": "2026-04-24",
+        "type": "expense",
+        "desc": "據點便當",
+        "voucher": "",
+        "voucherAmt": 0,
+        "qty": 2,
+        "price": 70,
+        "amt": 140,
+        "note": "少訂兩個"
+      },
+      {
+        "id": 6,
+        "date": "2026-04-20",
+        "type": "expense",
+        "desc": "滑鼠",
+        "voucher": "XY39024413",
+        "voucherAmt": 149,
+        "qty": 1,
+        "price": 109,
+        "amt": 109,
+        "note": ""
+      },
+      {
+        "id": 7,
+        "date": "",
+        "type": "expense",
+        "desc": "水勺子",
+        "voucher": "",
+        "voucherAmt": 0,
+        "qty": 1,
+        "price": 40,
+        "amt": 40,
+        "note": ""
+      },
+      {
+        "id": 8,
+        "date": "2026-04-23",
+        "type": "expense",
+        "desc": "牙籤",
+        "voucher": "YM-82933508",
+        "voucherAmt": 39,
+        "qty": 1,
+        "price": 39,
+        "amt": 39,
+        "note": ""
+      }
+    ]
+  },
+  "115-5": {
+    "carry": 32,
+    "carryLabel": "4月份結餘",
+    "entries": [
+      {
+        "id": 2,
+        "date": "2026-05-02",
+        "type": "income",
+        "desc": "入零用金",
+        "voucher": "",
+        "voucherAmt": 0,
+        "qty": 0,
+        "price": 0,
+        "amt": 2000,
+        "note": ""
+      },
+      {
+        "id": 3,
+        "date": "2026-04-29",
+        "type": "expense",
+        "desc": "母親節手作",
+        "voucher": "ZH47091176",
+        "voucherAmt": 747,
+        "qty": 20,
+        "price": 38,
+        "amt": 747,
+        "note": ""
+      },
+      {
+        "id": 4,
+        "date": "2026-05-07",
+        "type": "expense",
+        "desc": "寬版膠帶",
+        "voucher": "AA38857649",
+        "voucherAmt": 50,
+        "qty": 1,
+        "price": 50,
+        "amt": 50,
+        "note": ""
+      },
+      {
+        "id": 5,
+        "date": "2026-05-25",
+        "type": "expense",
+        "desc": "丙烯麥克筆24色",
+        "voucher": "BS56319852",
+        "voucherAmt": 560,
+        "qty": 10,
+        "price": 56,
+        "amt": 560,
+        "note": ""
+      }
+    ]
+  }
+};
+  seed["115-6"] = {"carry":675,"carryLabel":"5月份結餘","entries":[{"id":1,"date":"2026-06-07","type":"expense","desc":"智利啤梨","voucher":"AP62878387","voucherAmt":431,"qty":1,"price":99,"amt":99,"note":"端午節水果粽，一袋5顆"},{"id":2,"date":"2026-06-07","type":"expense","desc":"陽光奇異果","voucher":"","voucherAmt":0,"qty":1,"price":99,"amt":99,"note":"端午節水果粽，一袋6顆"},{"id":3,"date":"2026-06-07","type":"expense","desc":"紐西蘭蘋果","voucher":"","voucherAmt":0,"qty":1,"price":95,"amt":95,"note":"水果粽，一袋5顆"},{"id":4,"date":"2026-06-07","type":"expense","desc":"金鑽鳳梨","voucher":"","voucherAmt":0,"qty":2,"price":69,"amt":138,"note":"水果粽"},{"id":5,"date":"2026-06-11","type":"expense","desc":"五花肉","voucher":"AP69223680","voucherAmt":363,"qty":1,"price":167,"amt":167,"note":"食農"},{"id":6,"date":"2026-06-11","type":"expense","desc":"五花肉","voucher":"","voucherAmt":0,"qty":1,"price":131,"amt":131,"note":"食農"},{"id":7,"date":"2026-06-11","type":"expense","desc":"虱目魚丸","voucher":"","voucherAmt":0,"qty":1,"price":65,"amt":65,"note":"食農"},{"id":8,"date":"2026-06-11","type":"income","desc":"零用金","voucher":"","voucherAmt":0,"qty":0,"price":0,"amt":2000,"note":""}]};
+  db = seed;
+  save();
+}
+seedIfEmpty();
+
+// ── State ──────────────────────────────────────────────────────────────────
+let currentKey = null;
+let editId = null;
+
+// ── Init ───────────────────────────────────────────────────────────────────
+function init() {
+  renderSidebar();
+  // Auto-select latest month
+  const keys = sortedKeys();
+  if (keys.length) selectMonth(keys[keys.length - 1]);
+  updateHeaderTime();
+}
+
+function updateHeaderTime() {
+  const now = new Date();
+  document.getElementById('headerMeta').innerHTML =
+    `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日<br>資料已儲存至本機`;
+}
+
+// ── Sidebar ────────────────────────────────────────────────────────────────
+function sortedKeys() {
+  return Object.keys(db).sort((a, b) => {
+    const [ay, am] = a.split('-').map(Number);
+    const [by, bm] = b.split('-').map(Number);
+    return ay !== by ? ay - by : am - bm;
+  });
+}
+
+function keyLabel(k) {
+  const [y, m] = k.split('-');
+  return `${y}年${m}月`;
+}
+
+function renderSidebar() {
+  const list = document.getElementById('monthList');
+  list.innerHTML = '';
+  sortedKeys().forEach(k => {
+    const btn = document.createElement('button');
+    btn.className = 'month-btn' + (k === currentKey ? ' active' : '');
+    btn.textContent = keyLabel(k);
+    btn.onclick = () => selectMonth(k);
+    list.appendChild(btn);
+  });
+}
+
+function selectMonth(k) {
+  currentKey = k;
+  renderSidebar();
+  renderSheet();
+}
+
+// ── Sheet render ───────────────────────────────────────────────────────────
+function renderSheet() {
+  if (!currentKey) return;
+  const [y, m] = currentKey.split('-');
+  document.getElementById('sheetTitle').innerHTML =
+    `民國 <span>${y}</span> 年 <span>${m}</span> 月 收支明細`;
+
+  const sheet = db[currentKey];
+  const entries = [...sheet.entries].sort((a, b) => a.date.localeCompare(b.date));
+  const body = document.getElementById('ledgerBody');
+  body.innerHTML = '';
+
+  // ── Carry row ──
+  const carryTr = document.createElement('tr');
+  carryTr.className = 'carry-row';
+  carryTr.innerHTML = `
+    <td class="td-date"></td>
+    <td class="td-voucher"></td>
+    <td class="td-amt"></td>
+    <td>${sheet.carryLabel || '上月結餘'}</td>
+    <td></td><td></td>
+    <td class="td-amt td-income">${sheet.carry >= 0 ? fmt(sheet.carry) : ''}</td>
+    <td class="td-amt"></td>
+    <td class="td-amt td-balance ${sheet.carry < 0 ? 'neg' : ''}">${fmt(sheet.carry)}</td>
+    <td></td>
+    <td class="td-actions"><button class="icon-btn" onclick="openCarry()" title="編輯">✎</button></td>`;
+  body.appendChild(carryTr);
+
+  // ── Entry rows ──
+  // 逐列結餘扣憑證金額；支出金額欄顯示數量×單價
+  function vAmt(e) { return e.voucherAmt || 0; }
+
+  let runBal = sheet.carry;
+  entries.forEach(e => {
+    if (e.type === 'income')  runBal += e.amt;
+    else if (e.type === 'expense') runBal -= vAmt(e);
+
+    const tr = document.createElement('tr');
+    tr.className = e.type === 'income' ? 'income-row' : '';
+    const d = e.date ? new Date(e.date + 'T00:00:00') : null;
+    const dateStr = d ? `${d.getMonth()+1}月${d.getDate()}日` : '';
+    const incomeCell = e.type === 'income'
+      ? `<td class="td-amt td-income">${fmt(e.amt)}</td><td class="td-amt"></td>`
+      : `<td class="td-amt"></td><td class="td-amt td-expense">${e.amt ? fmt(e.amt) : ''}</td>`;
+    tr.innerHTML = `
+      <td class="td-date">${dateStr}</td>
+      <td class="td-voucher">${e.voucher || ''}</td>
+      <td class="td-amt">${e.voucherAmt ? fmt(e.voucherAmt) : ''}</td>
+      <td>${e.desc}</td>
+      <td class="td-qty">${e.qty || ''}</td>
+      <td class="td-price">${e.price ? fmt(e.price) : ''}</td>
+      ${incomeCell}
+      <td class="td-amt td-balance ${runBal < 0 ? 'neg' : ''}">${fmt(runBal)}</td>
+      <td class="td-note">${e.note || ''}</td>
+      <td class="td-actions">
+        <button class="icon-btn" onclick="openEdit(${e.id})" title="編輯">✎</button>
+        <button class="icon-btn" onclick="deleteEntry(${e.id})" title="刪除" style="color:#c0392b">✕</button>
+      </td>`;
+    body.appendChild(tr);
+  });
+
+  if (!entries.length) {
+    const tr = document.createElement('tr');
+    tr.className = 'empty-row';
+    tr.innerHTML = '<td colspan="11">本月尚無明細，請點「新增明細」開始記帳</td>';
+    body.appendChild(tr);
+  }
+
+  // ── Footer row ──
+  const totalIncome = entries.filter(e => e.type === 'income').reduce((s, e) => s + e.amt, 0);
+  const totalExpense = entries.filter(e => e.type === 'expense').reduce((s, e) => s + vAmt(e), 0);
+  const endBalance = sheet.carry + totalIncome - totalExpense;
+
+  const foot = document.getElementById('ledgerFoot');
+  foot.innerHTML = `<tr class="subtotal-row">
+    <td colspan="3" style="text-align:center">合　計</td>
+    <td></td><td></td><td></td>
+    <td class="td-amt td-income">${fmt(totalIncome)}</td>
+    <td class="td-amt td-expense">${fmt(totalExpense)}</td>
+    <td class="td-amt td-balance ${endBalance < 0 ? 'neg' : ''}">${fmt(endBalance)}</td>
+    <td colspan="2"></td>
+  </tr>`;
+
+  // ── Summary cards ──
+  document.getElementById('sumIncome').textContent = fmt(totalIncome);
+  document.getElementById('sumExpense').textContent = fmt(totalExpense);
+  document.getElementById('sumBalance').textContent = fmt(endBalance);
+  document.getElementById('sumCarry').textContent = fmt(sheet.carry);
+  const balCard = document.getElementById('balCard');
+  balCard.classList.toggle('negative', endBalance < 0);
+
+  // ── Footer text ──
+  document.getElementById('sheetFooter').innerHTML =
+    `<span>${m}月支出金額 <strong>${fmt(totalExpense)}</strong> 元，結餘 <strong class="${endBalance < 0 ? 'td-balance neg' : ''}">${fmt(endBalance)}</strong> 元</span>
+     <span>製表：林智仁　｜　平安診所岱江里C據點</span>`;
+}
+
+function fmt(n) {
+  if (n === null || n === undefined || n === '') return '';
+  return Number(n).toLocaleString('zh-TW');
+}
+
+// ── Modals ─────────────────────────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.querySelectorAll('.modal-bg').forEach(bg => {
+  bg.addEventListener('click', e => { if (e.target === bg) bg.classList.remove('open'); });
+});
+
+// ── Add / Edit Entry ───────────────────────────────────────────────────────
+function openAdd() {
+  if (!currentKey) return alert('請先選擇月份');
+  editId = null;
+  document.getElementById('modalTitle').textContent = '新增明細';
+  // Default date = today
+  const today = new Date();
+  const [y, m] = currentKey.split('-');
+  const yr = 1911 + parseInt(y);
+  const iso = `${yr}-${String(m).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  document.getElementById('fDate').value = iso;
+  document.getElementById('fType').value = 'expense';
+  document.getElementById('fDesc').value = '';
+  document.getElementById('fVoucher').value = '';
+  document.getElementById('fVoucherAmt').value = '';
+  document.getElementById('fQty').value = '';
+  document.getElementById('fPrice').value = '';
+  document.getElementById('fAmt').value = '';
+  document.getElementById('fNote').value = '';
+  onTypeChange();
+  openModal('entryModal');
+}
+
+function openEdit(id) {
+  const entry = db[currentKey].entries.find(e => e.id === id);
+  if (!entry) return;
+  editId = id;
+  document.getElementById('modalTitle').textContent = '編輯明細';
+  document.getElementById('fDate').value = entry.date;
+  document.getElementById('fType').value = entry.type;
+  document.getElementById('fDesc').value = entry.desc;
+  document.getElementById('fVoucher').value = entry.voucher || '';
+  document.getElementById('fVoucherAmt').value = entry.voucherAmt || '';
+  document.getElementById('fQty').value = entry.qty || '';
+  document.getElementById('fPrice').value = entry.price || '';
+  document.getElementById('fAmt').value = entry.amt || '';
+  document.getElementById('fNote').value = entry.note || '';
+  onTypeChange();
+  openModal('entryModal');
+}
+
+function onTypeChange() {
+  const t = document.getElementById('fType').value;
+  const isIncome = t === 'income';
+  const isNote = t === 'note';
+  document.getElementById('grpQty').style.opacity = isIncome || isNote ? '.4' : '1';
+  document.getElementById('grpPrice').style.opacity = isIncome || isNote ? '.4' : '1';
+  document.getElementById('amtLabel').textContent =
+    isIncome ? '收入金額' : isNote ? '金額（備查，不計入）' : '金額（自動計算）';
+}
+
+function calcAmt() {
+  const q = parseFloat(document.getElementById('fQty').value) || 0;
+  const p = parseFloat(document.getElementById('fPrice').value) || 0;
+  if (q && p) document.getElementById('fAmt').value = q * p;
+}
+
+function saveEntry() {
+  const type = document.getElementById('fType').value;
+  const desc = document.getElementById('fDesc').value.trim();
+  if (!desc) return alert('請輸入摘要');
+  const amt = parseFloat(document.getElementById('fAmt').value) || 0;
+
+  const entry = {
+    id: editId || Date.now(),
+    date: document.getElementById('fDate').value,
+    type,
+    desc,
+    voucher: document.getElementById('fVoucher').value.trim(),
+    voucherAmt: parseFloat(document.getElementById('fVoucherAmt').value) || 0,
+    qty: parseFloat(document.getElementById('fQty').value) || 0,
+    price: parseFloat(document.getElementById('fPrice').value) || 0,
+    amt,
+    note: document.getElementById('fNote').value.trim(),
+  };
+
+  if (editId) {
+    const idx = db[currentKey].entries.findIndex(e => e.id === editId);
+    if (idx >= 0) db[currentKey].entries[idx] = entry;
+  } else {
+    db[currentKey].entries.push(entry);
+  }
+
+  save();
+  closeModal('entryModal');
+  renderSheet();
+}
+
+function deleteEntry(id) {
+  if (!confirm('確定刪除此筆明細？')) return;
+  db[currentKey].entries = db[currentKey].entries.filter(e => e.id !== id);
+  save();
+  renderSheet();
+}
+
+// ── Carry ──────────────────────────────────────────────────────────────────
+function openCarry() {
+  if (!currentKey) return alert('請先選擇月份');
+  const sheet = db[currentKey];
+  document.getElementById('fCarry').value = sheet.carry ?? '';
+  document.getElementById('fCarryLabel').value = sheet.carryLabel || '';
+  openModal('carryModal');
+}
+
+function saveCarry() {
+  const v = parseFloat(document.getElementById('fCarry').value);
+  if (isNaN(v)) return alert('請輸入數字');
+  db[currentKey].carry = v;
+  db[currentKey].carryLabel = document.getElementById('fCarryLabel').value.trim() || '上月結餘';
+  save();
+  closeModal('carryModal');
+  renderSheet();
+}
+
+// ── Add Month ──────────────────────────────────────────────────────────────
+function addMonth() {
+  const now = new Date();
+  // Convert to ROC year
+  document.getElementById('mYear').value = now.getFullYear() - 1911;
+  document.getElementById('mMonth').value = now.getMonth() + 1;
+  openModal('addMonthModal');
+}
+
+function confirmAddMonth() {
+  const y = parseInt(document.getElementById('mYear').value);
+  const m = parseInt(document.getElementById('mMonth').value);
+  if (!y || !m) return alert('請輸入年份與月份');
+  const k = `${y}-${m}`;
+  if (db[k]) { alert('此月份已存在'); closeModal('addMonthModal'); selectMonth(k); return; }
+
+  // Find previous month balance
+  const prevKey = `${m === 1 ? y-1 : y}-${m === 1 ? 12 : m-1}`;
+  const prevSheet = db[prevKey];
+  let prevBal = 0;
+  if (prevSheet) {
+    const ents = prevSheet.entries || [];
+    prevBal = prevSheet.carry + ents.filter(e=>e.type==='income').reduce((s,e)=>s+e.amt,0)
+                             - ents.filter(e=>e.type==='expense').reduce((s,e)=>s+(e.voucherAmt||0),0);
+  }
+
+  db[k] = {
+    carry: prevBal,
+    carryLabel: `${m === 1 ? 12 : m-1}月份結餘`,
+    entries: []
+  };
+  save();
+  closeModal('addMonthModal');
+  renderSidebar();
+  selectMonth(k);
+}
+
+// ── Export CSV ─────────────────────────────────────────────────────────────
+function exportCSV() {
+  if (!currentKey) return;
+  const sheet = db[currentKey];
+  const [y, m] = currentKey.split('-');
+  const rows = [['日期','憑證編號','憑證金額','摘要','數量','單價','收入金額','支出金額','結餘','備註']];
+
+  let runBal = sheet.carry;
+  rows.push(['','','', sheet.carryLabel || '上月結餘','','','','',runBal,'']);
+
+  const entries = [...sheet.entries].sort((a,b)=>a.date.localeCompare(b.date));
+  entries.forEach(e => {
+    if (e.type === 'income') runBal += e.amt;
+    else if (e.type === 'expense') runBal -= (e.voucherAmt || 0);
+    const d = e.date ? new Date(e.date+'T00:00:00') : null;
+    const ds = d ? `${d.getMonth()+1}月${d.getDate()}日` : '';
+    rows.push([ds, e.voucher||'', e.voucherAmt||'', e.desc,
+      e.qty||'', e.price||'',
+      e.type==='income' ? e.amt : '',
+      e.type==='expense' ? e.amt : '',
+      runBal, e.note||'']);
+  });
+
+  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const bom = '\uFEFF';
+  const blob = new Blob([bom + csv], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `岱江里C據點_${y}年${m}月收支.csv`;
+  a.click();
+}
+
+// ── Import CSV ───────────────────────────────────────────────────────────────
+function importCSV(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  // Infer month key from filename e.g. 岱江里C據點_115年6月收支.csv
+  let inferredKey = null;
+  const fnm = file.name.match(/(\d{3})年(\d{1,2})月/);
+  if (fnm) inferredKey = `${fnm[1]}-${parseInt(fnm[2])}`;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const text = e.target.result.replace(/^﻿/, ''); // strip BOM
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+
+    // Parse CSV rows
+    function parseRow(line) {
+      const cols = [];
+      let cur = '', inQ = false;
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (c === '"' && !inQ) { inQ = true; }
+        else if (c === '"' && inQ && line[i+1] === '"') { cur += '"'; i++; }
+        else if (c === '"' && inQ) { inQ = false; }
+        else if (c === ',' && !inQ) { cols.push(cur); cur = ''; }
+        else cur += c;
+      }
+      cols.push(cur);
+      return cols;
+    }
+
+    const hdr = parseRow(lines[0]);
+    // Expected: 日期,憑證編號,憑證金額,摘要,數量,單價,收入金額,支出金額,結餘,備註
+
+    let carry = 0, carryLabel = '上月結餘', entries = [], key = inferredKey;
+    let eid = Date.now();
+
+    for (let i = 1; i < lines.length; i++) {
+      const cols = parseRow(lines[i]);
+      const [dateStr, voucher, vamt, desc, qty, price, incAmt, expAmt, bal, note] = cols;
+
+      // carry row: no date, desc contains 結餘
+      if (!dateStr && desc && desc.includes('結餘')) {
+        carry = parseFloat(bal?.replace(/,/g,'')) || 0;
+        carryLabel = desc;
+        continue;
+      }
+      // subtotal row
+      if (desc === '合　計' || desc === '合計') continue;
+      if (!desc) continue;
+
+      const incV  = parseFloat(incAmt?.replace(/,/g,'')) || 0;
+      const expV  = parseFloat(expAmt?.replace(/,/g,'')) || 0;
+      const type  = incV > 0 ? 'income' : 'expense';
+      const amt   = type === 'income' ? incV : expV;
+
+      // Parse date "6月11日" → ISO
+      let isoDate = '';
+      const dm = dateStr?.match(/(\d+)月(\d+)日/);
+      if (dm && key) {
+        const [ky, km] = key.split('-');
+        isoDate = `${1911+parseInt(ky)}-${String(dm[1]).padStart(2,'0')}-${String(dm[2]).padStart(2,'0')}`;
+      }
+
+      entries.push({
+        id: eid++,
+        date: isoDate,
+        type,
+        desc: desc || '',
+        voucher: voucher || '',
+        voucherAmt: parseFloat(vamt?.replace(/,/g,'')) || 0,
+        qty: parseFloat(qty?.replace(/,/g,'')) || 0,
+        price: parseFloat(price?.replace(/,/g,'')) || 0,
+        amt,
+        note: note || ''
+      });
+    }
+
+    if (!key) {
+      // Ask user which month
+      const input = prompt('無法從檔名判斷月份，請輸入月份（如 115-6）：');
+      if (!input) return;
+      key = input.trim();
+    }
+
+    if (!db[key]) db[key] = { carry: 0, carryLabel: '上月結餘', entries: [] };
+    const overwrite = db[key].entries.length > 0
+      ? confirm(`「${keyLabel(key)}」已有 ${db[key].entries.length} 筆資料，是否覆蓋？`)
+      : true;
+    if (!overwrite) return;
+
+    db[key] = { carry, carryLabel, entries };
+    save();
+    renderSidebar();
+    selectMonth(key);
+    alert(`✓ 已匯入「${keyLabel(key)}」共 ${entries.length} 筆，期初結餘 ${fmt(carry)}`);
+  };
+  reader.readAsText(file, 'UTF-8');
+  event.target.value = ''; // reset input
+}
+
+// ── Start ──────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
