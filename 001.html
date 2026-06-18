@@ -254,6 +254,8 @@ textarea { resize: vertical; min-height: 60px; }
   .summary-card { box-shadow: none; border: 1px solid #ccc; }
 }
 </style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 </head>
 <body>
 
@@ -452,10 +454,41 @@ const storage = {
   setItem(k,v) { try { localStorage.setItem(k,v); } catch(e) { _memStore[k]=v; } }
 };
 
+// ── Firebase Realtime Database ──────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyAAhPX4YtjMf-nkPC3KfQUckRhWEkjL8YI",
+  authDomain: "dj-finance-66be8.firebaseapp.com",
+  databaseURL: "https://dj-finance-66be8-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "dj-finance-66be8",
+  storageBucket: "dj-finance-66be8.firebasestorage.app",
+  messagingSenderId: "452327201296",
+  appId: "1:452327201296:web:ac04fc2125c873b64c4895"
+};
+firebase.initializeApp(firebaseConfig);
+const fbDb = firebase.database();
+const FB_PATH = 'daijiangli/ledger';
+let fbReady = false;
+let fbSyncTimer = null;
+
 let db = JSON.parse(storage.getItem(KEY) || '{}');
 // db = { ... }
 
-function save() { storage.setItem(KEY, JSON.stringify(db)); }
+function save() {
+  storage.setItem(KEY, JSON.stringify(db));
+  // Debounced push to Firebase
+  clearTimeout(fbSyncTimer);
+  fbSyncTimer = setTimeout(() => {
+    if (!fbReady) return;
+    fbDb.ref(FB_PATH).set(db)
+      .then(() => setSyncStatus('✓ 已同步至雲端', '#7bed9f'))
+      .catch(err => setSyncStatus('✗ 同步失敗：' + err.message, '#ff6b6b'));
+  }, 800);
+}
+
+function setSyncStatus(msg, color) {
+  const el = document.getElementById('syncStatus');
+  if (el) { el.textContent = msg; el.style.color = color || '#aaa'; }
+}
 
 // ── Seed historical data ──────────────────────────────────────────────────
 function seedIfEmpty() {
@@ -2241,7 +2274,41 @@ function importCSV(event) {
 }
 
 // ── Start ──────────────────────────────────────────────────────────────────
-init();
+// Load from Firebase first (source of truth), fallback to local seed/storage
+fbDb.ref(FB_PATH).once('value')
+  .then(snapshot => {
+    const cloud = snapshot.val();
+    if (cloud && Object.keys(cloud).length) {
+      db = cloud;
+      storage.setItem(KEY, JSON.stringify(db));
+      setSyncStatus('✓ 已從雲端載入', '#7bed9f');
+    } else {
+      // No cloud data yet — push current local/seed data up
+      setSyncStatus('✓ 已連線雲端（尚無資料）', '#7bed9f');
+      fbDb.ref(FB_PATH).set(db).catch(()=>{});
+    }
+    fbReady = true;
+    init();
+
+    // Listen for live updates from other devices
+    fbDb.ref(FB_PATH).on('value', snapshot => {
+      const cloud = snapshot.val();
+      if (!cloud) return;
+      const cloudStr = JSON.stringify(cloud);
+      if (cloudStr !== JSON.stringify(db)) {
+        db = cloud;
+        storage.setItem(KEY, cloudStr);
+        renderSidebar();
+        if (currentKey) renderSheet();
+        setSyncStatus('✓ 已更新（其他裝置同步）', '#7bed9f');
+      }
+    });
+  })
+  .catch(err => {
+    setSyncStatus('✗ 雲端連線失敗，使用本機資料', '#ff6b6b');
+    fbReady = false;
+    init();
+  });
 </script>
 </body>
 </html>
