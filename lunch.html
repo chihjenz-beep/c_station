@@ -1,0 +1,320 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{padding:1rem 0 1.5rem}
+.card-outer{background:var(--color-background-primary);border-radius:var(--border-radius-lg);border:0.5px solid #F4C0D1;padding:1.25rem 1.25rem 1rem;position:relative}
+.header{text-align:center;margin-bottom:1.25rem}
+.header-title{font-size:22px;font-weight:500;color:#72243E;letter-spacing:.04em;margin-bottom:4px}
+.header-sub{font-size:13px;color:#993556;margin-bottom:10px}
+.date-row{display:flex;align-items:center;justify-content:center;gap:8px}
+.date-row label{font-size:13px;color:#993556}
+.date-row input[type=date]{font-size:13px;padding:4px 10px;border-radius:20px;border:0.5px solid #F4C0D1;background:#FBEAF0;color:#72243E}
+.summary-bar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:1.25rem}
+.sum-chip{background:#FDF4F8;border:0.5px solid #F4C0D1;border-radius:8px;padding:8px 14px;text-align:center;min-width:72px}
+.sum-chip.hero{background:#FBEAF0;border-color:#D4537E;min-width:88px}
+.sum-chip .cl{font-size:11px;color:#993556;margin-bottom:1px}
+.sum-chip .cv{font-size:20px;font-weight:500;color:#72243E}
+.sum-chip.hero .cv{font-size:24px}
+.badge{display:inline-block;font-size:11px;padding:1px 6px;border-radius:20px}
+.bn{background:#E6F1FB;color:#0C447C}
+.bv{background:#EAF3DE;color:#3B6D11}
+.bp{background:#FAEEDA;color:#633806}
+.bs{background:#EEEDFE;color:#3C3489}
+.kanban{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px;margin-bottom:1rem}
+.site-card{border-radius:8px;border:0.5px solid #F4C0D1;padding:10px 12px;background:#FFFBFD;transition:border-color .15s;position:relative}
+.site-card:nth-child(even){background:#FDF4F8}
+.site-card.has-data{border-color:#D4537E;background:#FFF5F8}
+.site-card.is-locked{border-color:#D4537E;background:#FFF0F5}
+.site-card .sname{font-size:13px;font-weight:500;color:#72243E;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:4px}
+.site-card .name-left{display:flex;align-items:center;gap:5px}
+.site-card .lock-icon{font-size:13px;color:#D4537E;cursor:pointer;padding:2px;border-radius:4px;line-height:1}
+.site-card .lock-icon:hover{background:#FDF4F8}
+.site-card .stotal{font-size:18px;font-weight:500;color:#72243E}
+.site-card .stotal.zero{font-size:14px;color:#D4A0B5;font-weight:400}
+.site-card .rows{display:flex;flex-direction:column;gap:4px}
+.site-card .datarow{display:flex;align-items:center;justify-content:space-between;gap:4px}
+.site-card .datarow label{font-size:11px;color:#993556;min-width:28px}
+.site-card input[type=number]{flex:1;border:0.5px solid #F4C0D1;border-radius:5px;padding:3px 4px;text-align:center;font-size:13px;background:transparent;color:#3C2030;-moz-appearance:textfield;min-width:0}
+.site-card input[type=number]::-webkit-outer-spin-button,
+.site-card input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+.site-card input[type=number]:focus{outline:none;border-color:#D4537E;box-shadow:0 0 0 2px rgba(212,83,126,.12)}
+.site-card input[type=number]:disabled{color:#D4A0B5;background:transparent;border-color:#F4C0D1}
+.site-card .soup-row{margin-top:6px;padding-top:6px;border-top:0.5px solid #F4C0D1;display:flex;align-items:center;justify-content:space-between;gap:4px}
+.site-card .soup-row label{font-size:11px;color:#3C3489}
+.lock-overlay{display:none;position:absolute;inset:0;border-radius:8px;background:rgba(251,234,240,.72);align-items:center;justify-content:center;flex-direction:column;gap:6px;cursor:pointer}
+.lock-overlay.show{display:flex}
+.lock-overlay .lo-icon{font-size:26px;color:#D4537E}
+.lock-overlay .lo-text{font-size:12px;color:#72243E;font-weight:500}
+.actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:.5rem}
+.btn{padding:7px 18px;border-radius:20px;border:0.5px solid #F4C0D1;background:#FBEAF0;cursor:pointer;font-size:13px;color:#72243E;font-weight:500}
+.btn:hover{background:#F4C0D1}
+.btn-save{background:#D4537E;color:#FBEAF0;border-color:#993556}
+.btn-save:hover{background:#993556}
+.modal-bg{display:none;position:absolute;inset:0;background:rgba(114,36,62,.18);border-radius:12px;align-items:center;justify-content:center;z-index:20}
+.modal-bg.show{display:flex}
+.modal{background:var(--color-background-primary);border-radius:12px;border:0.5px solid #F4C0D1;padding:1.5rem 1.75rem;text-align:center;min-width:220px;max-width:280px}
+.modal h3{font-size:16px;font-weight:500;color:#72243E;margin-bottom:4px}
+.modal p{font-size:12px;color:#993556;margin-bottom:1rem}
+.pin-dots{display:flex;gap:10px;justify-content:center;margin-bottom:.75rem}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:1.5px solid #D4537E;background:transparent;transition:background .12s}
+.pin-dot.filled{background:#D4537E}
+.pin-err{font-size:12px;color:#A32D2D;min-height:16px;margin-bottom:.5rem}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1rem}
+.pin-btn{padding:10px 0;border-radius:8px;border:0.5px solid #F4C0D1;background:#FBEAF0;cursor:pointer;font-size:16px;font-weight:500;color:#72243E}
+.pin-btn:hover{background:#F4C0D1}
+.modal-cancel{font-size:13px;color:#993556;background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:20px}
+.modal-cancel:hover{background:#FDF4F8}
+</style>
+
+<div class="wrap">
+<h2 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">平安診所C據點每日便當填報看板</h2>
+<div class="card-outer" id="card-outer">
+
+  <div class="header">
+    <div class="header-title">平安診所 C 據點</div>
+    <div class="header-sub">每日便當填報</div>
+    <div class="date-row">
+      <label><i class="ti ti-calendar" aria-hidden="true" style="font-size:14px;vertical-align:-1px;margin-right:3px"></i>日期</label>
+      <input type="date" id="report-date">
+    </div>
+  </div>
+
+  <div class="summary-bar">
+    <div class="sum-chip"><div class="cl"><span class="badge bn">一般</span></div><div class="cv" id="chip-n">0</div></div>
+    <div class="sum-chip"><div class="cl"><span class="badge bv">素食</span></div><div class="cv" id="chip-v">0</div></div>
+    <div class="sum-chip"><div class="cl"><span class="badge bp">不豬</span></div><div class="cv" id="chip-p">0</div></div>
+    <div class="sum-chip hero"><div class="cl" style="color:#72243E;font-weight:500">便當總計</div><div class="cv" id="chip-total">0</div></div>
+    <div class="sum-chip"><div class="cl"><span class="badge bs">湯份</span></div><div class="cv" id="chip-s">0</div></div>
+  </div>
+
+  <div class="kanban" id="kanban"></div>
+
+  <div class="actions">
+    <button class="btn" onclick="doCopy()"><i class="ti ti-copy" aria-hidden="true" style="font-size:15px;vertical-align:-2px;margin-right:4px"></i>複製摘要</button>
+    <button class="btn btn-save" onclick="doSave()"><i class="ti ti-download" aria-hidden="true" style="font-size:15px;vertical-align:-2px;margin-right:4px"></i>存檔下載</button>
+    <button class="btn" onclick="handleClearAll()"><i class="ti ti-refresh" aria-hidden="true" style="font-size:15px;vertical-align:-2px;margin-right:4px"></i>清除所有</button>
+  </div>
+
+  <div class="modal-bg" id="modal-bg">
+    <div class="modal">
+      <h3 id="modal-title"></h3>
+      <p id="modal-desc"></p>
+      <div class="pin-dots" id="pin-dots">
+        <div class="pin-dot" id="d0"></div><div class="pin-dot" id="d1"></div>
+        <div class="pin-dot" id="d2"></div><div class="pin-dot" id="d3"></div>
+      </div>
+      <div class="pin-err" id="pin-err"></div>
+      <div class="pin-pad">
+        <button class="pin-btn" onclick="pinInput('1')">1</button>
+        <button class="pin-btn" onclick="pinInput('2')">2</button>
+        <button class="pin-btn" onclick="pinInput('3')">3</button>
+        <button class="pin-btn" onclick="pinInput('4')">4</button>
+        <button class="pin-btn" onclick="pinInput('5')">5</button>
+        <button class="pin-btn" onclick="pinInput('6')">6</button>
+        <button class="pin-btn" onclick="pinInput('7')">7</button>
+        <button class="pin-btn" onclick="pinInput('8')">8</button>
+        <button class="pin-btn" onclick="pinInput('9')">9</button>
+        <button class="pin-btn" onclick="pinInput('0')" style="grid-column:2">0</button>
+        <button class="pin-btn" onclick="pinDel()"><i class="ti ti-backspace" aria-hidden="true" style="font-size:18px;vertical-align:-2px"></i></button>
+      </div>
+      <button class="modal-cancel" onclick="closeModal()">取消</button>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+const SITES=['江山里','振寮里','永安里','興中里','岱江里','岑海里','新岑里','復興里','西安里','新店村','官和村','見龍里','考試里'];
+const kanban=document.getElementById('kanban');
+const dateInput=document.getElementById('report-date');
+dateInput.value=new Date().toISOString().slice(0,10);
+
+const pins={};   // idx -> pinCode
+const locked={};  // idx -> bool
+let pinBuffer='';
+let modalCtx=null; // {mode, idx}
+
+SITES.forEach((s,i)=>{
+  const d=document.createElement('div');
+  d.className='site-card';
+  d.dataset.idx=i;
+  d.innerHTML=`
+    <div class="sname">
+      <div class="name-left">
+        <span class="lock-icon" id="lock-btn-${i}" onclick="handleSiteLock(${i})" title="鎖定/解鎖此據點">🔓</span>
+        <span>${s}</span>
+      </div>
+      <span class="stotal zero" id="rt-${i}">—</span>
+    </div>
+    <div class="rows">
+      <div class="datarow"><label><span class="badge bn">一般</span></label><input type="number" min="0" placeholder="0" data-col="n" data-row="${i}"></div>
+      <div class="datarow"><label><span class="badge bv">素食</span></label><input type="number" min="0" placeholder="0" data-col="v" data-row="${i}"></div>
+      <div class="datarow"><label><span class="badge bp">不豬</span></label><input type="number" min="0" placeholder="0" data-col="p" data-row="${i}"></div>
+    </div>
+    <div class="soup-row">
+      <label><span class="badge bs">湯份</span></label>
+      <input type="number" min="0" placeholder="0" data-col="s" data-row="${i}" style="max-width:60px">
+    </div>
+    <div class="lock-overlay" id="overlay-${i}" onclick="handleSiteLock(${i})">
+      <div class="lo-icon">🔒</div>
+      <div class="lo-text">點擊解鎖</div>
+    </div>`;
+  kanban.appendChild(d);
+});
+
+function g(el){return parseInt(el.value)||0;}
+
+function recalc(){
+  let tn=0,tv=0,tp=0,ts=0;
+  SITES.forEach((_,i)=>{
+    const card=kanban.querySelector(`[data-idx="${i}"]`);
+    const n=g(card.querySelector('[data-col=n]'));
+    const v=g(card.querySelector('[data-col=v]'));
+    const p=g(card.querySelector('[data-col=p]'));
+    const s=g(card.querySelector('[data-col=s]'));
+    const tot=n+v+p;
+    const rtEl=document.getElementById(`rt-${i}`);
+    rtEl.textContent=tot||'—';
+    rtEl.className='stotal'+(tot?'':' zero');
+    card.classList.toggle('has-data',!!(tot||s)&&!locked[i]);
+    tn+=n;tv+=v;tp+=p;ts+=s;
+  });
+  document.getElementById('chip-n').textContent=tn;
+  document.getElementById('chip-v').textContent=tv;
+  document.getElementById('chip-p').textContent=tp;
+  document.getElementById('chip-s').textContent=ts;
+  document.getElementById('chip-total').textContent=tn+tv+tp;
+}
+kanban.addEventListener('input',recalc);
+
+function applyLockUI(i,isLocked){
+  locked[i]=isLocked;
+  const card=kanban.querySelector(`[data-idx="${i}"]`);
+  card.classList.toggle('is-locked',isLocked);
+  card.querySelectorAll('input').forEach(inp=>inp.disabled=isLocked);
+  document.getElementById(`overlay-${i}`).classList.toggle('show',isLocked);
+  const iconEl=document.getElementById(`lock-btn-${i}`);
+  iconEl.textContent=isLocked?'🔒':'🔓';
+  recalc();
+}
+
+function handleSiteLock(i){
+  if(!locked[i]){
+    if(!pins[i]){
+      openModal('set',i,`設定「${SITES[i]}」鎖定密碼`,'請設定 4 位數字密碼');
+    } else {
+      applyLockUI(i,true);
+    }
+  } else {
+    openModal('unlock',i,`解鎖「${SITES[i]}」`,'請輸入 4 位數字密碼');
+  }
+}
+
+function handleClearAll(){
+  const lockedList=SITES.filter((_,i)=>locked[i]);
+  if(lockedList.length>0){
+    alert(`有 ${lockedList.length} 個據點已鎖定，請先解鎖再清除。`);
+    return;
+  }
+  if(confirm('確定清除所有未鎖定據點的數量？')){
+    kanban.querySelectorAll('input[type=number]').forEach(el=>{
+      if(!el.disabled) el.value='';
+    });
+    recalc();
+  }
+}
+
+function openModal(mode,idx,title,desc){
+  modalCtx={mode,idx};
+  pinBuffer='';
+  updateDots();
+  document.getElementById('modal-title').textContent=title;
+  document.getElementById('modal-desc').textContent=desc;
+  document.getElementById('pin-err').textContent='';
+  document.getElementById('modal-bg').classList.add('show');
+}
+
+function closeModal(){
+  document.getElementById('modal-bg').classList.remove('show');
+  pinBuffer='';
+  updateDots();
+  document.getElementById('pin-err').textContent='';
+  modalCtx=null;
+}
+
+function updateDots(){
+  for(let i=0;i<4;i++) document.getElementById('d'+i).classList.toggle('filled',i<pinBuffer.length);
+}
+
+function pinInput(n){
+  if(pinBuffer.length>=4) return;
+  pinBuffer+=n;
+  updateDots();
+  document.getElementById('pin-err').textContent='';
+  if(pinBuffer.length===4) setTimeout(confirmPin,120);
+}
+
+function pinDel(){
+  if(pinBuffer.length>0){pinBuffer=pinBuffer.slice(0,-1);updateDots();}
+}
+
+function confirmPin(){
+  if(!modalCtx) return;
+  const {mode,idx}=modalCtx;
+  if(mode==='set'){
+    pins[idx]=pinBuffer;
+    closeModal();
+    applyLockUI(idx,true);
+  } else if(mode==='unlock'){
+    if(pinBuffer===pins[idx]){
+      closeModal();
+      applyLockUI(idx,false);
+    } else {
+      document.getElementById('pin-err').textContent='密碼錯誤，請再試一次';
+      pinBuffer=''; updateDots();
+    }
+  }
+}
+
+function getLines(){
+  const d=dateInput.value;
+  let lines=[`平安診所C據點便當填報 ${d}`,'','據點\t一般\t素食\t不豬\t便當合計\t湯'];
+  SITES.forEach((s,i)=>{
+    const card=kanban.querySelector(`[data-idx="${i}"]`);
+    const n=g(card.querySelector('[data-col=n]'));
+    const v=g(card.querySelector('[data-col=v]'));
+    const p=g(card.querySelector('[data-col=p]'));
+    const s2=g(card.querySelector('[data-col=s]'));
+    if(n||v||p||s2){
+      const lockMark=locked[i]?'🔒':'';
+      lines.push(`${s}${lockMark}\t${n}\t${v}\t${p}\t${n+v+p}\t${s2}`);
+    }
+  });
+  const tn=parseInt(document.getElementById('chip-n').textContent)||0;
+  const tv=parseInt(document.getElementById('chip-v').textContent)||0;
+  const tp=parseInt(document.getElementById('chip-p').textContent)||0;
+  const ts=parseInt(document.getElementById('chip-s').textContent)||0;
+  lines.push('',`合計\t${tn}\t${tv}\t${tp}\t${tn+tv+tp}\t${ts}`);
+  return lines;
+}
+
+function doCopy(){
+  navigator.clipboard.writeText(getLines().join('\n')).then(()=>{
+    const btn=document.querySelectorAll('.btn')[0];
+    const orig=btn.innerHTML;
+    btn.innerHTML='<i class="ti ti-check" style="font-size:15px;vertical-align:-2px;margin-right:4px" aria-hidden="true"></i>已複製';
+    setTimeout(()=>btn.innerHTML=orig,2000);
+  });
+}
+
+function doSave(){
+  const d=dateInput.value;
+  const blob=new Blob(['\uFEFF'+getLines().join('\n')],{type:'text/plain;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`便當填報_C據點_${d}.txt`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+</script>
