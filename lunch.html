@@ -6,11 +6,12 @@
 .header{text-align:center;margin-bottom:1.25rem}
 .header-title{font-size:22px;font-weight:500;color:#72243E;letter-spacing:.04em;margin-bottom:4px}
 .live-clock{position:absolute;top:1.25rem;right:1.25rem;font-size:14px;color:#993556;font-weight:500;font-family:'Courier New',monospace;letter-spacing:.5px;background:#FDF4F8;border:0.5px solid #F4C0D1;border-radius:20px;padding:4px 12px}
-.header-sub{font-size:13px;color:#993556;margin-bottom:10px}
-.supervisor-badge{display:inline-block;font-size:12px;font-weight:500;color:#72243E;background:#FDF4F8;border:0.5px solid #F4C0D1;border-radius:20px;padding:4px 14px;margin-bottom:10px}
+.header-sub{font-size:13px;color:#993556}
+.supervisor-badge{display:inline-block;font-size:12px;font-weight:500;color:#72243E;background:#FDF4F8;border:0.5px solid #F4C0D1;border-radius:20px;padding:4px 14px}
 .date-row{display:flex;align-items:center;justify-content:center;gap:8px}
 .date-row label{font-size:13px;color:#993556}
 .date-row input[type=date]{font-size:13px;padding:4px 10px;border-radius:20px;border:0.5px solid #F4C0D1;background:#FBEAF0;color:#72243E}
+.header-info-row{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;margin-top:6px;margin-bottom:8px}
 .sync-status{font-size:11px;margin-top:6px;display:flex;align-items:center;justify-content:center;gap:5px}
 .sync-status .dot{width:7px;height:7px;border-radius:50%;display:inline-block}
 .sync-status.ok{color:#3B6D11}
@@ -90,11 +91,13 @@
   <div class="live-clock" id="live-clock">00:00:00</div>
   <div class="header">
     <div class="header-title">平安診所 C 據點</div>
-    <div class="header-sub">每日便當填報</div>
-    <div class="supervisor-badge">👤 便當主管　蔡尚文 副區長</div>
-    <div class="date-row">
-      <label><i class="ti ti-calendar" aria-hidden="true" style="font-size:14px;vertical-align:-1px;margin-right:3px"></i>日期</label>
-      <input type="date" id="report-date">
+    <div class="header-info-row">
+      <div class="header-sub">每日便當填報</div>
+      <div class="supervisor-badge">👤 便當主管　蔡尚文 副區長</div>
+      <div class="date-row">
+        <label><i class="ti ti-calendar" aria-hidden="true" style="font-size:14px;vertical-align:-1px;margin-right:3px"></i>日期</label>
+        <input type="date" id="report-date">
+      </div>
     </div>
     <div class="sync-status off" id="sync-status"><span class="dot"></span><span id="sync-status-text">尚未連接雲端</span></div>
     <div class="board-lock-bar">
