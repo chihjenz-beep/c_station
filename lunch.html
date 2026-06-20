@@ -6,6 +6,8 @@
 .header{text-align:center;margin-bottom:1.25rem}
 .header-title{font-size:22px;font-weight:500;color:#72243E;letter-spacing:.04em;margin-bottom:4px}
 .live-clock{position:absolute;top:1.25rem;right:1.25rem;font-size:14px;color:#993556;font-weight:500;font-family:'Courier New',monospace;letter-spacing:.5px;background:#FDF4F8;border:0.5px solid #F4C0D1;border-radius:20px;padding:4px 12px}
+@keyframes clock-blink{0%,49%{opacity:1}50%,100%{opacity:.2}}
+.live-clock.blink{animation:clock-blink 1s steps(1) infinite;color:#A32D2D;border-color:#C0392B;background:#FBEAEA}
 .header-sub{font-size:13px;color:#993556}
 .supervisor-badge{display:inline-block;font-size:12px;font-weight:500;color:#72243E;background:#FDF4F8;border:0.5px solid #F4C0D1;border-radius:20px;padding:4px 14px}
 .date-row{display:flex;align-items:center;justify-content:center;gap:8px}
@@ -488,15 +490,36 @@ async function doExportExcel(scope){
   URL.revokeObjectURL(a.href);
 }
 
-dateInput.addEventListener('change',()=>loadDate(dateInput.value));
+dateInput.addEventListener('change',()=>{ autoLockTriggered=false; loadDate(dateInput.value); });
+
+const BLINK_AFTER_HOUR=9, BLINK_AFTER_MINUTE=30;   // 09:30 之後，若看板還沒鎖定就閃爍提醒
+const AUTO_LOCK_HOUR=9, AUTO_LOCK_MINUTE=40;        // 09:40 時間一到，無論有沒有人手動鎖定，系統強制鎖定看板
+let autoLockTriggered=false;
 
 function updateClock(){
   const now=new Date();
   const hh=String(now.getHours()).padStart(2,'0');
   const mm=String(now.getMinutes()).padStart(2,'0');
   const ss=String(now.getSeconds()).padStart(2,'0');
-  document.getElementById('live-clock').textContent=`${hh}:${mm}:${ss}`;
+  const clockEl=document.getElementById('live-clock');
+  clockEl.textContent=`${hh}:${mm}:${ss}`;
+  const pastBlinkStart=(now.getHours()>BLINK_AFTER_HOUR)||(now.getHours()===BLINK_AFTER_HOUR&&now.getMinutes()>=BLINK_AFTER_MINUTE);
+  clockEl.classList.toggle('blink', pastBlinkStart && !boardLocked);
+
+  const pastAutoLock=(now.getHours()>AUTO_LOCK_HOUR)||(now.getHours()===AUTO_LOCK_HOUR&&now.getMinutes()>=AUTO_LOCK_MINUTE);
+  if(pastAutoLock && !boardLocked && !autoLockTriggered){
+    autoLockTriggered=true;
+    triggerAutoLock();
+  }
 }
+
+async function triggerAutoLock(){
+  if(backendReady){
+    await gasPost({action:'autoLock',date:dateInput.value});
+  }
+  applyBoardLockUI(true);
+}
+
 updateClock();
 setInterval(updateClock,1000);
 
