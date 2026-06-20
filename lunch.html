@@ -472,7 +472,11 @@ async function doExportExcel(scope){
     alert(scope==='day'?'這一天目前沒有任何紀錄。':'這個月目前沒有任何紀錄。');
     return;
   }
-  rows=rows.slice().sort((a,b)=>a.date===b.date?a.site.localeCompare(b.site):a.date.localeCompare(b.date));
+  const siteOrder=Object.fromEntries(SITES.map((s,i)=>[s,i]));
+  rows=rows.slice().sort((a,b)=>{
+    if(a.date!==b.date) return a.date.localeCompare(b.date);
+    return (siteOrder[a.site]??999)-(siteOrder[b.site]??999);
+  });
   const cellStyle='font-size:12pt;font-family:Calibri,Arial,sans-serif;';
   let html=`<table border="1" style="border-collapse:collapse;${cellStyle}"><tr>`+
     `<th style="${cellStyle}">日期</th><th style="${cellStyle}">據點</th><th style="${cellStyle}">一般</th><th style="${cellStyle}">素食</th><th style="${cellStyle}">不豬</th><th style="${cellStyle}">便當合計</th><th style="${cellStyle}">湯份</th><th style="${cellStyle}">備註</th><th style="${cellStyle}">最後更新</th></tr>`;
