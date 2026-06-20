@@ -64,6 +64,14 @@
 .pin-btn:hover{background:#F4C0D1}
 .modal-cancel{font-size:13px;color:#993556;background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:20px}
 .modal-cancel:hover{background:#FDF4F8}
+.sync-status{font-size:11px;margin-top:6px;display:flex;align-items:center;justify-content:center;gap:5px}
+.sync-status .dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+.sync-status.ok{color:#3B6D11}
+.sync-status.ok .dot{background:#6FA52B}
+.sync-status.off{color:#993556}
+.sync-status.off .dot{background:#D4A0B5}
+.sync-status.err{color:#A32D2D}
+.sync-status.err .dot{background:#C0392B}
 </style>
 
 <div class="wrap">
@@ -77,6 +85,7 @@
       <label><i class="ti ti-calendar" aria-hidden="true" style="font-size:14px;vertical-align:-1px;margin-right:3px"></i>日期</label>
       <input type="date" id="report-date">
     </div>
+    <div class="sync-status off" id="sync-status"><span class="dot"></span><span id="sync-status-text">尚未連接雲端</span></div>
   </div>
 
   <div class="summary-bar">
@@ -92,6 +101,7 @@
   <div class="actions">
     <button class="btn" onclick="doCopy()"><i class="ti ti-copy" aria-hidden="true" style="font-size:15px;vertical-align:-2px;margin-right:4px"></i>複製摘要</button>
     <button class="btn btn-save" onclick="doSave()"><i class="ti ti-download" aria-hidden="true" style="font-size:15px;vertical-align:-2px;margin-right:4px"></i>存檔下載</button>
+    <button class="btn" onclick="doExportExcel()">📊 匯出 Excel</button>
     <button class="btn" onclick="handleClearAll()"><i class="ti ti-refresh" aria-hidden="true" style="font-size:15px;vertical-align:-2px;margin-right:4px"></i>清除所有</button>
   </div>
 
@@ -126,14 +136,27 @@
 
 <script>
 const SITES=['江山里','振寮里','永安里','興中里','岱江里','岑海里','新岑里','復興里','西安里','新店村','官和村','見龍里','考試里'];
+
+/* ===== 雲端後端設定 =====
+   部署 Apps Script 後，把 /exec 結尾的網址貼到下面這行取代預設值。
+   貼上正確網址前，此元件會自動以「本機模式」運作（不會報錯，但不同裝置間不會同步）。 */
+const GAS_URL='https://script.google.com/macros/s/AKfycbwowK8wt70W_N-UW0NMZOdduuz7FKc0Do0CVdz0ADzzz_eTv33IpHdffVnUAcKpvBBJ/exec';
+
+const backendReady=!!GAS_URL && GAS_URL.indexOf('請貼上')===-1 && GAS_URL.indexOf('exec')!==-1;
+const POLL_INTERVAL_MS=7000;
+const PUSH_DEBOUNCE_MS=700;
+
 const kanban=document.getElementById('kanban');
 const dateInput=document.getElementById('report-date');
 dateInput.value=new Date().toISOString().slice(0,10);
 
-const pins={};   // idx -> pinCode
-const locked={};  // idx -> bool
+const hasPin={};  // idx -> 後端是否已設定過密碼
+const locked={};  // idx -> bool（目前畫面顯示的鎖定狀態）
+const localPins={}; // idx -> pinCode（僅在尚未連接雲端時，本機暫用）
+const pushTimers={};
 let pinBuffer='';
 let modalCtx=null; // {mode, idx}
+let pinSubmitting=false;
 
 SITES.forEach((s,i)=>{
   const d=document.createElement('div');
@@ -186,7 +209,113 @@ function recalc(){
   document.getElementById('chip-s').textContent=ts;
   document.getElementById('chip-total').textContent=tn+tv+tp;
 }
-kanban.addEventListener('input',recalc);
+kanban.addEventListener('input',e=>{
+  recalc();
+  const row=e.target?.dataset?.row;
+  if(row!==undefined) schedulePush(parseInt(row));
+});
+
+/* ===== 雲端同步：GAS 通訊 ===== */
+async function gasGet(params){
+  if(!backendReady) return null;
+  try{
+    const qs=new URLSearchParams(params).toString();
+    const res=await fetch(`${GAS_URL}?${qs}`);
+    return await res.json();
+  }catch(err){
+    console.error('GAS GET 失敗',err);
+    setSyncStatus('err','連線失敗');
+    return null;
+  }
+}
+
+async function gasPost(body){
+  if(!backendReady) return null;
+  try{
+    const res=await fetch(GAS_URL,{
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify(body)
+    });
+    return await res.json();
+  }catch(err){
+    console.error('GAS POST 失敗',err);
+    setSyncStatus('err','連線失敗');
+    return null;
+  }
+}
+
+function setSyncStatus(kind,text){
+  const el=document.getElementById('sync-status');
+  el.className='sync-status '+kind;
+  document.getElementById('sync-status-text').textContent=text;
+}
+
+function schedulePush(i){
+  clearTimeout(pushTimers[i]);
+  pushTimers[i]=setTimeout(()=>pushSite(i),PUSH_DEBOUNCE_MS);
+}
+
+async function pushSite(i){
+  if(!backendReady) return;
+  const card=kanban.querySelector(`[data-idx="${i}"]`);
+  const n=g(card.querySelector('[data-col=n]'));
+  const v=g(card.querySelector('[data-col=v]'));
+  const p=g(card.querySelector('[data-col=p]'));
+  const s=g(card.querySelector('[data-col=s]'));
+  const res=await gasPost({action:'update',date:dateInput.value,site:SITES[i],n,v,p,s});
+  if(res&&res.ok){ setSyncStatus('ok','已同步'); }
+  else if(res&&res.error==='locked'){
+    // 已被別的裝置鎖定（競爭狀況），重新拉最新狀態
+    loadDate(dateInput.value);
+  }
+}
+
+async function loadDate(date){
+  if(!backendReady){ setSyncStatus('off','尚未連接雲端'); return; }
+  setSyncStatus('ok','讀取中…');
+  const res=await gasGet({action:'pull',date});
+  if(!res||!res.ok){ setSyncStatus('err','讀取失敗，稍後自動重試'); return; }
+  SITES.forEach((s,i)=>{ hasPin[i]=!!res.hasPin[s]; });
+  applyServerData(res.data,true);
+  setSyncStatus('ok','已連接雲端，即時同步中');
+}
+
+async function refreshFromServer(){
+  if(!backendReady) return;
+  const res=await gasGet({action:'pull',date:dateInput.value});
+  if(!res||!res.ok) return;
+  SITES.forEach((s,i)=>{ hasPin[i]=!!res.hasPin[s]; });
+  applyServerData(res.data,false);
+  setSyncStatus('ok','已連接雲端，即時同步中');
+}
+
+function applyServerData(dataObj,fullReplace){
+  SITES.forEach((s,i)=>{
+    const rec=dataObj[s];
+    const card=kanban.querySelector(`[data-idx="${i}"]`);
+    const inputs={
+      n:card.querySelector('[data-col=n]'),
+      v:card.querySelector('[data-col=v]'),
+      p:card.querySelector('[data-col=p]'),
+      s:card.querySelector('[data-col=s]')
+    };
+    const anyFocused=Object.values(inputs).some(el=>el===document.activeElement);
+    if(rec){
+      if(fullReplace||!anyFocused){
+        inputs.n.value=rec.n||'';
+        inputs.v.value=rec.v||'';
+        inputs.p.value=rec.p||'';
+        inputs.s.value=rec.s||'';
+      }
+      if(!!locked[i]!==!!rec.locked) applyLockUI(i,!!rec.locked);
+    } else if(fullReplace){
+      inputs.n.value='';inputs.v.value='';inputs.p.value='';inputs.s.value='';
+      if(locked[i]) applyLockUI(i,false);
+    }
+  });
+  recalc();
+}
 
 function applyLockUI(i,isLocked){
   locked[i]=isLocked;
@@ -199,10 +328,15 @@ function applyLockUI(i,isLocked){
   recalc();
 }
 
-function handleSiteLock(i){
+async function handleSiteLock(i){
   if(!locked[i]){
-    if(!pins[i]){
+    const pinExists=backendReady?hasPin[i]:!!localPins[i];
+    if(!pinExists){
       openModal('set',i,`設定「${SITES[i]}」鎖定密碼`,'請設定 4 位數字密碼');
+    } else if(backendReady){
+      const res=await gasPost({action:'lock',date:dateInput.value,site:SITES[i]});
+      if(res&&res.ok) applyLockUI(i,true);
+      else alert('鎖定失敗，請確認網路連線後再試一次。');
     } else {
       applyLockUI(i,true);
     }
@@ -211,17 +345,21 @@ function handleSiteLock(i){
   }
 }
 
-function handleClearAll(){
+async function handleClearAll(){
   const lockedList=SITES.filter((_,i)=>locked[i]);
   if(lockedList.length>0){
     alert(`有 ${lockedList.length} 個據點已鎖定，請先解鎖再清除。`);
     return;
   }
-  if(confirm('確定清除所有未鎖定據點的數量？')){
+  if(confirm('確定清除所有未鎖定據點的數量？'+(backendReady?'（雲端紀錄也會一併清除）':''))){
     kanban.querySelectorAll('input[type=number]').forEach(el=>{
       if(!el.disabled) el.value='';
     });
     recalc();
+    if(backendReady){
+      const tasks=SITES.map((siteName,i)=>gasPost({action:'update',date:dateInput.value,site:siteName,n:0,v:0,p:0,s:0}));
+      await Promise.all(tasks);
+    }
   }
 }
 
@@ -259,22 +397,49 @@ function pinDel(){
   if(pinBuffer.length>0){pinBuffer=pinBuffer.slice(0,-1);updateDots();}
 }
 
-function confirmPin(){
-  if(!modalCtx) return;
+async function confirmPin(){
+  if(!modalCtx||pinSubmitting) return;
   const {mode,idx}=modalCtx;
+  pinSubmitting=true;
   if(mode==='set'){
-    pins[idx]=pinBuffer;
-    closeModal();
-    applyLockUI(idx,true);
+    if(backendReady){
+      document.getElementById('pin-err').textContent='設定中…';
+      const setRes=await gasPost({action:'setpin',site:SITES[idx],pin:pinBuffer});
+      if(!setRes||!setRes.ok){
+        document.getElementById('pin-err').textContent='設定失敗，請檢查網路後再試';
+        pinBuffer='';updateDots();pinSubmitting=false;
+        return;
+      }
+      hasPin[idx]=true;
+      const lockRes=await gasPost({action:'lock',date:dateInput.value,site:SITES[idx]});
+      closeModal();
+      if(lockRes&&lockRes.ok) applyLockUI(idx,true);
+    } else {
+      localPins[idx]=pinBuffer;
+      hasPin[idx]=true;
+      closeModal();
+      applyLockUI(idx,true);
+    }
   } else if(mode==='unlock'){
-    if(pinBuffer===pins[idx]){
+    if(backendReady){
+      document.getElementById('pin-err').textContent='確認中…';
+      const res=await gasPost({action:'unlock',date:dateInput.value,site:SITES[idx],pin:pinBuffer});
+      if(res&&res.ok){
+        closeModal();
+        applyLockUI(idx,false);
+      } else {
+        document.getElementById('pin-err').textContent='密碼錯誤，請再試一次';
+        pinBuffer='';updateDots();
+      }
+    } else if(pinBuffer===localPins[idx]){
       closeModal();
       applyLockUI(idx,false);
     } else {
       document.getElementById('pin-err').textContent='密碼錯誤，請再試一次';
-      pinBuffer=''; updateDots();
+      pinBuffer='';updateDots();
     }
   }
+  pinSubmitting=false;
 }
 
 function getLines(){
@@ -316,5 +481,44 @@ function doSave(){
   a.download=`便當填報_C據點_${d}.txt`;
   a.click();
   URL.revokeObjectURL(a.href);
+}
+
+async function doExportExcel(){
+  if(!backendReady){
+    alert('尚未連接雲端後端，目前沒有歷史紀錄可匯出。請先完成 Google 試算表連接設定。');
+    return;
+  }
+  const btn=[...document.querySelectorAll('.btn')].find(b=>b.textContent.includes('匯出 Excel'));
+  const orig=btn?btn.innerHTML:null;
+  if(btn) btn.innerHTML='匯出中…';
+  const res=await gasGet({action:'pullAll'});
+  if(btn) btn.innerHTML=orig;
+  if(!res||!res.ok){
+    alert('無法取得雲端歷史資料，請確認網路連線後再試一次。');
+    return;
+  }
+  const rows=res.rows.slice().sort((a,b)=>a.date===b.date?a.site.localeCompare(b.site):a.date.localeCompare(b.date));
+  let html='<table border="1"><tr>'+
+    '<th>日期</th><th>據點</th><th>一般</th><th>素食</th><th>不豬</th><th>便當合計</th><th>湯份</th><th>鎖定狀態</th><th>最後更新</th></tr>';
+  rows.forEach(r=>{
+    const tot=(r.n||0)+(r.v||0)+(r.p||0);
+    html+=`<tr><td>${r.date}</td><td>${r.site}</td><td>${r.n||0}</td><td>${r.v||0}</td><td>${r.p||0}</td><td>${tot}</td><td>${r.s||0}</td><td>${r.locked?'鎖定':''}</td><td>${r.updated_at||''}</td></tr>`;
+  });
+  html+='</table>';
+  const blob=new Blob(['\ufeff'+html],{type:'application/vnd.ms-excel'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`便當填報_C據點_全部紀錄_${dateInput.value}.xls`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+dateInput.addEventListener('change',()=>loadDate(dateInput.value));
+
+if(backendReady){
+  loadDate(dateInput.value);
+  setInterval(refreshFromServer,POLL_INTERVAL_MS);
+} else {
+  setSyncStatus('off','尚未連接雲端（本機模式）');
 }
 </script>
