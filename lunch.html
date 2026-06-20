@@ -6,9 +6,24 @@
 .header{text-align:center;margin-bottom:1.25rem}
 .header-title{font-size:22px;font-weight:500;color:#72243E;letter-spacing:.04em;margin-bottom:4px}
 .header-sub{font-size:13px;color:#993556;margin-bottom:10px}
+.supervisor-badge{display:inline-block;font-size:12px;font-weight:500;color:#72243E;background:#FDF4F8;border:0.5px solid #F4C0D1;border-radius:20px;padding:4px 14px;margin-bottom:10px}
 .date-row{display:flex;align-items:center;justify-content:center;gap:8px}
 .date-row label{font-size:13px;color:#993556}
 .date-row input[type=date]{font-size:13px;padding:4px 10px;border-radius:20px;border:0.5px solid #F4C0D1;background:#FBEAF0;color:#72243E}
+.sync-status{font-size:11px;margin-top:6px;display:flex;align-items:center;justify-content:center;gap:5px}
+.sync-status .dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+.sync-status.ok{color:#3B6D11}
+.sync-status.ok .dot{background:#6FA52B}
+.sync-status.off{color:#993556}
+.sync-status.off .dot{background:#D4A0B5}
+.sync-status.err{color:#A32D2D}
+.sync-status.err .dot{background:#C0392B}
+.board-lock-bar{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:10px;padding-top:10px;border-top:0.5px solid #F4C0D1}
+.board-lock-bar .bl-status{font-size:13px;font-weight:500;color:#72243E}
+.btn-board{padding:6px 18px;border-radius:20px;border:0.5px solid #993556;background:#D4537E;color:#FBEAF0;cursor:pointer;font-size:13px;font-weight:500}
+.btn-board:hover{background:#993556}
+.btn-board.is-open{background:#FBEAF0;color:#72243E;border-color:#F4C0D1}
+.btn-board.is-open:hover{background:#F4C0D1}
 .summary-bar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:1.25rem}
 .sum-chip{background:#FDF4F8;border:0.5px solid #F4C0D1;border-radius:8px;padding:8px 14px;text-align:center;min-width:72px}
 .sum-chip.hero{background:#FBEAF0;border-color:#D4537E;min-width:88px}
@@ -26,9 +41,6 @@
 .site-card.has-data{border-color:#D4537E;background:#FFF5F8}
 .site-card.is-locked{border-color:#D4537E;background:#FFF0F5}
 .site-card .sname{font-size:13px;font-weight:500;color:#72243E;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:4px}
-.site-card .name-left{display:flex;align-items:center;gap:5px}
-.site-card .lock-icon{font-size:13px;color:#D4537E;cursor:pointer;padding:2px;border-radius:4px;line-height:1}
-.site-card .lock-icon:hover{background:#FDF4F8}
 .site-card .stotal{font-size:18px;font-weight:500;color:#72243E}
 .site-card .stotal.zero{font-size:14px;color:#D4A0B5;font-weight:400}
 .site-card .rows{display:flex;flex-direction:column;gap:4px}
@@ -64,14 +76,6 @@
 .pin-btn:hover{background:#F4C0D1}
 .modal-cancel{font-size:13px;color:#993556;background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:20px}
 .modal-cancel:hover{background:#FDF4F8}
-.sync-status{font-size:11px;margin-top:6px;display:flex;align-items:center;justify-content:center;gap:5px}
-.sync-status .dot{width:7px;height:7px;border-radius:50%;display:inline-block}
-.sync-status.ok{color:#3B6D11}
-.sync-status.ok .dot{background:#6FA52B}
-.sync-status.off{color:#993556}
-.sync-status.off .dot{background:#D4A0B5}
-.sync-status.err{color:#A32D2D}
-.sync-status.err .dot{background:#C0392B}
 </style>
 
 <div class="wrap">
@@ -81,11 +85,16 @@
   <div class="header">
     <div class="header-title">平安診所 C 據點</div>
     <div class="header-sub">每日便當填報</div>
+    <div class="supervisor-badge">👤 便當主管　蔡尚文 副區長</div>
     <div class="date-row">
       <label><i class="ti ti-calendar" aria-hidden="true" style="font-size:14px;vertical-align:-1px;margin-right:3px"></i>日期</label>
       <input type="date" id="report-date">
     </div>
     <div class="sync-status off" id="sync-status"><span class="dot"></span><span id="sync-status-text">尚未連接雲端</span></div>
+    <div class="board-lock-bar">
+      <span class="bl-status" id="board-lock-status">🔒 看板已鎖定</span>
+      <button class="btn-board" id="board-lock-btn" onclick="handleBoardLockToggle()">開放填寫</button>
+    </div>
   </div>
 
   <div class="summary-bar">
@@ -111,7 +120,7 @@
       <p id="modal-desc"></p>
       <div class="pin-dots" id="pin-dots">
         <div class="pin-dot" id="d0"></div><div class="pin-dot" id="d1"></div>
-        <div class="pin-dot" id="d2"></div><div class="pin-dot" id="d3"></div>
+        <div class="pin-dot" id="d2"></div>
       </div>
       <div class="pin-err" id="pin-err"></div>
       <div class="pin-pad">
@@ -150,12 +159,11 @@ const kanban=document.getElementById('kanban');
 const dateInput=document.getElementById('report-date');
 dateInput.value=new Date().toISOString().slice(0,10);
 
-const hasPin={};  // idx -> 後端是否已設定過密碼
-const locked={};  // idx -> bool（目前畫面顯示的鎖定狀態）
-const localPins={}; // idx -> pinCode（僅在尚未連接雲端時，本機暫用）
+let boardLocked=true; // 平時總是上鎖，預設值
+let localDayPin=null; // 僅在尚未連接雲端時，本機暫用今日密碼
 const pushTimers={};
 let pinBuffer='';
-let modalCtx=null; // {mode, idx}
+let modalCtx=null; // {mode}
 let pinSubmitting=false;
 
 SITES.forEach((s,i)=>{
@@ -164,10 +172,7 @@ SITES.forEach((s,i)=>{
   d.dataset.idx=i;
   d.innerHTML=`
     <div class="sname">
-      <div class="name-left">
-        <span class="lock-icon" id="lock-btn-${i}" onclick="handleSiteLock(${i})" title="鎖定/解鎖此據點">🔓</span>
-        <span>${s}</span>
-      </div>
+      <span>${s}</span>
       <span class="stotal zero" id="rt-${i}">—</span>
     </div>
     <div class="rows">
@@ -179,9 +184,9 @@ SITES.forEach((s,i)=>{
       <label><span class="badge bs">湯份</span></label>
       <input type="number" min="0" placeholder="0" data-col="s" data-row="${i}" style="max-width:60px">
     </div>
-    <div class="lock-overlay" id="overlay-${i}" onclick="handleSiteLock(${i})">
+    <div class="lock-overlay" id="overlay-${i}" onclick="handleBoardLockToggle()">
       <div class="lo-icon">🔒</div>
-      <div class="lo-text">點擊解鎖</div>
+      <div class="lo-text">點擊開放</div>
     </div>`;
   kanban.appendChild(d);
 });
@@ -200,7 +205,7 @@ function recalc(){
     const rtEl=document.getElementById(`rt-${i}`);
     rtEl.textContent=tot||'—';
     rtEl.className='stotal'+(tot?'':' zero');
-    card.classList.toggle('has-data',!!(tot||s)&&!locked[i]);
+    card.classList.toggle('has-data',!!(tot||s)&&!boardLocked);
     tn+=n;tv+=v;tp+=p;ts+=s;
   });
   document.getElementById('chip-n').textContent=tn;
@@ -257,7 +262,7 @@ function schedulePush(i){
 }
 
 async function pushSite(i){
-  if(!backendReady) return;
+  if(!backendReady||boardLocked) return;
   const card=kanban.querySelector(`[data-idx="${i}"]`);
   const n=g(card.querySelector('[data-col=n]'));
   const v=g(card.querySelector('[data-col=v]'));
@@ -266,18 +271,18 @@ async function pushSite(i){
   const res=await gasPost({action:'update',date:dateInput.value,site:SITES[i],n,v,p,s});
   if(res&&res.ok){ setSyncStatus('ok','已同步'); }
   else if(res&&res.error==='locked'){
-    // 已被別的裝置鎖定（競爭狀況），重新拉最新狀態
+    // 看板已被鎖定（競爭狀況），重新拉最新狀態
     loadDate(dateInput.value);
   }
 }
 
 async function loadDate(date){
-  if(!backendReady){ setSyncStatus('off','尚未連接雲端'); return; }
+  if(!backendReady){ setSyncStatus('off','尚未連接雲端'); applyBoardLockUI(true); return; }
   setSyncStatus('ok','讀取中…');
   const res=await gasGet({action:'pull',date});
   if(!res||!res.ok){ setSyncStatus('err','讀取失敗，稍後自動重試'); return; }
-  SITES.forEach((s,i)=>{ hasPin[i]=!!res.hasPin[s]; });
   applyServerData(res.data,true);
+  applyBoardLockUI(!!res.boardLocked);
   setSyncStatus('ok','已連接雲端，即時同步中');
 }
 
@@ -285,8 +290,8 @@ async function refreshFromServer(){
   if(!backendReady) return;
   const res=await gasGet({action:'pull',date:dateInput.value});
   if(!res||!res.ok) return;
-  SITES.forEach((s,i)=>{ hasPin[i]=!!res.hasPin[s]; });
   applyServerData(res.data,false);
+  if(!!boardLocked!==!!res.boardLocked) applyBoardLockUI(!!res.boardLocked);
   setSyncStatus('ok','已連接雲端，即時同步中');
 }
 
@@ -308,63 +313,53 @@ function applyServerData(dataObj,fullReplace){
         inputs.p.value=rec.p||'';
         inputs.s.value=rec.s||'';
       }
-      if(!!locked[i]!==!!rec.locked) applyLockUI(i,!!rec.locked);
     } else if(fullReplace){
       inputs.n.value='';inputs.v.value='';inputs.p.value='';inputs.s.value='';
-      if(locked[i]) applyLockUI(i,false);
     }
   });
   recalc();
 }
 
-function applyLockUI(i,isLocked){
-  locked[i]=isLocked;
-  const card=kanban.querySelector(`[data-idx="${i}"]`);
-  card.classList.toggle('is-locked',isLocked);
-  card.querySelectorAll('input').forEach(inp=>inp.disabled=isLocked);
-  document.getElementById(`overlay-${i}`).classList.toggle('show',isLocked);
-  const iconEl=document.getElementById(`lock-btn-${i}`);
-  iconEl.textContent=isLocked?'🔒':'🔓';
+function applyBoardLockUI(isLocked){
+  boardLocked=isLocked;
+  SITES.forEach((_,i)=>{
+    const card=kanban.querySelector(`[data-idx="${i}"]`);
+    card.classList.toggle('is-locked',isLocked);
+    card.querySelectorAll('input').forEach(inp=>inp.disabled=isLocked);
+    document.getElementById(`overlay-${i}`).classList.toggle('show',isLocked);
+  });
+  document.getElementById('board-lock-status').textContent=isLocked?'🔒 看板已鎖定':'🔓 看板已開放';
+  const btn=document.getElementById('board-lock-btn');
+  btn.textContent=isLocked?'開放填寫':'鎖定看板';
+  btn.classList.toggle('is-open',!isLocked);
   recalc();
 }
 
-async function handleSiteLock(i){
-  if(!locked[i]){
-    const pinExists=backendReady?hasPin[i]:!!localPins[i];
-    if(!pinExists){
-      openModal('set',i,`設定「${SITES[i]}」鎖定密碼`,'請設定 4 位數字密碼');
-    } else if(backendReady){
-      const res=await gasPost({action:'lock',date:dateInput.value,site:SITES[i]});
-      if(res&&res.ok) applyLockUI(i,true);
-      else alert('鎖定失敗，請確認網路連線後再試一次。');
-    } else {
-      applyLockUI(i,true);
-    }
+function handleBoardLockToggle(){
+  if(boardLocked){
+    openModal('open','設定今日密碼','請任選 3 位數字密碼，稍後用同一組密碼鎖定看板');
   } else {
-    openModal('unlock',i,`解鎖「${SITES[i]}」`,'請輸入 4 位數字密碼');
+    openModal('close','鎖定看板','請輸入今日密碼以鎖定看板');
   }
 }
 
 async function handleClearAll(){
-  const lockedList=SITES.filter((_,i)=>locked[i]);
-  if(lockedList.length>0){
-    alert(`有 ${lockedList.length} 個據點已鎖定，請先解鎖再清除。`);
+  if(boardLocked){
+    alert('看板目前已鎖定，請先開放填寫後再清除。');
     return;
   }
-  if(confirm('確定清除所有未鎖定據點的數量？'+(backendReady?'（雲端紀錄也會一併清除）':''))){
-    kanban.querySelectorAll('input[type=number]').forEach(el=>{
-      if(!el.disabled) el.value='';
-    });
+  if(confirm('確定清除所有據點的數量？'+(backendReady?'（雲端紀錄也會一併清除）':''))){
+    kanban.querySelectorAll('input[type=number]').forEach(el=>{ el.value=''; });
     recalc();
     if(backendReady){
-      const tasks=SITES.map((siteName,i)=>gasPost({action:'update',date:dateInput.value,site:siteName,n:0,v:0,p:0,s:0}));
+      const tasks=SITES.map(siteName=>gasPost({action:'update',date:dateInput.value,site:siteName,n:0,v:0,p:0,s:0}));
       await Promise.all(tasks);
     }
   }
 }
 
-function openModal(mode,idx,title,desc){
-  modalCtx={mode,idx};
+function openModal(mode,title,desc){
+  modalCtx={mode};
   pinBuffer='';
   updateDots();
   document.getElementById('modal-title').textContent=title;
@@ -382,15 +377,15 @@ function closeModal(){
 }
 
 function updateDots(){
-  for(let i=0;i<4;i++) document.getElementById('d'+i).classList.toggle('filled',i<pinBuffer.length);
+  for(let i=0;i<3;i++) document.getElementById('d'+i).classList.toggle('filled',i<pinBuffer.length);
 }
 
 function pinInput(n){
-  if(pinBuffer.length>=4) return;
+  if(pinBuffer.length>=3) return;
   pinBuffer+=n;
   updateDots();
   document.getElementById('pin-err').textContent='';
-  if(pinBuffer.length===4) setTimeout(confirmPin,120);
+  if(pinBuffer.length===3) setTimeout(confirmPin,120);
 }
 
 function pinDel(){
@@ -399,41 +394,38 @@ function pinDel(){
 
 async function confirmPin(){
   if(!modalCtx||pinSubmitting) return;
-  const {mode,idx}=modalCtx;
+  const {mode}=modalCtx;
   pinSubmitting=true;
-  if(mode==='set'){
+  if(mode==='open'){
     if(backendReady){
-      document.getElementById('pin-err').textContent='設定中…';
-      const setRes=await gasPost({action:'setpin',site:SITES[idx],pin:pinBuffer});
-      if(!setRes||!setRes.ok){
-        document.getElementById('pin-err').textContent='設定失敗，請檢查網路後再試';
-        pinBuffer='';updateDots();pinSubmitting=false;
-        return;
-      }
-      hasPin[idx]=true;
-      const lockRes=await gasPost({action:'lock',date:dateInput.value,site:SITES[idx]});
-      closeModal();
-      if(lockRes&&lockRes.ok) applyLockUI(idx,true);
-    } else {
-      localPins[idx]=pinBuffer;
-      hasPin[idx]=true;
-      closeModal();
-      applyLockUI(idx,true);
-    }
-  } else if(mode==='unlock'){
-    if(backendReady){
-      document.getElementById('pin-err').textContent='確認中…';
-      const res=await gasPost({action:'unlock',date:dateInput.value,site:SITES[idx],pin:pinBuffer});
+      document.getElementById('pin-err').textContent='開放中…';
+      const res=await gasPost({action:'boardOpen',date:dateInput.value,pin:pinBuffer});
       if(res&&res.ok){
         closeModal();
-        applyLockUI(idx,false);
+        applyBoardLockUI(false);
+      } else {
+        document.getElementById('pin-err').textContent='開放失敗，請檢查網路後再試';
+        pinBuffer='';updateDots();
+      }
+    } else {
+      localDayPin=pinBuffer;
+      closeModal();
+      applyBoardLockUI(false);
+    }
+  } else if(mode==='close'){
+    if(backendReady){
+      document.getElementById('pin-err').textContent='確認中…';
+      const res=await gasPost({action:'boardLock',date:dateInput.value,pin:pinBuffer});
+      if(res&&res.ok){
+        closeModal();
+        applyBoardLockUI(true);
       } else {
         document.getElementById('pin-err').textContent='密碼錯誤，請再試一次';
         pinBuffer='';updateDots();
       }
-    } else if(pinBuffer===localPins[idx]){
+    } else if(pinBuffer===localDayPin){
       closeModal();
-      applyLockUI(idx,false);
+      applyBoardLockUI(true);
     } else {
       document.getElementById('pin-err').textContent='密碼錯誤，請再試一次';
       pinBuffer='';updateDots();
@@ -444,7 +436,7 @@ async function confirmPin(){
 
 function getLines(){
   const d=dateInput.value;
-  let lines=[`平安診所C據點便當填報 ${d}`,'','據點\t一般\t素食\t不豬\t便當合計\t湯'];
+  let lines=[`平安診所C據點便當填報 ${d}`,`看板狀態：${boardLocked?'已鎖定':'已開放'}`,'','據點\t一般\t素食\t不豬\t便當合計\t湯'];
   SITES.forEach((s,i)=>{
     const card=kanban.querySelector(`[data-idx="${i}"]`);
     const n=g(card.querySelector('[data-col=n]'));
@@ -452,8 +444,7 @@ function getLines(){
     const p=g(card.querySelector('[data-col=p]'));
     const s2=g(card.querySelector('[data-col=s]'));
     if(n||v||p||s2){
-      const lockMark=locked[i]?'🔒':'';
-      lines.push(`${s}${lockMark}\t${n}\t${v}\t${p}\t${n+v+p}\t${s2}`);
+      lines.push(`${s}\t${n}\t${v}\t${p}\t${n+v+p}\t${s2}`);
     }
   });
   const tn=parseInt(document.getElementById('chip-n').textContent)||0;
@@ -499,10 +490,10 @@ async function doExportExcel(){
   }
   const rows=res.rows.slice().sort((a,b)=>a.date===b.date?a.site.localeCompare(b.site):a.date.localeCompare(b.date));
   let html='<table border="1"><tr>'+
-    '<th>日期</th><th>據點</th><th>一般</th><th>素食</th><th>不豬</th><th>便當合計</th><th>湯份</th><th>鎖定狀態</th><th>最後更新</th></tr>';
+    '<th>日期</th><th>據點</th><th>一般</th><th>素食</th><th>不豬</th><th>便當合計</th><th>湯份</th><th>最後更新</th></tr>';
   rows.forEach(r=>{
     const tot=(r.n||0)+(r.v||0)+(r.p||0);
-    html+=`<tr><td>${r.date}</td><td>${r.site}</td><td>${r.n||0}</td><td>${r.v||0}</td><td>${r.p||0}</td><td>${tot}</td><td>${r.s||0}</td><td>${r.locked?'鎖定':''}</td><td>${r.updated_at||''}</td></tr>`;
+    html+=`<tr><td>${r.date}</td><td>${r.site}</td><td>${r.n||0}</td><td>${r.v||0}</td><td>${r.p||0}</td><td>${tot}</td><td>${r.s||0}</td><td>${r.updated_at||''}</td></tr>`;
   });
   html+='</table>';
   const blob=new Blob(['\ufeff'+html],{type:'application/vnd.ms-excel'});
@@ -514,6 +505,8 @@ async function doExportExcel(){
 }
 
 dateInput.addEventListener('change',()=>loadDate(dateInput.value));
+
+applyBoardLockUI(true); // 預設總是鎖定，等雲端資料回來後再校正
 
 if(backendReady){
   loadDate(dateInput.value);
