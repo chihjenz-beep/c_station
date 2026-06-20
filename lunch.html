@@ -5,6 +5,7 @@
 .card-outer{background:var(--color-background-primary);border-radius:var(--border-radius-lg);border:0.5px solid #F4C0D1;padding:1.25rem 1.25rem 1rem;position:relative}
 .header{text-align:center;margin-bottom:1.25rem}
 .header-title{font-size:22px;font-weight:500;color:#72243E;letter-spacing:.04em;margin-bottom:4px}
+.live-clock{position:absolute;top:1.25rem;right:1.25rem;font-size:14px;color:#993556;font-weight:500;font-family:'Courier New',monospace;letter-spacing:.5px;background:#FDF4F8;border:0.5px solid #F4C0D1;border-radius:20px;padding:4px 12px}
 .header-sub{font-size:13px;color:#993556;margin-bottom:10px}
 .supervisor-badge{display:inline-block;font-size:12px;font-weight:500;color:#72243E;background:#FDF4F8;border:0.5px solid #F4C0D1;border-radius:20px;padding:4px 14px;margin-bottom:10px}
 .date-row{display:flex;align-items:center;justify-content:center;gap:8px}
@@ -53,6 +54,11 @@
 .site-card input[type=number]:disabled{color:#D4A0B5;background:transparent;border-color:#F4C0D1}
 .site-card .soup-row{margin-top:6px;padding-top:6px;border-top:0.5px solid #F4C0D1;display:flex;align-items:center;justify-content:space-between;gap:4px}
 .site-card .soup-row label{font-size:11px;color:#3C3489}
+.site-card .remark-row{margin-top:6px}
+.site-card .remark-row input[type=text]{width:100%;border:0.5px solid #F4C0D1;border-radius:5px;padding:4px 6px;font-size:11px;background:transparent;color:#3C2030}
+.site-card .remark-row input[type=text]:focus{outline:none;border-color:#D4537E;box-shadow:0 0 0 2px rgba(212,83,126,.12)}
+.site-card .remark-row input[type=text]:disabled{color:#D4A0B5;background:transparent;border-color:#F4C0D1}
+.site-card .remark-row input[type=text]::placeholder{color:#E3B8C8}
 .lock-overlay{display:none;position:absolute;inset:0;border-radius:8px;cursor:pointer}
 .lock-overlay.show{display:block}
 .lock-overlay .lo-badge{position:absolute;top:-9px;left:-9px;width:24px;height:24px;border-radius:50%;background:#FBEAF0;border:1.5px solid #D4537E;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 1px 4px rgba(114,36,62,.25)}
@@ -81,6 +87,7 @@
 <h2 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">平安診所C據點每日便當填報看板</h2>
 <div class="card-outer" id="card-outer">
 
+  <div class="live-clock" id="live-clock">00:00:00</div>
   <div class="header">
     <div class="header-title">平安診所 C 據點</div>
     <div class="header-sub">每日便當填報</div>
@@ -142,7 +149,7 @@
 </div>
 
 <script>
-const SITES=['江山里','振寮里','永安里','興中里','岱江里','岑海里','新岑里','復興里','西安里','新店村','官和村','見龍里','考試里'];
+const SITES=['北華村','新店村','官和村','復興里','新岑里','興中里','岱江里','岑海里','西安里','振寮里','考試里','江山里','見龍里','永安里'];
 
 /* ===== 雲端後端設定 =====
    部署 Apps Script 後，把 /exec 結尾的網址貼到下面這行取代預設值。
@@ -182,6 +189,9 @@ SITES.forEach((s,i)=>{
       <label><span class="badge bs">湯份</span></label>
       <input type="number" min="0" placeholder="0" data-col="s" data-row="${i}" style="max-width:60px">
     </div>
+    <div class="remark-row">
+      <input type="text" placeholder="備註（選填）" data-col="remark" data-row="${i}" maxlength="200">
+    </div>
     <div class="lock-overlay" id="overlay-${i}" onclick="handleBoardLockToggle()">
       <div class="lo-badge">🔒</div>
     </div>`;
@@ -198,11 +208,12 @@ function recalc(){
     const v=g(card.querySelector('[data-col=v]'));
     const p=g(card.querySelector('[data-col=p]'));
     const s=g(card.querySelector('[data-col=s]'));
+    const remark=card.querySelector('[data-col=remark]').value.trim();
     const tot=n+v+p;
     const rtEl=document.getElementById(`rt-${i}`);
     rtEl.textContent=tot||'—';
     rtEl.className='stotal'+(tot?'':' zero');
-    card.classList.toggle('has-data',!!(tot||s)&&!boardLocked);
+    card.classList.toggle('has-data',!!(tot||s||remark)&&!boardLocked);
     tn+=n;tv+=v;tp+=p;ts+=s;
   });
   document.getElementById('chip-n').textContent=tn;
@@ -265,7 +276,8 @@ async function pushSite(i){
   const v=g(card.querySelector('[data-col=v]'));
   const p=g(card.querySelector('[data-col=p]'));
   const s=g(card.querySelector('[data-col=s]'));
-  const res=await gasPost({action:'update',date:dateInput.value,site:SITES[i],n,v,p,s});
+  const remark=card.querySelector('[data-col=remark]').value;
+  const res=await gasPost({action:'update',date:dateInput.value,site:SITES[i],n,v,p,s,remark});
   if(res&&res.ok){ setSyncStatus('ok','已同步'); }
   else if(res&&res.error==='locked'){
     // 看板已被鎖定（競爭狀況），重新拉最新狀態
@@ -300,7 +312,8 @@ function applyServerData(dataObj,fullReplace){
       n:card.querySelector('[data-col=n]'),
       v:card.querySelector('[data-col=v]'),
       p:card.querySelector('[data-col=p]'),
-      s:card.querySelector('[data-col=s]')
+      s:card.querySelector('[data-col=s]'),
+      remark:card.querySelector('[data-col=remark]')
     };
     const anyFocused=Object.values(inputs).some(el=>el===document.activeElement);
     if(rec){
@@ -309,9 +322,10 @@ function applyServerData(dataObj,fullReplace){
         inputs.v.value=rec.v||'';
         inputs.p.value=rec.p||'';
         inputs.s.value=rec.s||'';
+        inputs.remark.value=rec.remark||'';
       }
     } else if(fullReplace){
-      inputs.n.value='';inputs.v.value='';inputs.p.value='';inputs.s.value='';
+      inputs.n.value='';inputs.v.value='';inputs.p.value='';inputs.s.value='';inputs.remark.value='';
     }
   });
   recalc();
@@ -345,11 +359,11 @@ async function handleClearAll(){
     alert('看板目前已鎖定，請先開放填寫後再清除。');
     return;
   }
-  if(confirm('確定清除所有據點的數量？'+(backendReady?'（雲端紀錄也會一併清除）':''))){
-    kanban.querySelectorAll('input[type=number]').forEach(el=>{ el.value=''; });
+  if(confirm('確定清除所有據點的數量與備註？'+(backendReady?'（雲端紀錄也會一併清除）':''))){
+    kanban.querySelectorAll('input[type=number],input[type=text]').forEach(el=>{ el.value=''; });
     recalc();
     if(backendReady){
-      const tasks=SITES.map(siteName=>gasPost({action:'update',date:dateInput.value,site:siteName,n:0,v:0,p:0,s:0}));
+      const tasks=SITES.map(siteName=>gasPost({action:'update',date:dateInput.value,site:siteName,n:0,v:0,p:0,s:0,remark:''}));
       await Promise.all(tasks);
     }
   }
@@ -454,11 +468,12 @@ async function doExportExcel(scope){
     return;
   }
   rows=rows.slice().sort((a,b)=>a.date===b.date?a.site.localeCompare(b.site):a.date.localeCompare(b.date));
-  let html='<table border="1"><tr>'+
-    '<th>日期</th><th>據點</th><th>一般</th><th>素食</th><th>不豬</th><th>便當合計</th><th>湯份</th><th>最後更新</th></tr>';
+  const cellStyle='font-size:12pt;font-family:Calibri,Arial,sans-serif;';
+  let html=`<table border="1" style="border-collapse:collapse;${cellStyle}"><tr>`+
+    `<th style="${cellStyle}">日期</th><th style="${cellStyle}">據點</th><th style="${cellStyle}">一般</th><th style="${cellStyle}">素食</th><th style="${cellStyle}">不豬</th><th style="${cellStyle}">便當合計</th><th style="${cellStyle}">湯份</th><th style="${cellStyle}">備註</th><th style="${cellStyle}">最後更新</th></tr>`;
   rows.forEach(r=>{
     const tot=(r.n||0)+(r.v||0)+(r.p||0);
-    html+=`<tr><td>${r.date}</td><td>${r.site}</td><td>${r.n||0}</td><td>${r.v||0}</td><td>${r.p||0}</td><td>${tot}</td><td>${r.s||0}</td><td>${r.updated_at||''}</td></tr>`;
+    html+=`<tr><td style="${cellStyle}">${r.date}</td><td style="${cellStyle}">${r.site}</td><td style="${cellStyle}">${r.n||0}</td><td style="${cellStyle}">${r.v||0}</td><td style="${cellStyle}">${r.p||0}</td><td style="${cellStyle}">${tot}</td><td style="${cellStyle}">${r.s||0}</td><td style="${cellStyle}">${r.remark||''}</td><td style="${cellStyle}">${r.updated_at||''}</td></tr>`;
   });
   html+='</table>';
   const blob=new Blob(['\ufeff'+html],{type:'application/vnd.ms-excel'});
@@ -471,6 +486,16 @@ async function doExportExcel(scope){
 }
 
 dateInput.addEventListener('change',()=>loadDate(dateInput.value));
+
+function updateClock(){
+  const now=new Date();
+  const hh=String(now.getHours()).padStart(2,'0');
+  const mm=String(now.getMinutes()).padStart(2,'0');
+  const ss=String(now.getSeconds()).padStart(2,'0');
+  document.getElementById('live-clock').textContent=`${hh}:${mm}:${ss}`;
+}
+updateClock();
+setInterval(updateClock,1000);
 
 applyBoardLockUI(true); // 預設總是鎖定，等雲端資料回來後再校正
 
