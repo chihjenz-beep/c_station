@@ -53,10 +53,9 @@
 .site-card input[type=number]:disabled{color:#D4A0B5;background:transparent;border-color:#F4C0D1}
 .site-card .soup-row{margin-top:6px;padding-top:6px;border-top:0.5px solid #F4C0D1;display:flex;align-items:center;justify-content:space-between;gap:4px}
 .site-card .soup-row label{font-size:11px;color:#3C3489}
-.lock-overlay{display:none;position:absolute;inset:0;border-radius:8px;background:rgba(251,234,240,.72);align-items:center;justify-content:center;flex-direction:column;gap:6px;cursor:pointer}
-.lock-overlay.show{display:flex}
-.lock-overlay .lo-icon{font-size:26px;color:#D4537E}
-.lock-overlay .lo-text{font-size:12px;color:#72243E;font-weight:500}
+.lock-overlay{display:none;position:absolute;inset:0;border-radius:8px;cursor:pointer}
+.lock-overlay.show{display:block}
+.lock-overlay .lo-badge{position:absolute;top:-9px;left:-9px;width:24px;height:24px;border-radius:50%;background:#FBEAF0;border:1.5px solid #D4537E;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 1px 4px rgba(114,36,62,.25)}
 .actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:.5rem}
 .btn{padding:7px 18px;border-radius:20px;border:0.5px solid #F4C0D1;background:#FBEAF0;cursor:pointer;font-size:13px;color:#72243E;font-weight:500}
 .btn:hover{background:#F4C0D1}
@@ -108,9 +107,8 @@
   <div class="kanban" id="kanban"></div>
 
   <div class="actions">
-    <button class="btn" onclick="doCopy()"><i class="ti ti-copy" aria-hidden="true" style="font-size:15px;vertical-align:-2px;margin-right:4px"></i>複製摘要</button>
-    <button class="btn btn-save" onclick="doSave()"><i class="ti ti-download" aria-hidden="true" style="font-size:15px;vertical-align:-2px;margin-right:4px"></i>存檔下載</button>
-    <button class="btn" onclick="doExportExcel()">📊 匯出 Excel</button>
+    <button class="btn" onclick="doExportExcel('day')">📊 匯出當日</button>
+    <button class="btn" onclick="doExportExcel('month')">📊 匯出整月</button>
     <button class="btn" onclick="handleClearAll()"><i class="ti ti-refresh" aria-hidden="true" style="font-size:15px;vertical-align:-2px;margin-right:4px"></i>清除所有</button>
   </div>
 
@@ -185,8 +183,7 @@ SITES.forEach((s,i)=>{
       <input type="number" min="0" placeholder="0" data-col="s" data-row="${i}" style="max-width:60px">
     </div>
     <div class="lock-overlay" id="overlay-${i}" onclick="handleBoardLockToggle()">
-      <div class="lo-icon">🔒</div>
-      <div class="lo-text">點擊開放</div>
+      <div class="lo-badge">🔒</div>
     </div>`;
   kanban.appendChild(d);
 });
@@ -434,52 +431,13 @@ async function confirmPin(){
   pinSubmitting=false;
 }
 
-function getLines(){
-  const d=dateInput.value;
-  let lines=[`平安診所C據點便當填報 ${d}`,`看板狀態：${boardLocked?'已鎖定':'已開放'}`,'','據點\t一般\t素食\t不豬\t便當合計\t湯'];
-  SITES.forEach((s,i)=>{
-    const card=kanban.querySelector(`[data-idx="${i}"]`);
-    const n=g(card.querySelector('[data-col=n]'));
-    const v=g(card.querySelector('[data-col=v]'));
-    const p=g(card.querySelector('[data-col=p]'));
-    const s2=g(card.querySelector('[data-col=s]'));
-    if(n||v||p||s2){
-      lines.push(`${s}\t${n}\t${v}\t${p}\t${n+v+p}\t${s2}`);
-    }
-  });
-  const tn=parseInt(document.getElementById('chip-n').textContent)||0;
-  const tv=parseInt(document.getElementById('chip-v').textContent)||0;
-  const tp=parseInt(document.getElementById('chip-p').textContent)||0;
-  const ts=parseInt(document.getElementById('chip-s').textContent)||0;
-  lines.push('',`合計\t${tn}\t${tv}\t${tp}\t${tn+tv+tp}\t${ts}`);
-  return lines;
-}
-
-function doCopy(){
-  navigator.clipboard.writeText(getLines().join('\n')).then(()=>{
-    const btn=document.querySelectorAll('.btn')[0];
-    const orig=btn.innerHTML;
-    btn.innerHTML='<i class="ti ti-check" style="font-size:15px;vertical-align:-2px;margin-right:4px" aria-hidden="true"></i>已複製';
-    setTimeout(()=>btn.innerHTML=orig,2000);
-  });
-}
-
-function doSave(){
-  const d=dateInput.value;
-  const blob=new Blob(['\uFEFF'+getLines().join('\n')],{type:'text/plain;charset=utf-8'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`便當填報_C據點_${d}.txt`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
-async function doExportExcel(){
+async function doExportExcel(scope){
   if(!backendReady){
     alert('尚未連接雲端後端，目前沒有歷史紀錄可匯出。請先完成 Google 試算表連接設定。');
     return;
   }
-  const btn=[...document.querySelectorAll('.btn')].find(b=>b.textContent.includes('匯出 Excel'));
+  const label=scope==='day'?'匯出當日':'匯出整月';
+  const btn=[...document.querySelectorAll('.btn')].find(b=>b.textContent.includes(label));
   const orig=btn?btn.innerHTML:null;
   if(btn) btn.innerHTML='匯出中…';
   const res=await gasGet({action:'pullAll'});
@@ -488,7 +446,14 @@ async function doExportExcel(){
     alert('無法取得雲端歷史資料，請確認網路連線後再試一次。');
     return;
   }
-  const rows=res.rows.slice().sort((a,b)=>a.date===b.date?a.site.localeCompare(b.site):a.date.localeCompare(b.date));
+  const curDate=dateInput.value;         // yyyy-mm-dd
+  const curMonth=curDate.slice(0,7);     // yyyy-mm
+  let rows=res.rows.filter(r=>scope==='day'?r.date===curDate:r.date.slice(0,7)===curMonth);
+  if(rows.length===0){
+    alert(scope==='day'?'這一天目前沒有任何紀錄。':'這個月目前沒有任何紀錄。');
+    return;
+  }
+  rows=rows.slice().sort((a,b)=>a.date===b.date?a.site.localeCompare(b.site):a.date.localeCompare(b.date));
   let html='<table border="1"><tr>'+
     '<th>日期</th><th>據點</th><th>一般</th><th>素食</th><th>不豬</th><th>便當合計</th><th>湯份</th><th>最後更新</th></tr>';
   rows.forEach(r=>{
@@ -499,7 +464,8 @@ async function doExportExcel(){
   const blob=new Blob(['\ufeff'+html],{type:'application/vnd.ms-excel'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download=`便當填報_C據點_全部紀錄_${dateInput.value}.xls`;
+  const suffix=scope==='day'?`當日_${curDate}`:`整月_${curMonth}`;
+  a.download=`便當填報_C據點_${suffix}.xls`;
   a.click();
   URL.revokeObjectURL(a.href);
 }
