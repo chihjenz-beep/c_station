@@ -493,7 +493,8 @@ async function doExportExcel(scope){
 dateInput.addEventListener('change',()=>{ autoLockTriggered=false; loadDate(dateInput.value); });
 
 const BLINK_AFTER_HOUR=9, BLINK_AFTER_MINUTE=30;   // 09:30 之後，若看板還沒鎖定就閃爍提醒
-const AUTO_LOCK_HOUR=9, AUTO_LOCK_MINUTE=40;        // 09:40 時間一到，無論有沒有人手動鎖定，系統強制鎖定看板
+const AUTO_LOCK_HOUR=9, AUTO_LOCK_MINUTE=40;        // 09:40 時間一到，系統強制鎖定看板
+const AUTO_LOCK_GRACE_MIN=30;                       // 09:40~10:10 這段時間內才會檢查觸發自動鎖定
 let autoLockTriggered=false;
 
 function updateClock(){
@@ -503,11 +504,19 @@ function updateClock(){
   const ss=String(now.getSeconds()).padStart(2,'0');
   const clockEl=document.getElementById('live-clock');
   clockEl.textContent=`${hh}:${mm}:${ss}`;
-  const pastBlinkStart=(now.getHours()>BLINK_AFTER_HOUR)||(now.getHours()===BLINK_AFTER_HOUR&&now.getMinutes()>=BLINK_AFTER_MINUTE);
-  clockEl.classList.toggle('blink', pastBlinkStart && !boardLocked);
 
-  const pastAutoLock=(now.getHours()>AUTO_LOCK_HOUR)||(now.getHours()===AUTO_LOCK_HOUR&&now.getMinutes()>=AUTO_LOCK_MINUTE);
-  if(pastAutoLock && !boardLocked && !autoLockTriggered){
+  const nowMin=now.getHours()*60+now.getMinutes();
+  const blinkStartMin=BLINK_AFTER_HOUR*60+BLINK_AFTER_MINUTE;
+  const autoLockMin=AUTO_LOCK_HOUR*60+AUTO_LOCK_MINUTE;
+
+  // 只在 09:30~09:40 這個區間內閃爍；過了 09:40 即使看板之後又被重新打開，也不會再閃
+  const inBlinkWindow=nowMin>=blinkStartMin && nowMin<autoLockMin;
+  clockEl.classList.toggle('blink', inBlinkWindow && !boardLocked);
+
+  // 自動鎖定只在 09:40 起算的 30 分鐘寬限期內檢查觸發一次；
+  // 過了這段寬限期，就算看板之後在下午/晚上又被重新打開，系統不會再強制鎖回去
+  const inAutoLockWindow=nowMin>=autoLockMin && nowMin<(autoLockMin+AUTO_LOCK_GRACE_MIN);
+  if(inAutoLockWindow && !boardLocked && !autoLockTriggered){
     autoLockTriggered=true;
     triggerAutoLock();
   }
