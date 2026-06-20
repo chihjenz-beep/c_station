@@ -1,0 +1,483 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{padding:1rem 0 1.5rem}
+.card-outer{background:var(--color-background-primary);border-radius:var(--border-radius-lg);border:0.5px solid #F4C0D1;padding:1.25rem 1.25rem 1rem;position:relative}
+.header{text-align:center;margin-bottom:1.25rem}
+.header-title{font-size:22px;font-weight:500;color:#72243E;letter-spacing:.04em;margin-bottom:4px}
+.header-sub{font-size:13px;color:#993556;margin-bottom:10px}
+.supervisor-badge{display:inline-block;font-size:12px;font-weight:500;color:#72243E;background:#FDF4F8;border:0.5px solid #F4C0D1;border-radius:20px;padding:4px 14px;margin-bottom:10px}
+.date-row{display:flex;align-items:center;justify-content:center;gap:8px}
+.date-row label{font-size:13px;color:#993556}
+.date-row input[type=date]{font-size:13px;padding:4px 10px;border-radius:20px;border:0.5px solid #F4C0D1;background:#FBEAF0;color:#72243E}
+.sync-status{font-size:11px;margin-top:6px;display:flex;align-items:center;justify-content:center;gap:5px}
+.sync-status .dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+.sync-status.ok{color:#3B6D11}
+.sync-status.ok .dot{background:#6FA52B}
+.sync-status.off{color:#993556}
+.sync-status.off .dot{background:#D4A0B5}
+.sync-status.err{color:#A32D2D}
+.sync-status.err .dot{background:#C0392B}
+.board-lock-bar{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:10px;padding-top:10px;border-top:0.5px solid #F4C0D1}
+.board-lock-bar .bl-status{font-size:13px;font-weight:500;color:#72243E}
+.btn-board{padding:6px 18px;border-radius:20px;border:0.5px solid #993556;background:#D4537E;color:#FBEAF0;cursor:pointer;font-size:13px;font-weight:500}
+.btn-board:hover{background:#993556}
+.btn-board.is-open{background:#FBEAF0;color:#72243E;border-color:#F4C0D1}
+.btn-board.is-open:hover{background:#F4C0D1}
+.summary-bar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:1.25rem}
+.sum-chip{background:#FDF4F8;border:0.5px solid #F4C0D1;border-radius:8px;padding:8px 14px;text-align:center;min-width:72px}
+.sum-chip.hero{background:#FBEAF0;border-color:#D4537E;min-width:88px}
+.sum-chip .cl{font-size:11px;color:#993556;margin-bottom:1px}
+.sum-chip .cv{font-size:20px;font-weight:500;color:#72243E}
+.sum-chip.hero .cv{font-size:24px}
+.badge{display:inline-block;font-size:11px;padding:1px 6px;border-radius:20px}
+.bn{background:#E6F1FB;color:#0C447C}
+.bv{background:#EAF3DE;color:#3B6D11}
+.bp{background:#FAEEDA;color:#633806}
+.bs{background:#EEEDFE;color:#3C3489}
+.kanban{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px;margin-bottom:1rem}
+.site-card{border-radius:8px;border:0.5px solid #F4C0D1;padding:10px 12px;background:#FFFBFD;transition:border-color .15s;position:relative}
+.site-card:nth-child(even){background:#FDF4F8}
+.site-card.has-data{border-color:#D4537E;background:#FFF5F8}
+.site-card.is-locked{border-color:#D4537E;background:#FFF0F5}
+.site-card .sname{font-size:13px;font-weight:500;color:#72243E;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:4px}
+.site-card .stotal{font-size:18px;font-weight:500;color:#72243E}
+.site-card .stotal.zero{font-size:14px;color:#D4A0B5;font-weight:400}
+.site-card .rows{display:flex;flex-direction:column;gap:4px}
+.site-card .datarow{display:flex;align-items:center;justify-content:space-between;gap:4px}
+.site-card .datarow label{font-size:11px;color:#993556;min-width:28px}
+.site-card input[type=number]{flex:1;border:0.5px solid #F4C0D1;border-radius:5px;padding:3px 4px;text-align:center;font-size:13px;background:transparent;color:#3C2030;-moz-appearance:textfield;min-width:0}
+.site-card input[type=number]::-webkit-outer-spin-button,
+.site-card input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+.site-card input[type=number]:focus{outline:none;border-color:#D4537E;box-shadow:0 0 0 2px rgba(212,83,126,.12)}
+.site-card input[type=number]:disabled{color:#D4A0B5;background:transparent;border-color:#F4C0D1}
+.site-card .soup-row{margin-top:6px;padding-top:6px;border-top:0.5px solid #F4C0D1;display:flex;align-items:center;justify-content:space-between;gap:4px}
+.site-card .soup-row label{font-size:11px;color:#3C3489}
+.lock-overlay{display:none;position:absolute;inset:0;border-radius:8px;cursor:pointer}
+.lock-overlay.show{display:block}
+.lock-overlay .lo-badge{position:absolute;top:-9px;left:-9px;width:24px;height:24px;border-radius:50%;background:#FBEAF0;border:1.5px solid #D4537E;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 1px 4px rgba(114,36,62,.25)}
+.actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:.5rem}
+.btn{padding:7px 18px;border-radius:20px;border:0.5px solid #F4C0D1;background:#FBEAF0;cursor:pointer;font-size:13px;color:#72243E;font-weight:500}
+.btn:hover{background:#F4C0D1}
+.btn-save{background:#D4537E;color:#FBEAF0;border-color:#993556}
+.btn-save:hover{background:#993556}
+.modal-bg{display:none;position:absolute;inset:0;background:rgba(114,36,62,.18);border-radius:12px;align-items:center;justify-content:center;z-index:20}
+.modal-bg.show{display:flex}
+.modal{background:var(--color-background-primary);border-radius:12px;border:0.5px solid #F4C0D1;padding:1.5rem 1.75rem;text-align:center;min-width:220px;max-width:280px}
+.modal h3{font-size:16px;font-weight:500;color:#72243E;margin-bottom:4px}
+.modal p{font-size:12px;color:#993556;margin-bottom:1rem}
+.pin-dots{display:flex;gap:10px;justify-content:center;margin-bottom:.75rem}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:1.5px solid #D4537E;background:transparent;transition:background .12s}
+.pin-dot.filled{background:#D4537E}
+.pin-err{font-size:12px;color:#A32D2D;min-height:16px;margin-bottom:.5rem}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1rem}
+.pin-btn{padding:10px 0;border-radius:8px;border:0.5px solid #F4C0D1;background:#FBEAF0;cursor:pointer;font-size:16px;font-weight:500;color:#72243E}
+.pin-btn:hover{background:#F4C0D1}
+.modal-cancel{font-size:13px;color:#993556;background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:20px}
+.modal-cancel:hover{background:#FDF4F8}
+</style>
+
+<div class="wrap">
+<h2 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">平安診所C據點每日便當填報看板</h2>
+<div class="card-outer" id="card-outer">
+
+  <div class="header">
+    <div class="header-title">平安診所 C 據點</div>
+    <div class="header-sub">每日便當填報</div>
+    <div class="supervisor-badge">👤 便當主管　蔡尚文 副區長</div>
+    <div class="date-row">
+      <label><i class="ti ti-calendar" aria-hidden="true" style="font-size:14px;vertical-align:-1px;margin-right:3px"></i>日期</label>
+      <input type="date" id="report-date">
+    </div>
+    <div class="sync-status off" id="sync-status"><span class="dot"></span><span id="sync-status-text">尚未連接雲端</span></div>
+    <div class="board-lock-bar">
+      <span class="bl-status" id="board-lock-status">🔒 看板已鎖定</span>
+      <button class="btn-board" id="board-lock-btn" onclick="handleBoardLockToggle()">開放填寫</button>
+    </div>
+  </div>
+
+  <div class="summary-bar">
+    <div class="sum-chip"><div class="cl"><span class="badge bn">一般</span></div><div class="cv" id="chip-n">0</div></div>
+    <div class="sum-chip"><div class="cl"><span class="badge bv">素食</span></div><div class="cv" id="chip-v">0</div></div>
+    <div class="sum-chip"><div class="cl"><span class="badge bp">不豬</span></div><div class="cv" id="chip-p">0</div></div>
+    <div class="sum-chip hero"><div class="cl" style="color:#72243E;font-weight:500">便當總計</div><div class="cv" id="chip-total">0</div></div>
+    <div class="sum-chip"><div class="cl"><span class="badge bs">湯份</span></div><div class="cv" id="chip-s">0</div></div>
+  </div>
+
+  <div class="kanban" id="kanban"></div>
+
+  <div class="actions">
+    <button class="btn" onclick="doExportExcel('day')">📊 匯出當日</button>
+    <button class="btn" onclick="doExportExcel('month')">📊 匯出整月</button>
+    <button class="btn" onclick="handleClearAll()"><i class="ti ti-refresh" aria-hidden="true" style="font-size:15px;vertical-align:-2px;margin-right:4px"></i>清除所有</button>
+  </div>
+
+  <div class="modal-bg" id="modal-bg">
+    <div class="modal">
+      <h3 id="modal-title"></h3>
+      <p id="modal-desc"></p>
+      <div class="pin-dots" id="pin-dots">
+        <div class="pin-dot" id="d0"></div><div class="pin-dot" id="d1"></div>
+        <div class="pin-dot" id="d2"></div>
+      </div>
+      <div class="pin-err" id="pin-err"></div>
+      <div class="pin-pad">
+        <button class="pin-btn" onclick="pinInput('1')">1</button>
+        <button class="pin-btn" onclick="pinInput('2')">2</button>
+        <button class="pin-btn" onclick="pinInput('3')">3</button>
+        <button class="pin-btn" onclick="pinInput('4')">4</button>
+        <button class="pin-btn" onclick="pinInput('5')">5</button>
+        <button class="pin-btn" onclick="pinInput('6')">6</button>
+        <button class="pin-btn" onclick="pinInput('7')">7</button>
+        <button class="pin-btn" onclick="pinInput('8')">8</button>
+        <button class="pin-btn" onclick="pinInput('9')">9</button>
+        <button class="pin-btn" onclick="pinInput('0')" style="grid-column:2">0</button>
+        <button class="pin-btn" onclick="pinDel()"><i class="ti ti-backspace" aria-hidden="true" style="font-size:18px;vertical-align:-2px"></i></button>
+      </div>
+      <button class="modal-cancel" onclick="closeModal()">取消</button>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+const SITES=['江山里','振寮里','永安里','興中里','岱江里','岑海里','新岑里','復興里','西安里','新店村','官和村','見龍里','考試里'];
+
+/* ===== 雲端後端設定 =====
+   部署 Apps Script 後，把 /exec 結尾的網址貼到下面這行取代預設值。
+   貼上正確網址前，此元件會自動以「本機模式」運作（不會報錯，但不同裝置間不會同步）。 */
+const GAS_URL='https://script.google.com/macros/s/AKfycbwowK8wt70W_N-UW0NMZOdduuz7FKc0Do0CVdz0ADzzz_eTv33IpHdffVnUAcKpvBBJ/exec';
+
+const backendReady=!!GAS_URL && GAS_URL.indexOf('請貼上')===-1 && GAS_URL.indexOf('exec')!==-1;
+const POLL_INTERVAL_MS=7000;
+const PUSH_DEBOUNCE_MS=700;
+
+const kanban=document.getElementById('kanban');
+const dateInput=document.getElementById('report-date');
+dateInput.value=new Date().toISOString().slice(0,10);
+
+let boardLocked=true; // 平時總是上鎖，預設值
+let localDayPin=null; // 僅在尚未連接雲端時，本機暫用今日密碼
+const pushTimers={};
+let pinBuffer='';
+let modalCtx=null; // {mode}
+let pinSubmitting=false;
+
+SITES.forEach((s,i)=>{
+  const d=document.createElement('div');
+  d.className='site-card';
+  d.dataset.idx=i;
+  d.innerHTML=`
+    <div class="sname">
+      <span>${s}</span>
+      <span class="stotal zero" id="rt-${i}">—</span>
+    </div>
+    <div class="rows">
+      <div class="datarow"><label><span class="badge bn">一般</span></label><input type="number" min="0" placeholder="0" data-col="n" data-row="${i}"></div>
+      <div class="datarow"><label><span class="badge bv">素食</span></label><input type="number" min="0" placeholder="0" data-col="v" data-row="${i}"></div>
+      <div class="datarow"><label><span class="badge bp">不豬</span></label><input type="number" min="0" placeholder="0" data-col="p" data-row="${i}"></div>
+    </div>
+    <div class="soup-row">
+      <label><span class="badge bs">湯份</span></label>
+      <input type="number" min="0" placeholder="0" data-col="s" data-row="${i}" style="max-width:60px">
+    </div>
+    <div class="lock-overlay" id="overlay-${i}" onclick="handleBoardLockToggle()">
+      <div class="lo-badge">🔒</div>
+    </div>`;
+  kanban.appendChild(d);
+});
+
+function g(el){return parseInt(el.value)||0;}
+
+function recalc(){
+  let tn=0,tv=0,tp=0,ts=0;
+  SITES.forEach((_,i)=>{
+    const card=kanban.querySelector(`[data-idx="${i}"]`);
+    const n=g(card.querySelector('[data-col=n]'));
+    const v=g(card.querySelector('[data-col=v]'));
+    const p=g(card.querySelector('[data-col=p]'));
+    const s=g(card.querySelector('[data-col=s]'));
+    const tot=n+v+p;
+    const rtEl=document.getElementById(`rt-${i}`);
+    rtEl.textContent=tot||'—';
+    rtEl.className='stotal'+(tot?'':' zero');
+    card.classList.toggle('has-data',!!(tot||s)&&!boardLocked);
+    tn+=n;tv+=v;tp+=p;ts+=s;
+  });
+  document.getElementById('chip-n').textContent=tn;
+  document.getElementById('chip-v').textContent=tv;
+  document.getElementById('chip-p').textContent=tp;
+  document.getElementById('chip-s').textContent=ts;
+  document.getElementById('chip-total').textContent=tn+tv+tp;
+}
+kanban.addEventListener('input',e=>{
+  recalc();
+  const row=e.target?.dataset?.row;
+  if(row!==undefined) schedulePush(parseInt(row));
+});
+
+/* ===== 雲端同步：GAS 通訊 ===== */
+async function gasGet(params){
+  if(!backendReady) return null;
+  try{
+    const qs=new URLSearchParams(params).toString();
+    const res=await fetch(`${GAS_URL}?${qs}`);
+    return await res.json();
+  }catch(err){
+    console.error('GAS GET 失敗',err);
+    setSyncStatus('err','連線失敗');
+    return null;
+  }
+}
+
+async function gasPost(body){
+  if(!backendReady) return null;
+  try{
+    const res=await fetch(GAS_URL,{
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify(body)
+    });
+    return await res.json();
+  }catch(err){
+    console.error('GAS POST 失敗',err);
+    setSyncStatus('err','連線失敗');
+    return null;
+  }
+}
+
+function setSyncStatus(kind,text){
+  const el=document.getElementById('sync-status');
+  el.className='sync-status '+kind;
+  document.getElementById('sync-status-text').textContent=text;
+}
+
+function schedulePush(i){
+  clearTimeout(pushTimers[i]);
+  pushTimers[i]=setTimeout(()=>pushSite(i),PUSH_DEBOUNCE_MS);
+}
+
+async function pushSite(i){
+  if(!backendReady||boardLocked) return;
+  const card=kanban.querySelector(`[data-idx="${i}"]`);
+  const n=g(card.querySelector('[data-col=n]'));
+  const v=g(card.querySelector('[data-col=v]'));
+  const p=g(card.querySelector('[data-col=p]'));
+  const s=g(card.querySelector('[data-col=s]'));
+  const res=await gasPost({action:'update',date:dateInput.value,site:SITES[i],n,v,p,s});
+  if(res&&res.ok){ setSyncStatus('ok','已同步'); }
+  else if(res&&res.error==='locked'){
+    // 看板已被鎖定（競爭狀況），重新拉最新狀態
+    loadDate(dateInput.value);
+  }
+}
+
+async function loadDate(date){
+  if(!backendReady){ setSyncStatus('off','尚未連接雲端'); applyBoardLockUI(true); return; }
+  setSyncStatus('ok','讀取中…');
+  const res=await gasGet({action:'pull',date});
+  if(!res||!res.ok){ setSyncStatus('err','讀取失敗，稍後自動重試'); return; }
+  applyServerData(res.data,true);
+  applyBoardLockUI(!!res.boardLocked);
+  setSyncStatus('ok','已連接雲端，即時同步中');
+}
+
+async function refreshFromServer(){
+  if(!backendReady) return;
+  const res=await gasGet({action:'pull',date:dateInput.value});
+  if(!res||!res.ok) return;
+  applyServerData(res.data,false);
+  if(!!boardLocked!==!!res.boardLocked) applyBoardLockUI(!!res.boardLocked);
+  setSyncStatus('ok','已連接雲端，即時同步中');
+}
+
+function applyServerData(dataObj,fullReplace){
+  SITES.forEach((s,i)=>{
+    const rec=dataObj[s];
+    const card=kanban.querySelector(`[data-idx="${i}"]`);
+    const inputs={
+      n:card.querySelector('[data-col=n]'),
+      v:card.querySelector('[data-col=v]'),
+      p:card.querySelector('[data-col=p]'),
+      s:card.querySelector('[data-col=s]')
+    };
+    const anyFocused=Object.values(inputs).some(el=>el===document.activeElement);
+    if(rec){
+      if(fullReplace||!anyFocused){
+        inputs.n.value=rec.n||'';
+        inputs.v.value=rec.v||'';
+        inputs.p.value=rec.p||'';
+        inputs.s.value=rec.s||'';
+      }
+    } else if(fullReplace){
+      inputs.n.value='';inputs.v.value='';inputs.p.value='';inputs.s.value='';
+    }
+  });
+  recalc();
+}
+
+function applyBoardLockUI(isLocked){
+  boardLocked=isLocked;
+  SITES.forEach((_,i)=>{
+    const card=kanban.querySelector(`[data-idx="${i}"]`);
+    card.classList.toggle('is-locked',isLocked);
+    card.querySelectorAll('input').forEach(inp=>inp.disabled=isLocked);
+    document.getElementById(`overlay-${i}`).classList.toggle('show',isLocked);
+  });
+  document.getElementById('board-lock-status').textContent=isLocked?'🔒 看板已鎖定':'🔓 看板已開放';
+  const btn=document.getElementById('board-lock-btn');
+  btn.textContent=isLocked?'開放填寫':'鎖定看板';
+  btn.classList.toggle('is-open',!isLocked);
+  recalc();
+}
+
+function handleBoardLockToggle(){
+  if(boardLocked){
+    openModal('open','設定今日密碼','請任選 3 位數字密碼，稍後用同一組密碼鎖定看板');
+  } else {
+    openModal('close','鎖定看板','請輸入今日密碼以鎖定看板');
+  }
+}
+
+async function handleClearAll(){
+  if(boardLocked){
+    alert('看板目前已鎖定，請先開放填寫後再清除。');
+    return;
+  }
+  if(confirm('確定清除所有據點的數量？'+(backendReady?'（雲端紀錄也會一併清除）':''))){
+    kanban.querySelectorAll('input[type=number]').forEach(el=>{ el.value=''; });
+    recalc();
+    if(backendReady){
+      const tasks=SITES.map(siteName=>gasPost({action:'update',date:dateInput.value,site:siteName,n:0,v:0,p:0,s:0}));
+      await Promise.all(tasks);
+    }
+  }
+}
+
+function openModal(mode,title,desc){
+  modalCtx={mode};
+  pinBuffer='';
+  updateDots();
+  document.getElementById('modal-title').textContent=title;
+  document.getElementById('modal-desc').textContent=desc;
+  document.getElementById('pin-err').textContent='';
+  document.getElementById('modal-bg').classList.add('show');
+}
+
+function closeModal(){
+  document.getElementById('modal-bg').classList.remove('show');
+  pinBuffer='';
+  updateDots();
+  document.getElementById('pin-err').textContent='';
+  modalCtx=null;
+}
+
+function updateDots(){
+  for(let i=0;i<3;i++) document.getElementById('d'+i).classList.toggle('filled',i<pinBuffer.length);
+}
+
+function pinInput(n){
+  if(pinBuffer.length>=3) return;
+  pinBuffer+=n;
+  updateDots();
+  document.getElementById('pin-err').textContent='';
+  if(pinBuffer.length===3) setTimeout(confirmPin,120);
+}
+
+function pinDel(){
+  if(pinBuffer.length>0){pinBuffer=pinBuffer.slice(0,-1);updateDots();}
+}
+
+async function confirmPin(){
+  if(!modalCtx||pinSubmitting) return;
+  const {mode}=modalCtx;
+  pinSubmitting=true;
+  if(mode==='open'){
+    if(backendReady){
+      document.getElementById('pin-err').textContent='開放中…';
+      const res=await gasPost({action:'boardOpen',date:dateInput.value,pin:pinBuffer});
+      if(res&&res.ok){
+        closeModal();
+        applyBoardLockUI(false);
+      } else {
+        document.getElementById('pin-err').textContent='開放失敗，請檢查網路後再試';
+        pinBuffer='';updateDots();
+      }
+    } else {
+      localDayPin=pinBuffer;
+      closeModal();
+      applyBoardLockUI(false);
+    }
+  } else if(mode==='close'){
+    if(backendReady){
+      document.getElementById('pin-err').textContent='確認中…';
+      const res=await gasPost({action:'boardLock',date:dateInput.value,pin:pinBuffer});
+      if(res&&res.ok){
+        closeModal();
+        applyBoardLockUI(true);
+      } else {
+        document.getElementById('pin-err').textContent='密碼錯誤，請再試一次';
+        pinBuffer='';updateDots();
+      }
+    } else if(pinBuffer===localDayPin){
+      closeModal();
+      applyBoardLockUI(true);
+    } else {
+      document.getElementById('pin-err').textContent='密碼錯誤，請再試一次';
+      pinBuffer='';updateDots();
+    }
+  }
+  pinSubmitting=false;
+}
+
+async function doExportExcel(scope){
+  if(!backendReady){
+    alert('尚未連接雲端後端，目前沒有歷史紀錄可匯出。請先完成 Google 試算表連接設定。');
+    return;
+  }
+  const label=scope==='day'?'匯出當日':'匯出整月';
+  const btn=[...document.querySelectorAll('.btn')].find(b=>b.textContent.includes(label));
+  const orig=btn?btn.innerHTML:null;
+  if(btn) btn.innerHTML='匯出中…';
+  const res=await gasGet({action:'pullAll'});
+  if(btn) btn.innerHTML=orig;
+  if(!res||!res.ok){
+    alert('無法取得雲端歷史資料，請確認網路連線後再試一次。');
+    return;
+  }
+  const curDate=dateInput.value;         // yyyy-mm-dd
+  const curMonth=curDate.slice(0,7);     // yyyy-mm
+  let rows=res.rows.filter(r=>scope==='day'?r.date===curDate:r.date.slice(0,7)===curMonth);
+  if(rows.length===0){
+    alert(scope==='day'?'這一天目前沒有任何紀錄。':'這個月目前沒有任何紀錄。');
+    return;
+  }
+  rows=rows.slice().sort((a,b)=>a.date===b.date?a.site.localeCompare(b.site):a.date.localeCompare(b.date));
+  let html='<table border="1"><tr>'+
+    '<th>日期</th><th>據點</th><th>一般</th><th>素食</th><th>不豬</th><th>便當合計</th><th>湯份</th><th>最後更新</th></tr>';
+  rows.forEach(r=>{
+    const tot=(r.n||0)+(r.v||0)+(r.p||0);
+    html+=`<tr><td>${r.date}</td><td>${r.site}</td><td>${r.n||0}</td><td>${r.v||0}</td><td>${r.p||0}</td><td>${tot}</td><td>${r.s||0}</td><td>${r.updated_at||''}</td></tr>`;
+  });
+  html+='</table>';
+  const blob=new Blob(['\ufeff'+html],{type:'application/vnd.ms-excel'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  const suffix=scope==='day'?`當日_${curDate}`:`整月_${curMonth}`;
+  a.download=`便當填報_C據點_${suffix}.xls`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+dateInput.addEventListener('change',()=>loadDate(dateInput.value));
+
+applyBoardLockUI(true); // 預設總是鎖定，等雲端資料回來後再校正
+
+if(backendReady){
+  loadDate(dateInput.value);
+  setInterval(refreshFromServer,POLL_INTERVAL_MS);
+} else {
+  setSyncStatus('off','尚未連接雲端（本機模式）');
+}
+</script>
