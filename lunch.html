@@ -167,7 +167,13 @@ const PUSH_DEBOUNCE_MS=700;
 
 const kanban=document.getElementById('kanban');
 const dateInput=document.getElementById('report-date');
-dateInput.value=new Date().toISOString().slice(0,10);
+function localDateStr(d){
+  const yyyy=d.getFullYear();
+  const mm=String(d.getMonth()+1).padStart(2,'0');
+  const dd=String(d.getDate()).padStart(2,'0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+dateInput.value=localDateStr(new Date());
 
 let boardLocked=true; // 平時總是上鎖，預設值
 let localDayPin=null; // 僅在尚未連接雲端時，本機暫用今日密碼
