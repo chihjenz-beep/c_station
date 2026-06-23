@@ -548,6 +548,9 @@ async function fetchExportRows(scope,btnLabel){
   return rows;
 }
 
+function numOf(v){ const n=Number(v); return isNaN(n)?0:n; }
+function strOf(v){ return v==null?'':String(v).trim(); }
+
 function buildReportAOA(rows){
   const header=['日期','據點','一般','素食','不豬','便當合計','湯份','備註','確認狀態','最後更新'];
   const aoa=[header];
@@ -557,14 +560,47 @@ function buildReportAOA(rows){
     let tn=0,tv=0,tp=0,ts=0;
     while(idx<rows.length && rows[idx].date===curRowDate){
       const r=rows[idx];
-      const tot=(r.n||0)+(r.v||0)+(r.p||0);
-      aoa.push([r.date,r.site,r.n||0,r.v||0,r.p||0,tot,r.s||0,r.remark||'',r.confirmed?'已確認':'',r.updated_at||'']);
-      tn+=r.n||0;tv+=r.v||0;tp+=r.p||0;ts+=r.s||0;
+      const n=numOf(r.n),v=numOf(r.v),p=numOf(r.p),s=numOf(r.s);
+      const tot=n+v+p;
+      aoa.push([r.date,r.site,n,v,p,tot,s,strOf(r.remark),r.confirmed?'已確認':'',strOf(r.updated_at)]);
+      tn+=n;tv+=v;tp+=p;ts+=s;
       idx++;
     }
     aoa.push([curRowDate,'合計',tn,tv,tp,tn+tv+tp,ts,'','','']);
   }
   return aoa;
+}
+
+function buildMonthlySummaryAOA(rows){
+  // 整月報表：每個據點一列（一般/素食/不豬/便當合計/湯份為整月加總，備註合併保留同一據點當月所有備註），
+  // 最後加一行「合計」彙總全部據點
+  const header=['據點','一般','素食','不豬','便當合計','湯份','備註'];
+  const aoa=[header];
+  const bySite={};
+  rows.forEach(r=>{
+    if(!bySite[r.site]) bySite[r.site]={n:0,v:0,p:0,s:0,remarks:[]};
+    bySite[r.site].n+=numOf(r.n);
+    bySite[r.site].v+=numOf(r.v);
+    bySite[r.site].p+=numOf(r.p);
+    bySite[r.site].s+=numOf(r.s);
+    const remarkText=strOf(r.remark);
+    if(remarkText) bySite[r.site].remarks.push(remarkText);
+  });
+  const orderedSites=[...SITES,...Object.keys(bySite).filter(s=>!SITES.includes(s))];
+  let gn=0,gv=0,gp=0,gs=0;
+  orderedSites.forEach(site=>{
+    const agg=bySite[site];
+    if(!agg) return;
+    aoa.push([site,agg.n,agg.v,agg.p,agg.n+agg.v+agg.p,agg.s,agg.remarks.join('；')]);
+    gn+=agg.n;gv+=agg.v;gp+=agg.p;gs+=agg.s;
+  });
+  aoa.push(['合計',gn,gv,gp,gn+gv+gp,gs,'']);
+  return aoa;
+}
+
+function monthlyTitleText(curMonth){
+  const monthNum=parseInt(curMonth.split('-')[1],10);
+  return `${monthNum}月份便當明細表`;
 }
 
 async function doExportExcel(scope){
@@ -575,14 +611,24 @@ async function doExportExcel(scope){
     alert('Excel 匯出元件載入失敗，請確認網路連線後重新整理頁面再試一次。');
     return;
   }
-  const aoa=buildReportAOA(rows);
-  const ws=XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols']=[{wch:11},{wch:8},{wch:7},{wch:7},{wch:7},{wch:9},{wch:7},{wch:22},{wch:9},{wch:18}];
-  const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,'便當記錄');
-  const curDate=dateInput.value,curMonth=curDate.slice(0,7);
-  const suffix=scope==='day'?`當日_${curDate}`:`整月_${curMonth}`;
-  XLSX.writeFile(wb,`便當填報_C據點_${suffix}.xlsx`);
+  try{
+    const curDate=dateInput.value,curMonth=curDate.slice(0,7);
+    let aoa=scope==='month'?buildMonthlySummaryAOA(rows):buildReportAOA(rows);
+    if(scope==='month'){
+      aoa=[[monthlyTitleText(curMonth),'','','','','',''],...aoa];
+    }
+    const ws=XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols']=scope==='month'
+      ?[{wch:10},{wch:8},{wch:8},{wch:8},{wch:10},{wch:8},{wch:24}]
+      :[{wch:11},{wch:8},{wch:7},{wch:7},{wch:7},{wch:9},{wch:7},{wch:22},{wch:9},{wch:18}];
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,'便當記錄');
+    const suffix=scope==='day'?`當日_${curDate}`:`整月_${curMonth}`;
+    XLSX.writeFile(wb,`便當填報_C據點_${suffix}.xlsx`);
+  }catch(err){
+    console.error('Excel 匯出失敗',err);
+    alert('匯出 Excel 時發生錯誤，請稍後再試一次；如持續發生請回報此訊息：'+(err&&err.message?err.message:err));
+  }
 }
 
 function fitText(ctx,text,maxWidth){
@@ -593,8 +639,8 @@ function fitText(ctx,text,maxWidth){
   return t+'…';
 }
 
-function buildReportCanvas(aoa,titleText){
-  const colWidths=[92,68,46,46,46,68,46,150,58,118];
+function buildReportCanvas(aoa,titleText,colWidths){
+  colWidths=colWidths||[92,68,46,46,46,68,46,150,58,118];
   const rowH=30,headerH=36,titleH=42,pad=16;
   const innerWidth=colWidths.reduce((a,b)=>a+b,0);
   const width=innerWidth+pad*2;
@@ -636,7 +682,7 @@ function buildReportCanvas(aoa,titleText){
   drawRow(aoa[0],y,headerH,{bold:true,color:'#72243E'});
   y+=headerH;
   for(let r=1;r<aoa.length;r++){
-    const isTotalRow=aoa[r][1]==='合計';
+    const isTotalRow=aoa[r][0]==='合計'||aoa[r][1]==='合計';
     drawRow(aoa[r],y,rowH,isTotalRow?{bg:'#FDF4F8',bold:true,color:'#72243E'}:{});
     y+=rowH;
   }
@@ -647,18 +693,24 @@ async function doExportImage(scope){
   const label=scope==='day'?'匯出當日':'匯出整月';
   const rows=await fetchExportRows(scope,label);
   if(!rows) return;
-  const aoa=buildReportAOA(rows);
-  const curDate=dateInput.value,curMonth=curDate.slice(0,7);
-  const titleText=scope==='day'?`便當填報 C據點　${curDate}`:`便當填報 C據點　${curMonth} 整月`;
-  const canvas=buildReportCanvas(aoa,titleText);
-  canvas.toBlob(blob=>{
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
-    const suffix=scope==='day'?`當日_${curDate}`:`整月_${curMonth}`;
-    a.download=`便當填報_C據點_${suffix}.png`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  },'image/png');
+  try{
+    const aoa=scope==='month'?buildMonthlySummaryAOA(rows):buildReportAOA(rows);
+    const colWidths=scope==='month'?[90,60,60,60,80,60,160]:undefined;
+    const curDate=dateInput.value,curMonth=curDate.slice(0,7);
+    const titleText=scope==='day'?`便當填報 C據點　${curDate}`:monthlyTitleText(curMonth);
+    const canvas=buildReportCanvas(aoa,titleText,colWidths);
+    canvas.toBlob(blob=>{
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      const suffix=scope==='day'?`當日_${curDate}`:`整月_${curMonth}`;
+      a.download=`便當填報_C據點_${suffix}.png`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    },'image/png');
+  }catch(err){
+    console.error('圖檔匯出失敗',err);
+    alert('匯出圖檔時發生錯誤，請稍後再試一次；如持續發生請回報此訊息：'+(err&&err.message?err.message:err));
+  }
 }
 
 let exportScopePending=null;
