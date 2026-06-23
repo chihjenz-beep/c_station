@@ -62,6 +62,12 @@
 .site-card .remark-row input[type=text]:focus{outline:none;border-color:#D4537E;box-shadow:0 0 0 2px rgba(212,83,126,.12)}
 .site-card .remark-row input[type=text]:disabled{color:#D4A0B5;background:transparent;border-color:#F4C0D1}
 .site-card .remark-row input[type=text]::placeholder{color:#E3B8C8}
+.confirm-btn{width:100%;margin-top:6px;padding:5px 0;border-radius:6px;border:0.5px solid #F4C0D1;background:transparent;color:#993556;font-size:11px;font-weight:500;cursor:pointer}
+.confirm-btn:hover{background:#FDF4F8}
+.confirm-btn:disabled{color:#E3B8C8;border-color:#F4C0D1;cursor:default;background:transparent}
+.confirm-btn.confirmed{background:#E8F3DC;border-color:#6FA52B;color:#3B6D11}
+.confirm-btn.confirmed:hover{background:#DCEDC9}
+.site-card.is-confirmed{border-color:#6FA52B}
 .lock-overlay{display:none;position:absolute;inset:0;border-radius:8px;cursor:pointer}
 .lock-overlay.show{display:block}
 .lock-overlay .lo-badge{position:absolute;top:-9px;left:-9px;width:24px;height:24px;border-radius:50%;background:#FBEAF0;border:1.5px solid #D4537E;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 1px 4px rgba(114,36,62,.25)}
@@ -119,8 +125,8 @@
   <div class="kanban" id="kanban"></div>
 
   <div class="actions">
-    <button class="btn" onclick="doExportExcel('day')">📊 匯出當日</button>
-    <button class="btn" onclick="doExportExcel('month')">📊 匯出整月</button>
+    <button class="btn" onclick="handleExportClick('day')">📊 匯出當日</button>
+    <button class="btn" onclick="handleExportClick('month')">📊 匯出整月</button>
     <button class="btn" onclick="handleClearAll()"><i class="ti ti-refresh" aria-hidden="true" style="font-size:15px;vertical-align:-2px;margin-right:4px"></i>清除所有</button>
   </div>
 
@@ -150,9 +156,22 @@
     </div>
   </div>
 
+  <div class="modal-bg" id="format-modal-bg">
+    <div class="modal">
+      <h3 id="format-modal-title">匯出報表</h3>
+      <p>選擇要匯出的檔案格式</p>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:.5rem">
+        <button class="btn btn-save" style="width:100%" onclick="confirmExportFormat('xlsx')">📊 試算表（.xlsx）</button>
+        <button class="btn" style="width:100%" onclick="confirmExportFormat('image')">🖼️ 圖檔（.png，手機都能直接開）</button>
+      </div>
+      <button class="modal-cancel" onclick="closeFormatModal()">取消</button>
+    </div>
+  </div>
+
 </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 const SITES=['北華村','新店村','官和村','復興里','新岑里','興中里','岱江里','岑海里','西安里','振寮里','考試里','江山里','見龍里','永安里'];
 
@@ -176,8 +195,10 @@ function localDateStr(d){
 dateInput.value=localDateStr(new Date());
 
 let boardLocked=true; // 平時總是上鎖，預設值
+const confirmed={}; // idx -> bool，該據點是否已按下「確認完成」
 let localDayPin=null; // 僅在尚未連接雲端時，本機暫用今日密碼
 const pushTimers={};
+const pendingEdit={}; // idx -> bool，該據點是否還有「排隊中／送出中」尚未完成的編輯，避免被自動同步蓋掉
 let pinBuffer='';
 let modalCtx=null; // {mode}
 let pinSubmitting=false;
@@ -203,6 +224,7 @@ SITES.forEach((s,i)=>{
     <div class="remark-row">
       <input type="text" placeholder="備註（選填）" data-col="remark" data-row="${i}" maxlength="200">
     </div>
+    <button class="confirm-btn" id="confirm-btn-${i}" onclick="handleConfirmToggle(${i})">確認完成</button>
     <div class="lock-overlay" id="overlay-${i}" onclick="handleBoardLockToggle()">
       <div class="lo-badge">🔒</div>
     </div>`;
@@ -236,7 +258,11 @@ function recalc(){
 kanban.addEventListener('input',e=>{
   recalc();
   const row=e.target?.dataset?.row;
-  if(row!==undefined) schedulePush(parseInt(row));
+  if(row!==undefined){
+    const i=parseInt(row);
+    if(confirmed[i]) applyConfirmUI(i,false); // 內容被改動，先取消確認狀態，避免顯示過期的「已確認」
+    schedulePush(i);
+  }
 });
 
 /* ===== 雲端同步：GAS 通訊 ===== */
@@ -276,23 +302,55 @@ function setSyncStatus(kind,text){
 }
 
 function schedulePush(i){
+  pendingEdit[i]=true;
   clearTimeout(pushTimers[i]);
   pushTimers[i]=setTimeout(()=>pushSite(i),PUSH_DEBOUNCE_MS);
 }
 
 async function pushSite(i){
-  if(!backendReady||boardLocked) return;
+  if(!backendReady||boardLocked){ pendingEdit[i]=false; return; }
   const card=kanban.querySelector(`[data-idx="${i}"]`);
   const n=g(card.querySelector('[data-col=n]'));
   const v=g(card.querySelector('[data-col=v]'));
   const p=g(card.querySelector('[data-col=p]'));
   const s=g(card.querySelector('[data-col=s]'));
   const remark=card.querySelector('[data-col=remark]').value;
-  const res=await gasPost({action:'update',date:dateInput.value,site:SITES[i],n,v,p,s,remark});
+  const res=await gasPost({action:'update',date:dateInput.value,site:SITES[i],n,v,p,s,remark,confirmed:!!confirmed[i]});
+  pendingEdit[i]=false;
   if(res&&res.ok){ setSyncStatus('ok','已同步'); }
   else if(res&&res.error==='locked'){
     // 看板已被鎖定（競爭狀況），重新拉最新狀態
     loadDate(dateInput.value);
+  }
+}
+
+function applyConfirmUI(i,isConfirmed){
+  confirmed[i]=isConfirmed;
+  const card=kanban.querySelector(`[data-idx="${i}"]`);
+  const btn=document.getElementById(`confirm-btn-${i}`);
+  card.classList.toggle('is-confirmed',isConfirmed);
+  btn.classList.toggle('confirmed',isConfirmed);
+  btn.textContent=isConfirmed?'✓ 已確認':'確認完成';
+}
+
+async function handleConfirmToggle(i){
+  if(boardLocked) return;
+  const next=!confirmed[i];
+  applyConfirmUI(i,next);
+  if(backendReady){
+    pendingEdit[i]=true;
+    const card=kanban.querySelector(`[data-idx="${i}"]`);
+    const n=g(card.querySelector('[data-col=n]'));
+    const v=g(card.querySelector('[data-col=v]'));
+    const p=g(card.querySelector('[data-col=p]'));
+    const s=g(card.querySelector('[data-col=s]'));
+    const remark=card.querySelector('[data-col=remark]').value;
+    const res=await gasPost({action:'update',date:dateInput.value,site:SITES[i],n,v,p,s,remark,confirmed:next});
+    pendingEdit[i]=false;
+    if(res&&res.ok){ setSyncStatus('ok','已同步'); }
+    else if(res&&res.error==='locked'){
+      loadDate(dateInput.value);
+    }
   }
 }
 
@@ -327,16 +385,19 @@ function applyServerData(dataObj,fullReplace){
       remark:card.querySelector('[data-col=remark]')
     };
     const anyFocused=Object.values(inputs).some(el=>el===document.activeElement);
+    const hasPendingEdit=anyFocused||!!pendingEdit[i];
     if(rec){
-      if(fullReplace||!anyFocused){
+      if(fullReplace||!hasPendingEdit){
         inputs.n.value=rec.n||'';
         inputs.v.value=rec.v||'';
         inputs.p.value=rec.p||'';
         inputs.s.value=rec.s||'';
         inputs.remark.value=rec.remark||'';
+        if(!!confirmed[i]!==!!rec.confirmed) applyConfirmUI(i,!!rec.confirmed);
       }
     } else if(fullReplace){
       inputs.n.value='';inputs.v.value='';inputs.p.value='';inputs.s.value='';inputs.remark.value='';
+      if(confirmed[i]) applyConfirmUI(i,false);
     }
   });
   recalc();
@@ -348,6 +409,7 @@ function applyBoardLockUI(isLocked){
     const card=kanban.querySelector(`[data-idx="${i}"]`);
     card.classList.toggle('is-locked',isLocked);
     card.querySelectorAll('input').forEach(inp=>inp.disabled=isLocked);
+    document.getElementById(`confirm-btn-${i}`).disabled=isLocked;
     document.getElementById(`overlay-${i}`).classList.toggle('show',isLocked);
   });
   document.getElementById('board-lock-status').textContent=isLocked?'🔒 看板已鎖定':'🔓 看板已開放';
@@ -370,11 +432,12 @@ async function handleClearAll(){
     alert('看板目前已鎖定，請先開放填寫後再清除。');
     return;
   }
-  if(confirm('確定清除所有據點的數量與備註？'+(backendReady?'（雲端紀錄也會一併清除）':''))){
+  if(confirm('確定清除所有據點的數量、備註與確認狀態？'+(backendReady?'（雲端紀錄也會一併清除）':''))){
     kanban.querySelectorAll('input[type=number],input[type=text]').forEach(el=>{ el.value=''; });
+    SITES.forEach((_,i)=>applyConfirmUI(i,false));
     recalc();
     if(backendReady){
-      const tasks=SITES.map(siteName=>gasPost({action:'update',date:dateInput.value,site:siteName,n:0,v:0,p:0,s:0,remark:''}));
+      const tasks=SITES.map(siteName=>gasPost({action:'update',date:dateInput.value,site:siteName,n:0,v:0,p:0,s:0,remark:'',confirmed:false}));
       await Promise.all(tasks);
     }
   }
@@ -456,56 +519,173 @@ async function confirmPin(){
   pinSubmitting=false;
 }
 
-async function doExportExcel(scope){
+async function fetchExportRows(scope,btnLabel){
   if(!backendReady){
     alert('尚未連接雲端後端，目前沒有歷史紀錄可匯出。請先完成 Google 試算表連接設定。');
-    return;
+    return null;
   }
-  const label=scope==='day'?'匯出當日':'匯出整月';
-  const btn=[...document.querySelectorAll('.btn')].find(b=>b.textContent.includes(label));
+  const btn=[...document.querySelectorAll('.btn')].find(b=>b.textContent.includes(btnLabel));
   const orig=btn?btn.innerHTML:null;
   if(btn) btn.innerHTML='匯出中…';
   const res=await gasGet({action:'pullAll'});
   if(btn) btn.innerHTML=orig;
   if(!res||!res.ok){
     alert('無法取得雲端歷史資料，請確認網路連線後再試一次。');
-    return;
+    return null;
   }
   const curDate=dateInput.value;         // yyyy-mm-dd
   const curMonth=curDate.slice(0,7);     // yyyy-mm
   let rows=res.rows.filter(r=>scope==='day'?r.date===curDate:r.date.slice(0,7)===curMonth);
   if(rows.length===0){
     alert(scope==='day'?'這一天目前沒有任何紀錄。':'這個月目前沒有任何紀錄。');
-    return;
+    return null;
   }
   const siteOrder=Object.fromEntries(SITES.map((s,i)=>[s,i]));
   rows=rows.slice().sort((a,b)=>{
     if(a.date!==b.date) return a.date.localeCompare(b.date);
     return (siteOrder[a.site]??999)-(siteOrder[b.site]??999);
   });
-  const cellStyle='font-size:12pt;font-family:Calibri,Arial,sans-serif;';
-  let html=`<table border="1" style="border-collapse:collapse;${cellStyle}"><tr>`+
-    `<th style="${cellStyle}">日期</th><th style="${cellStyle}">據點</th><th style="${cellStyle}">一般</th><th style="${cellStyle}">素食</th><th style="${cellStyle}">不豬</th><th style="${cellStyle}">便當合計</th><th style="${cellStyle}">湯份</th><th style="${cellStyle}">備註</th><th style="${cellStyle}">最後更新</th></tr>`;
-  rows.forEach(r=>{
-    const tot=(r.n||0)+(r.v||0)+(r.p||0);
-    html+=`<tr><td style="${cellStyle}">${r.date}</td><td style="${cellStyle}">${r.site}</td><td style="${cellStyle}">${r.n||0}</td><td style="${cellStyle}">${r.v||0}</td><td style="${cellStyle}">${r.p||0}</td><td style="${cellStyle}">${tot}</td><td style="${cellStyle}">${r.s||0}</td><td style="${cellStyle}">${r.remark||''}</td><td style="${cellStyle}">${r.updated_at||''}</td></tr>`;
-  });
-  html+='</table>';
-  const blob=new Blob(['\ufeff'+html],{type:'application/vnd.ms-excel'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  const suffix=scope==='day'?`當日_${curDate}`:`整月_${curMonth}`;
-  a.download=`便當填報_C據點_${suffix}.xls`;
-  a.click();
-  URL.revokeObjectURL(a.href);
+  return rows;
 }
 
-dateInput.addEventListener('change',()=>{ autoLockTriggered=false; loadDate(dateInput.value); });
+function buildReportAOA(rows){
+  const header=['日期','據點','一般','素食','不豬','便當合計','湯份','備註','確認狀態','最後更新'];
+  const aoa=[header];
+  let idx=0;
+  while(idx<rows.length){
+    const curRowDate=rows[idx].date;
+    let tn=0,tv=0,tp=0,ts=0;
+    while(idx<rows.length && rows[idx].date===curRowDate){
+      const r=rows[idx];
+      const tot=(r.n||0)+(r.v||0)+(r.p||0);
+      aoa.push([r.date,r.site,r.n||0,r.v||0,r.p||0,tot,r.s||0,r.remark||'',r.confirmed?'已確認':'',r.updated_at||'']);
+      tn+=r.n||0;tv+=r.v||0;tp+=r.p||0;ts+=r.s||0;
+      idx++;
+    }
+    aoa.push([curRowDate,'合計',tn,tv,tp,tn+tv+tp,ts,'','','']);
+  }
+  return aoa;
+}
 
-const BLINK_AFTER_HOUR=9, BLINK_AFTER_MINUTE=30;   // 09:30 之後，若看板還沒鎖定就閃爍提醒
-const AUTO_LOCK_HOUR=9, AUTO_LOCK_MINUTE=40;        // 09:40 時間一到，系統強制鎖定看板
-const AUTO_LOCK_GRACE_MIN=30;                       // 09:40~10:10 這段時間內才會檢查觸發自動鎖定
-let autoLockTriggered=false;
+async function doExportExcel(scope){
+  const label=scope==='day'?'匯出當日':'匯出整月';
+  const rows=await fetchExportRows(scope,label);
+  if(!rows) return;
+  if(typeof XLSX==='undefined'){
+    alert('Excel 匯出元件載入失敗，請確認網路連線後重新整理頁面再試一次。');
+    return;
+  }
+  const aoa=buildReportAOA(rows);
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols']=[{wch:11},{wch:8},{wch:7},{wch:7},{wch:7},{wch:9},{wch:7},{wch:22},{wch:9},{wch:18}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'便當記錄');
+  const curDate=dateInput.value,curMonth=curDate.slice(0,7);
+  const suffix=scope==='day'?`當日_${curDate}`:`整月_${curMonth}`;
+  XLSX.writeFile(wb,`便當填報_C據點_${suffix}.xlsx`);
+}
+
+function fitText(ctx,text,maxWidth){
+  text=String(text??'');
+  if(ctx.measureText(text).width<=maxWidth) return text;
+  let t=text;
+  while(t.length>0&&ctx.measureText(t+'…').width>maxWidth) t=t.slice(0,-1);
+  return t+'…';
+}
+
+function buildReportCanvas(aoa,titleText){
+  const colWidths=[92,68,46,46,46,68,46,150,58,118];
+  const rowH=30,headerH=36,titleH=42,pad=16;
+  const innerWidth=colWidths.reduce((a,b)=>a+b,0);
+  const width=innerWidth+pad*2;
+  const height=titleH+headerH+(aoa.length-1)*rowH+pad*2;
+  const scale=2;
+  const canvas=document.createElement('canvas');
+  canvas.width=width*scale;
+  canvas.height=height*scale;
+  const ctx=canvas.getContext('2d');
+  ctx.scale(scale,scale);
+  ctx.fillStyle='#FFFFFF';
+  ctx.fillRect(0,0,width,height);
+  ctx.textBaseline='middle';
+  ctx.font='bold 17px "Noto Sans TC","Microsoft JhengHei",sans-serif';
+  ctx.fillStyle='#72243E';
+  ctx.textAlign='left';
+  ctx.fillText(titleText,pad,pad+titleH/2-4);
+
+  function drawRow(rowData,rowY,rowHeight,opts){
+    opts=opts||{};
+    let x=pad;
+    rowData.forEach((cell,ci)=>{
+      const w=colWidths[ci];
+      if(opts.bg){ ctx.fillStyle=opts.bg; ctx.fillRect(x,rowY,w,rowHeight); }
+      ctx.strokeStyle='#F4C0D1';
+      ctx.lineWidth=1;
+      ctx.strokeRect(x+0.5,rowY+0.5,w-1,rowHeight-1);
+      ctx.font=(opts.bold?'bold ':'')+'12px "Noto Sans TC","Microsoft JhengHei",sans-serif';
+      ctx.fillStyle=opts.color||'#3C2030';
+      ctx.textAlign='center';
+      ctx.fillText(fitText(ctx,cell,w-8),x+w/2,rowY+rowHeight/2);
+      x+=w;
+    });
+  }
+
+  let y=pad+titleH;
+  ctx.fillStyle='#FBEAF0';
+  ctx.fillRect(pad,y,innerWidth,headerH);
+  drawRow(aoa[0],y,headerH,{bold:true,color:'#72243E'});
+  y+=headerH;
+  for(let r=1;r<aoa.length;r++){
+    const isTotalRow=aoa[r][1]==='合計';
+    drawRow(aoa[r],y,rowH,isTotalRow?{bg:'#FDF4F8',bold:true,color:'#72243E'}:{});
+    y+=rowH;
+  }
+  return canvas;
+}
+
+async function doExportImage(scope){
+  const label=scope==='day'?'匯出當日':'匯出整月';
+  const rows=await fetchExportRows(scope,label);
+  if(!rows) return;
+  const aoa=buildReportAOA(rows);
+  const curDate=dateInput.value,curMonth=curDate.slice(0,7);
+  const titleText=scope==='day'?`便當填報 C據點　${curDate}`:`便當填報 C據點　${curMonth} 整月`;
+  const canvas=buildReportCanvas(aoa,titleText);
+  canvas.toBlob(blob=>{
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    const suffix=scope==='day'?`當日_${curDate}`:`整月_${curMonth}`;
+    a.download=`便當填報_C據點_${suffix}.png`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  },'image/png');
+}
+
+let exportScopePending=null;
+
+function handleExportClick(scope){
+  exportScopePending=scope;
+  document.getElementById('format-modal-title').textContent=scope==='day'?'匯出當日報表':'匯出整月報表';
+  document.getElementById('format-modal-bg').classList.add('show');
+}
+
+function closeFormatModal(){
+  document.getElementById('format-modal-bg').classList.remove('show');
+  exportScopePending=null;
+}
+
+async function confirmExportFormat(fmt){
+  const scope=exportScopePending;
+  closeFormatModal();
+  if(!scope) return;
+  if(fmt==='xlsx') await doExportExcel(scope);
+  else await doExportImage(scope);
+}
+
+dateInput.addEventListener('change',()=>loadDate(dateInput.value));
+
+const BLINK_AFTER_HOUR=9, BLINK_AFTER_MINUTE=30;   // 09:30 之後，若看板還沒鎖定就閃爍提醒（純畫面效果，用本機時間即可）
+const BLINK_STOP_HOUR=9, BLINK_STOP_MINUTE=40;      // 09:40 之後不再閃爍（實際鎖定與否由雲端伺服器時間判斷，見 GAS 後端 maybeAutoLock）
 
 function updateClock(){
   const now=new Date();
@@ -517,26 +697,11 @@ function updateClock(){
 
   const nowMin=now.getHours()*60+now.getMinutes();
   const blinkStartMin=BLINK_AFTER_HOUR*60+BLINK_AFTER_MINUTE;
-  const autoLockMin=AUTO_LOCK_HOUR*60+AUTO_LOCK_MINUTE;
+  const blinkStopMin=BLINK_STOP_HOUR*60+BLINK_STOP_MINUTE;
 
   // 只在 09:30~09:40 這個區間內閃爍；過了 09:40 即使看板之後又被重新打開，也不會再閃
-  const inBlinkWindow=nowMin>=blinkStartMin && nowMin<autoLockMin;
+  const inBlinkWindow=nowMin>=blinkStartMin && nowMin<blinkStopMin;
   clockEl.classList.toggle('blink', inBlinkWindow && !boardLocked);
-
-  // 自動鎖定只在 09:40 起算的 30 分鐘寬限期內檢查觸發一次；
-  // 過了這段寬限期，就算看板之後在下午/晚上又被重新打開，系統不會再強制鎖回去
-  const inAutoLockWindow=nowMin>=autoLockMin && nowMin<(autoLockMin+AUTO_LOCK_GRACE_MIN);
-  if(inAutoLockWindow && !boardLocked && !autoLockTriggered){
-    autoLockTriggered=true;
-    triggerAutoLock();
-  }
-}
-
-async function triggerAutoLock(){
-  if(backendReady){
-    await gasPost({action:'autoLock',date:dateInput.value});
-  }
-  applyBoardLockUI(true);
 }
 
 updateClock();
