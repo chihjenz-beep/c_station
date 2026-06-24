@@ -319,8 +319,12 @@ async function pushSite(i){
   pendingEdit[i]=false;
   if(res&&res.ok){ setSyncStatus('ok','已同步'); }
   else if(res&&res.error==='locked'){
-    // 看板已被鎖定（競爭狀況），重新拉最新狀態
+    // 看板被鎖定（可能是競爭狀況，或剛好被自動/手動鎖定），這筆資料沒有送出，明確告知使用者
+    setSyncStatus('err','剛才的輸入未送出（看板已鎖定）');
+    alert(`「${SITES[i]}」剛剛輸入的數量沒有送出，因為看板目前已被鎖定。請重新整理頁面確認目前狀態，需要時請聯絡主管開放後再輸入一次。`);
     loadDate(dateInput.value);
+  } else {
+    setSyncStatus('err','同步失敗，請檢查網路');
   }
 }
 
@@ -349,7 +353,11 @@ async function handleConfirmToggle(i){
     pendingEdit[i]=false;
     if(res&&res.ok){ setSyncStatus('ok','已同步'); }
     else if(res&&res.error==='locked'){
+      setSyncStatus('err','確認失敗（看板已鎖定）');
+      alert(`「${SITES[i]}」的確認沒有送出，因為看板目前已被鎖定。請重新整理頁面確認目前狀態。`);
       loadDate(dateInput.value);
+    } else {
+      setSyncStatus('err','同步失敗，請檢查網路');
     }
   }
 }
