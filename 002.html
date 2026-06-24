@@ -1,919 +1,761 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>平安診所江山里C據點｜收支明細系統</title>
+
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
-
-:root {
-  --ink:      #1a1a2e;
-  --ink2:     #2d3561;
-  --gold:     #c9a84c;
-  --gold-lt:  #e8d5a3;
-  --cream:    #faf7f0;
-  --cream2:   #f0ebe0;
-  --teal:     #0d7377;
-  --teal-lt:  #e8f4f4;
-  --red:      #c0392b;
-  --green:    #1d6a40;
-  --green-lt: #e8f5ee;
-  --border:   #d4c9b0;
-  --shadow:   0 2px 16px rgba(26,26,46,.10);
-}
-
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-body {
-  font-family: 'Noto Sans TC', sans-serif;
-  background: var(--cream);
-  color: var(--ink);
-  min-height: 100vh;
-}
-
-/* ── Header ── */
-.site-header {
-  background: var(--ink);
-  color: var(--cream);
-  padding: 0 24px;
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  height: 64px;
-  border-bottom: 3px solid var(--gold);
-  position: sticky; top: 0; z-index: 100;
-}
-.site-logo {
-  width: 38px; height: 38px;
-  border: 2px solid var(--gold);
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-family: 'Noto Serif TC', serif;
-  font-size: 18px; color: var(--gold);
-  flex-shrink: 0;
-}
-.site-title-group { flex: 1; }
-.site-title { font-family: 'Noto Serif TC', serif; font-size: 17px; font-weight: 700; letter-spacing: .08em; color: var(--cream); }
-.site-sub   { font-size: 11px; color: var(--gold-lt); letter-spacing: .12em; margin-top: 1px; }
-.header-meta { font-size: 12px; color: #aaa; text-align: right; line-height: 1.6; }
-
-/* ── Layout ── */
-.app-body { display: flex; min-height: calc(100vh - 64px); }
-
-.sidebar {
-  width: 200px; flex-shrink: 0;
-  background: var(--ink2);
-  padding: 20px 0;
-  display: flex; flex-direction: column; gap: 2px;
-}
-.sidebar-label {
-  font-size: 10px; letter-spacing: .15em; color: #889;
-  padding: 12px 18px 4px; text-transform: uppercase;
-}
-.month-btn {
-  display: block; width: 100%;
-  padding: 9px 18px;
-  background: none; border: none; cursor: pointer;
-  text-align: left;
-  font-family: 'Noto Sans TC', sans-serif;
-  font-size: 13px; color: #bbb;
-  transition: background .15s, color .15s;
-}
-.month-btn:hover { background: rgba(201,168,76,.12); color: var(--gold-lt); }
-.month-btn.active { background: var(--gold); color: var(--ink); font-weight: 700; }
-.sidebar-add {
-  margin: 12px 14px 0;
-  padding: 8px;
-  background: none;
-  border: 1px dashed #556;
-  color: #889; font-size: 12px; cursor: pointer;
-  border-radius: 4px;
-  transition: border-color .15s, color .15s;
-}
-.sidebar-add:hover { border-color: var(--gold); color: var(--gold); }
-
-/* ── Main content ── */
-.main-area { flex: 1; padding: 24px; overflow-x: auto; }
-
-.sheet-header {
-  display: flex; align-items: flex-end; justify-content: space-between;
-  margin-bottom: 16px; flex-wrap: wrap; gap: 12px;
-}
-.sheet-title {
-  font-family: 'Noto Serif TC', serif;
-  font-size: 22px; font-weight: 700; color: var(--ink2);
-}
-.sheet-title span { color: var(--gold); }
-.sheet-org { font-size: 12px; color: #888; margin-top: 4px; }
-
-.summary-bar {
-  display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 18px;
-}
-.summary-card {
-  flex: 1; min-width: 140px;
-  background: white; border: 1px solid var(--border);
-  border-radius: 8px; padding: 12px 16px;
-  box-shadow: var(--shadow);
-}
-.summary-card .label { font-size: 11px; color: #888; letter-spacing: .08em; }
-.summary-card .value { font-size: 22px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
-.card-income .value { color: var(--green); }
-.card-expense .value { color: var(--red); }
-.card-balance .value { color: var(--teal); }
-.card-balance.negative .value { color: var(--red); }
-
-/* ── Toolbar ── */
-.toolbar {
-  display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;
-}
-.btn {
-  padding: 7px 16px; border-radius: 5px; border: none; cursor: pointer;
-  font-family: 'Noto Sans TC', sans-serif; font-size: 13px;
-  transition: opacity .15s, transform .1s;
-}
-.btn:active { transform: scale(.97); }
-.btn-primary { background: var(--ink2); color: white; }
-.btn-primary:hover { opacity: .85; }
-.btn-gold { background: var(--gold); color: var(--ink); font-weight: 700; }
-.btn-gold:hover { opacity: .85; }
-.btn-outline { background: white; border: 1px solid var(--border); color: var(--ink2); }
-.btn-outline:hover { background: var(--cream2); }
-.btn-danger { background: #fdf0ee; border: 1px solid #e8c5bf; color: var(--red); }
-.btn-danger:hover { background: #fce0dc; }
-
-/* ── Table ── */
-.table-wrap { overflow-x: auto; border-radius: 8px; box-shadow: var(--shadow); }
-table {
-  width: 100%; border-collapse: collapse;
-  background: white; font-size: 13px;
-  min-width: 900px;
-}
-thead tr { background: var(--ink2); }
-th {
-  padding: 10px 8px; color: var(--gold-lt);
-  font-weight: 500; font-size: 12px; letter-spacing: .06em;
-  text-align: center; white-space: nowrap;
-  border-right: 1px solid rgba(255,255,255,.08);
-}
-th:last-child { border-right: none; }
-tbody tr { border-bottom: 1px solid #eee; transition: background .12s; }
-tbody tr:hover { background: var(--cream); }
-tbody tr.carry-row { background: #f0f7ff; font-weight: 500; }
-tbody tr.income-row { background: #f0faf4; }
-tbody tr.subtotal-row { background: var(--cream2); font-weight: 700; border-top: 2px solid var(--border); border-bottom: 2px solid var(--border); }
-td {
-  padding: 7px 8px; border-right: 1px solid #eee;
-  vertical-align: middle;
-}
-td:last-child { border-right: none; }
-.td-date   { text-align: center; white-space: nowrap; width: 80px; }
-.td-voucher{ white-space: nowrap; font-size: 11px; color: #666; }
-.td-amt    { text-align: right; font-variant-numeric: tabular-nums; width: 80px; }
-.td-qty    { text-align: center; width: 48px; }
-.td-price  { text-align: right; width: 60px; }
-.td-note   { font-size: 12px; color: #666; }
-.td-income { color: var(--green); font-weight: 600; }
-.td-expense{ color: var(--red); }
-.td-balance{ font-weight: 700; color: var(--teal); }
-.td-balance.neg { color: var(--red); }
-.td-actions { text-align: center; width: 64px; }
-
-.icon-btn {
-  background: none; border: none; cursor: pointer; padding: 3px 5px;
-  border-radius: 4px; font-size: 14px; opacity: .6; transition: opacity .15s;
-}
-.icon-btn:hover { opacity: 1; background: #f0f0f0; }
-
-/* ── Modal ── */
-.modal-bg {
-  display: none; position: fixed; inset: 0;
-  background: rgba(10,10,20,.55); backdrop-filter: blur(3px);
-  z-index: 200; align-items: center; justify-content: center;
-}
-.modal-bg.open { display: flex; }
-.modal {
-  background: white; border-radius: 12px;
-  padding: 28px 28px 24px;
-  width: 560px; max-width: 96vw; max-height: 92vh; overflow-y: auto;
-  box-shadow: 0 8px 40px rgba(0,0,0,.22);
-  animation: slide-up .22s ease;
-}
-@keyframes slide-up { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
-.modal-title {
-  font-family: 'Noto Serif TC', serif;
-  font-size: 18px; font-weight: 700; color: var(--ink2);
-  margin-bottom: 20px; padding-bottom: 12px;
-  border-bottom: 2px solid var(--gold);
-}
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.form-group { display: flex; flex-direction: column; gap: 4px; }
-.form-group.full { grid-column: 1 / -1; }
-label { font-size: 12px; color: #666; font-weight: 500; }
-input, select, textarea {
-  padding: 8px 10px; border: 1px solid var(--border);
-  border-radius: 6px; font-size: 13px;
-  font-family: 'Noto Sans TC', sans-serif;
-  color: var(--ink); background: white;
-  transition: border-color .15s;
-}
-input:focus, select:focus, textarea:focus {
-  outline: none; border-color: var(--teal);
-  box-shadow: 0 0 0 3px rgba(13,115,119,.12);
-}
-textarea { resize: vertical; min-height: 60px; }
-.form-row { display: flex; gap: 8px; align-items: flex-end; margin-top: 4px; }
-.modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
-
-/* ── Print ── */
-.sheet-footer {
-  margin-top: 20px; padding: 12px 0;
-  border-top: 1px solid var(--border);
-  font-size: 13px; color: #666;
-  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
-}
-
-/* ── Empty state ── */
-.empty-row td { text-align: center; padding: 32px; color: #aaa; font-size: 13px; }
-
-/* ── Responsive ── */
-@media (max-width: 700px) {
-  .sidebar { width: 56px; }
-  .month-btn { padding: 10px; font-size: 11px; writing-mode: vertical-rl; }
-  .sidebar-label { display: none; }
-  .main-area { padding: 12px; }
-}
-
-@media print {
-  .sidebar, .toolbar, .td-actions, th:last-child, .site-header { display: none !important; }
-  .main-area { padding: 0; }
-  .app-body { display: block; }
-  table { font-size: 11px; }
-  .modal-bg { display: none !important; }
-  body { background: white; }
-  .summary-card { box-shadow: none; border: 1px solid #ccc; }
-}
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{padding:1rem 0 1.5rem}
+.card-outer{background:var(--color-background-primary);border-radius:var(--border-radius-lg);border:0.5px solid #F4C0D1;padding:1.25rem 1.25rem 1rem;position:relative}
+.header{text-align:center;margin-bottom:1.25rem}
+.header-title{font-size:22px;font-weight:500;color:#72243E;letter-spacing:.04em;margin-bottom:4px}
+.live-clock{position:absolute;top:1.25rem;right:1.25rem;font-size:14px;color:#993556;font-weight:500;font-family:'Courier New',monospace;letter-spacing:.5px;background:#FDF4F8;border:0.5px solid #F4C0D1;border-radius:20px;padding:4px 12px}
+.header-sub{font-size:13px;color:#993556}
+.supervisor-badge{display:inline-block;font-size:12px;font-weight:500;color:#72243E;background:#FDF4F8;border:0.5px solid #F4C0D1;border-radius:20px;padding:4px 14px}
+.date-row{display:flex;align-items:center;justify-content:center;gap:8px}
+.date-row label{font-size:13px;color:#993556}
+.date-row input[type=date]{font-size:13px;padding:4px 10px;border-radius:20px;border:0.5px solid #F4C0D1;background:#FBEAF0;color:#72243E}
+.header-info-row{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;margin-top:6px;margin-bottom:8px}
+.sync-status{font-size:11px;margin-top:6px;display:flex;align-items:center;justify-content:center;gap:5px}
+.sync-status .dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+.sync-status.ok{color:#3B6D11}
+.sync-status.ok .dot{background:#6FA52B}
+.sync-status.off{color:#993556}
+.sync-status.off .dot{background:#D4A0B5}
+.sync-status.err{color:#A32D2D}
+.sync-status.err .dot{background:#C0392B}
+.summary-bar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:1.25rem}
+.sum-chip{background:#FDF4F8;border:0.5px solid #F4C0D1;border-radius:8px;padding:8px 14px;text-align:center;min-width:72px}
+.sum-chip.hero{background:#FBEAF0;border-color:#D4537E;min-width:88px}
+.sum-chip .cl{font-size:11px;color:#993556;margin-bottom:1px}
+.sum-chip .cv{font-size:20px;font-weight:500;color:#72243E}
+.sum-chip.hero .cv{font-size:24px}
+.badge{display:inline-block;font-size:11px;padding:1px 6px;border-radius:20px}
+.bn{background:#E6F1FB;color:#0C447C}
+.bv{background:#EAF3DE;color:#3B6D11}
+.bp{background:#FAEEDA;color:#633806}
+.bs{background:#EEEDFE;color:#3C3489}
+.kanban{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px;margin-bottom:1rem}
+.site-card{border-radius:8px;border:0.5px solid #F4C0D1;padding:10px 12px;background:#FFFBFD;transition:border-color .15s;position:relative}
+.site-card:nth-child(even){background:#FDF4F8}
+.site-card.has-data{border-color:#D4537E;background:#FFF5F8}
+.site-card.is-locked{border-color:#D4537E;background:#FFF0F5}
+.site-card .sname{font-size:13px;font-weight:500;color:#72243E;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:4px}
+.site-card .stotal{font-size:18px;font-weight:500;color:#72243E}
+.site-card .stotal.zero{font-size:14px;color:#D4A0B5;font-weight:400}
+.site-card .rows{display:flex;flex-direction:column;gap:4px}
+.site-card .datarow{display:flex;align-items:center;justify-content:space-between;gap:4px}
+.site-card .datarow label{font-size:11px;color:#993556;min-width:28px}
+.site-card input[type=number]{flex:1;border:0.5px solid #F4C0D1;border-radius:5px;padding:3px 4px;text-align:center;font-size:13px;background:transparent;color:#3C2030;-moz-appearance:textfield;min-width:0}
+.site-card input[type=number]::-webkit-outer-spin-button,
+.site-card input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+.site-card input[type=number]:focus{outline:none;border-color:#D4537E;box-shadow:0 0 0 2px rgba(212,83,126,.12)}
+.site-card input[type=number]:disabled{color:#D4A0B5;background:transparent;border-color:#F4C0D1}
+.site-card .soup-row{margin-top:6px;padding-top:6px;border-top:0.5px solid #F4C0D1;display:flex;align-items:center;justify-content:space-between;gap:4px}
+.site-card .soup-row label{font-size:11px;color:#3C3489}
+.site-card .remark-row{margin-top:6px}
+.site-card .remark-row input[type=text]{width:100%;border:0.5px solid #F4C0D1;border-radius:5px;padding:4px 6px;font-size:11px;background:transparent;color:#3C2030}
+.site-card .remark-row input[type=text]:focus{outline:none;border-color:#D4537E;box-shadow:0 0 0 2px rgba(212,83,126,.12)}
+.site-card .remark-row input[type=text]:disabled{color:#D4A0B5;background:transparent;border-color:#F4C0D1}
+.site-card .remark-row input[type=text]::placeholder{color:#E3B8C8}
+.confirm-btn{width:100%;margin-top:6px;padding:5px 0;border-radius:6px;border:0.5px solid #F4C0D1;background:transparent;color:#993556;font-size:11px;font-weight:500;cursor:pointer}
+.confirm-btn:hover{background:#FDF4F8}
+.confirm-btn:disabled{color:#E3B8C8;border-color:#F4C0D1;cursor:default;background:transparent}
+.confirm-btn.confirmed{background:#E8F3DC;border-color:#6FA52B;color:#3B6D11}
+.confirm-btn.confirmed:hover{background:#DCEDC9}
+.site-card.is-confirmed{border-color:#6FA52B}
+.lock-overlay{display:none;position:absolute;inset:0;border-radius:8px;cursor:pointer}
+.lock-overlay.show{display:block}
+.lock-overlay .lo-badge{position:absolute;top:-9px;left:-9px;width:24px;height:24px;border-radius:50%;background:#FBEAF0;border:1.5px solid #D4537E;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 1px 4px rgba(114,36,62,.25)}
+.actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:.5rem}
+.btn{padding:7px 18px;border-radius:20px;border:0.5px solid #F4C0D1;background:#FBEAF0;cursor:pointer;font-size:13px;color:#72243E;font-weight:500}
+.btn:hover{background:#F4C0D1}
+.btn-save{background:#D4537E;color:#FBEAF0;border-color:#993556}
+.btn-save:hover{background:#993556}
+.modal-bg{display:none;position:absolute;inset:0;background:rgba(114,36,62,.18);border-radius:12px;align-items:center;justify-content:center;z-index:20}
+.modal-bg.show{display:flex}
+.modal{background:var(--color-background-primary);border-radius:12px;border:0.5px solid #F4C0D1;padding:1.5rem 1.75rem;text-align:center;min-width:220px;max-width:280px}
+.modal h3{font-size:16px;font-weight:500;color:#72243E;margin-bottom:4px}
+.modal p{font-size:12px;color:#993556;margin-bottom:1rem}
+.pin-dots{display:flex;gap:10px;justify-content:center;margin-bottom:.75rem}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:1.5px solid #D4537E;background:transparent;transition:background .12s}
+.pin-dot.filled{background:#D4537E}
+.pin-err{font-size:12px;color:#A32D2D;min-height:16px;margin-bottom:.5rem}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1rem}
+.pin-btn{padding:10px 0;border-radius:8px;border:0.5px solid #F4C0D1;background:#FBEAF0;cursor:pointer;font-size:16px;font-weight:500;color:#72243E}
+.pin-btn:hover{background:#F4C0D1}
+.modal-cancel{font-size:13px;color:#993556;background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:20px}
+.modal-cancel:hover{background:#FDF4F8}
 </style>
-</head>
-<body>
 
-<!-- Header -->
-<header class="site-header">
-  <div class="site-logo">平</div>
-  <div class="site-title-group">
-    <div class="site-title">平安診所江山里C據點</div>
-    <div class="site-sub">收支明細管理系統</div>
+<div class="wrap">
+<h2 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">平安診所C據點每日便當填報看板</h2>
+<div class="card-outer" id="card-outer">
+
+  <div class="live-clock" id="live-clock">00:00:00</div>
+  <div class="header">
+    <div class="header-title">平安診所 C 據點</div>
+    <div class="header-info-row">
+      <div class="header-sub">每日便當填報</div>
+      <div class="supervisor-badge">👤 便當主管　蔡尚文 副區長</div>
+      <div class="date-row">
+        <label><i class="ti ti-calendar" aria-hidden="true" style="font-size:14px;vertical-align:-1px;margin-right:3px"></i>日期</label>
+        <input type="date" id="report-date">
+      </div>
+    </div>
+    <div class="sync-status off" id="sync-status"><span class="dot"></span><span id="sync-status-text">尚未連接雲端</span></div>
   </div>
-  <div class="header-meta" id="headerMeta"></div>
-</header>
 
-<div class="app-body">
-  <!-- Sidebar -->
-  <nav class="sidebar" id="sidebar">
-    <div class="sidebar-label">月份帳冊</div>
-    <div id="monthList"></div>
-    <button class="sidebar-add" onclick="addMonth()">＋ 新增月份</button>
-  </nav>
+  <div class="summary-bar">
+    <div class="sum-chip"><div class="cl"><span class="badge bn">一般</span></div><div class="cv" id="chip-n">0</div></div>
+    <div class="sum-chip"><div class="cl"><span class="badge bv">素食</span></div><div class="cv" id="chip-v">0</div></div>
+    <div class="sum-chip"><div class="cl"><span class="badge bp">不豬</span></div><div class="cv" id="chip-p">0</div></div>
+    <div class="sum-chip hero"><div class="cl" style="color:#72243E;font-weight:500">便當總計</div><div class="cv" id="chip-total">0</div></div>
+    <div class="sum-chip"><div class="cl"><span class="badge bs">湯份</span></div><div class="cv" id="chip-s">0</div></div>
+  </div>
 
-  <!-- Main -->
-  <main class="main-area">
-    <div class="sheet-header">
-      <div>
-        <div class="sheet-title" id="sheetTitle">請選擇月份</div>
-        <div class="sheet-org">平安診所江山里C據點｜製表：鍾文鶯</div>
-      </div>
-    </div>
+  <div class="kanban" id="kanban"></div>
 
-    <!-- Summary -->
-    <div class="summary-bar">
-      <div class="summary-card card-income">
-        <div class="label">本月收入</div>
-        <div class="value" id="sumIncome">—</div>
-      </div>
-      <div class="summary-card card-expense">
-        <div class="label">本月支出</div>
-        <div class="value" id="sumExpense">—</div>
-      </div>
-      <div class="summary-card card-balance" id="balCard">
-        <div class="label">期末結餘</div>
-        <div class="value" id="sumBalance">—</div>
-      </div>
-      <div class="summary-card">
-        <div class="label">期初結餘</div>
-        <div class="value" id="sumCarry" style="color:var(--ink2)">—</div>
-      </div>
-    </div>
+  <div class="actions">
+    <button class="btn" onclick="handleExportClick('day')">📊 匯出當日</button>
+    <button class="btn" onclick="handleExportClick('month')">📊 匯出整月</button>
+    <button class="btn" onclick="handleClearAll()"><i class="ti ti-refresh" aria-hidden="true" style="font-size:15px;vertical-align:-2px;margin-right:4px"></i>清除所有</button>
+  </div>
 
-    <!-- Toolbar -->
-    <div class="toolbar">
-      <button class="btn btn-gold" onclick="openAdd()">＋ 新增明細</button>
-      <button class="btn btn-primary" onclick="openCarry()">設定期初結餘</button>
-      <button class="btn btn-outline" onclick="window.print()">🖨 列印</button>
-      <button class="btn btn-outline" onclick="exportCSV()">📥 匯出 CSV</button>
-      <label class="btn btn-outline" style="cursor:pointer">📂 匯入 CSV<input type="file" accept=".csv" style="display:none" onchange="importCSV(event)"></label>
-    </div>
-
-    <!-- Table -->
-    <div class="table-wrap">
-      <table id="ledgerTable">
-        <thead>
-          <tr>
-            <th>日期</th>
-            <th>憑證編號</th>
-            <th>憑證金額</th>
-            <th>摘要</th>
-            <th>數量</th>
-            <th>單價</th>
-            <th>收入金額</th>
-            <th>支出金額</th>
-            <th>結餘</th>
-            <th>備註</th>
-            <th class="no-print">操作</th>
-          </tr>
-        </thead>
-        <tbody id="ledgerBody">
-          <tr class="empty-row"><td colspan="11">請先從左側選擇或新增月份</td></tr>
-        </tbody>
-        <tfoot id="ledgerFoot"></tfoot>
-      </table>
-    </div>
-
-    <div class="sheet-footer" id="sheetFooter"></div>
-  </main>
-</div>
-
-<!-- Add/Edit Modal -->
-<div class="modal-bg" id="entryModal">
-  <div class="modal">
-    <div class="modal-title" id="modalTitle">新增明細</div>
-    <div class="form-grid">
-      <div class="form-group">
-        <label>日期</label>
-        <input type="date" id="fDate">
+  <div class="modal-bg" id="modal-bg">
+    <div class="modal">
+      <h3 id="modal-title"></h3>
+      <p id="modal-desc"></p>
+      <div class="pin-dots" id="pin-dots">
+        <div class="pin-dot" id="d0"></div><div class="pin-dot" id="d1"></div>
       </div>
-      <div class="form-group">
-        <label>類型</label>
-        <select id="fType" onchange="onTypeChange()">
-          <option value="expense">支出</option>
-          <option value="income">收入（零用金／補助）</option>
-          <option value="note">備查（贊助 / 不動帳）</option>
-        </select>
+      <div class="pin-err" id="pin-err"></div>
+      <div class="pin-pad">
+        <button class="pin-btn" onclick="pinInput('1')">1</button>
+        <button class="pin-btn" onclick="pinInput('2')">2</button>
+        <button class="pin-btn" onclick="pinInput('3')">3</button>
+        <button class="pin-btn" onclick="pinInput('4')">4</button>
+        <button class="pin-btn" onclick="pinInput('5')">5</button>
+        <button class="pin-btn" onclick="pinInput('6')">6</button>
+        <button class="pin-btn" onclick="pinInput('7')">7</button>
+        <button class="pin-btn" onclick="pinInput('8')">8</button>
+        <button class="pin-btn" onclick="pinInput('9')">9</button>
+        <button class="pin-btn" onclick="pinInput('0')" style="grid-column:2">0</button>
+        <button class="pin-btn" onclick="pinDel()"><i class="ti ti-backspace" aria-hidden="true" style="font-size:18px;vertical-align:-2px"></i></button>
       </div>
-      <div class="form-group full">
-        <label>摘要</label>
-        <input type="text" id="fDesc" placeholder="品項名稱或說明">
-      </div>
-      <div class="form-group">
-        <label>憑證編號</label>
-        <input type="text" id="fVoucher" placeholder="如 RW42145542 或 無">
-      </div>
-      <div class="form-group">
-        <label>憑證金額</label>
-        <input type="number" id="fVoucherAmt" min="0" placeholder="0">
-      </div>
-      <div class="form-group" id="grpQty">
-        <label>數量</label>
-        <input type="number" id="fQty" min="0" placeholder="1" oninput="calcAmt()">
-      </div>
-      <div class="form-group" id="grpPrice">
-        <label>單價</label>
-        <input type="number" id="fPrice" min="0" placeholder="0" oninput="calcAmt()">
-      </div>
-      <div class="form-group" id="grpAmt">
-        <label id="amtLabel">金額（自動計算）</label>
-        <input type="number" id="fAmt" min="0" placeholder="0">
-      </div>
-      <div class="form-group full">
-        <label>備註</label>
-        <input type="text" id="fNote" placeholder="附記說明">
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('entryModal')">取消</button>
-      <button class="btn btn-gold" onclick="saveEntry()">儲存</button>
+      <button class="modal-cancel" onclick="closeModal()">取消</button>
     </div>
   </div>
-</div>
 
-<!-- Carry Modal -->
-<div class="modal-bg" id="carryModal">
-  <div class="modal" style="width:360px">
-    <div class="modal-title">設定期初結餘</div>
-    <div class="form-group">
-      <label>上月結餘（元）</label>
-      <input type="number" id="fCarry" placeholder="0">
-    </div>
-    <div class="form-group" style="margin-top:12px">
-      <label>上月說明</label>
-      <input type="text" id="fCarryLabel" placeholder="如：5月份結餘">
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('carryModal')">取消</button>
-      <button class="btn btn-gold" onclick="saveCarry()">確定</button>
+  <div class="modal-bg" id="format-modal-bg">
+    <div class="modal">
+      <h3 id="format-modal-title">匯出報表</h3>
+      <p>選擇要匯出的檔案格式</p>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:.5rem">
+        <button class="btn btn-save" style="width:100%" onclick="confirmExportFormat('xlsx')">📊 試算表（.xlsx）</button>
+        <button class="btn" style="width:100%" onclick="confirmExportFormat('image')">🖼️ 圖檔（.png，手機都能直接開）</button>
+      </div>
+      <button class="modal-cancel" onclick="closeFormatModal()">取消</button>
     </div>
   </div>
+
+</div>
 </div>
 
-<!-- Add Month Modal -->
-<div class="modal-bg" id="addMonthModal">
-  <div class="modal" style="width:360px">
-    <div class="modal-title">新增月份帳冊</div>
-    <div class="form-grid">
-      <div class="form-group">
-        <label>民國年</label>
-        <input type="number" id="mYear" placeholder="115" min="100" max="200">
-      </div>
-      <div class="form-group">
-        <label>月份</label>
-        <select id="mMonth">
-          <option>1</option><option>2</option><option>3</option>
-          <option>4</option><option>5</option><option>6</option>
-          <option>7</option><option>8</option><option>9</option>
-          <option>10</option><option>11</option>
-          <option value="12" selected>12</option>
-        </select>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('addMonthModal')">取消</button>
-      <button class="btn btn-gold" onclick="confirmAddMonth()">建立</button>
-    </div>
-  </div>
-</div>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-// ── Storage ──────────────────────────────────────────────────────────────
-const KEY = 'pingAn_jiangshan_v1';
+const SITES=['北華村','新店村','官和村','復興里','新岑里','興中里','岱江里','岑海里','西安里','振寮里','考試里','江山里','見龍里','永安里'];
 
-// localStorage wrapper - falls back to memory if blocked (e.g. file://)
-const _memStore = {};
-const storage = {
-  getItem(k) { try { return localStorage.getItem(k); } catch(e) { return _memStore[k]||null; } },
-  setItem(k,v) { try { localStorage.setItem(k,v); } catch(e) { _memStore[k]=v; } }
-};
+/* ===== 雲端後端設定 =====
+   部署 Apps Script 後，把 /exec 結尾的網址貼到下面這行取代預設值。
+   貼上正確網址前，此元件會自動以「本機模式」運作（不會報錯，但不同裝置間不會同步）。 */
+const GAS_URL='https://script.google.com/macros/s/AKfycbwowK8wt70W_N-UW0NMZOdduuz7FKc0Do0CVdz0ADzzz_eTv33IpHdffVnUAcKpvBBJ/exec';
 
-let db = JSON.parse(storage.getItem(KEY) || '{}');
-// db = { ... }
+const backendReady=!!GAS_URL && GAS_URL.indexOf('請貼上')===-1 && GAS_URL.indexOf('exec')!==-1;
+const POLL_INTERVAL_MS=7000;
+const PUSH_DEBOUNCE_MS=700;
 
-function save() { storage.setItem(KEY, JSON.stringify(db)); }
-
-// ── Seed historical data ──────────────────────────────────────────────────
-function seedIfEmpty() {
-  if (Object.keys(db).length) return;
-
-  const seed = {};
-  db = seed;
-  save();
+const kanban=document.getElementById('kanban');
+const dateInput=document.getElementById('report-date');
+function localDateStr(d){
+  const yyyy=d.getFullYear();
+  const mm=String(d.getMonth()+1).padStart(2,'0');
+  const dd=String(d.getDate()).padStart(2,'0');
+  return `${yyyy}-${mm}-${dd}`;
 }
-seedIfEmpty();
+dateInput.value=localDateStr(new Date());
 
-// ── State ──────────────────────────────────────────────────────────────────
-let currentKey = null;
-let editId = null;
+let localSitePins={}; // 僅在尚未連接雲端時，本機暫用各據點當天的密碼
+const confirmed={}; // idx -> bool，該據點今天是否已確認並鎖定
+const hasPin={}; // idx -> bool，該據點今天是否已經設定過密碼
+const pushTimers={};
+const pendingEdit={}; // idx -> bool，該據點是否還有「排隊中／送出中」尚未完成的編輯，避免被自動同步蓋掉
+let pinBuffer='';
+let modalCtx=null; // {mode,idx}
+let pinSubmitting=false;
 
-// ── Init ───────────────────────────────────────────────────────────────────
-function init() {
-  renderSidebar();
-  // Auto-select latest month
-  const keys = sortedKeys();
-  if (keys.length) selectMonth(keys[keys.length - 1]);
-  updateHeaderTime();
-}
-
-function updateHeaderTime() {
-  const now = new Date();
-  document.getElementById('headerMeta').innerHTML =
-    `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日<br>資料已儲存至本機`;
-}
-
-// ── Sidebar ────────────────────────────────────────────────────────────────
-function sortedKeys() {
-  return Object.keys(db).sort((a, b) => {
-    const [ay, am] = a.split('-').map(Number);
-    const [by, bm] = b.split('-').map(Number);
-    return ay !== by ? ay - by : am - bm;
-  });
-}
-
-function keyLabel(k) {
-  const [y, m] = k.split('-');
-  return `${y}年${m}月`;
-}
-
-function renderSidebar() {
-  const list = document.getElementById('monthList');
-  list.innerHTML = '';
-  sortedKeys().forEach(k => {
-    const btn = document.createElement('button');
-    btn.className = 'month-btn' + (k === currentKey ? ' active' : '');
-    btn.textContent = keyLabel(k);
-    btn.onclick = () => selectMonth(k);
-    list.appendChild(btn);
-  });
-}
-
-function selectMonth(k) {
-  currentKey = k;
-  renderSidebar();
-  renderSheet();
-}
-
-// ── Sheet render ───────────────────────────────────────────────────────────
-function renderSheet() {
-  if (!currentKey) return;
-  const [y, m] = currentKey.split('-');
-  document.getElementById('sheetTitle').innerHTML =
-    `民國 <span>${y}</span> 年 <span>${m}</span> 月 收支明細`;
-
-  const sheet = db[currentKey];
-  const entries = [...sheet.entries].sort((a, b) => a.date.localeCompare(b.date));
-  const body = document.getElementById('ledgerBody');
-  body.innerHTML = '';
-
-  // ── Carry row ──
-  const carryTr = document.createElement('tr');
-  carryTr.className = 'carry-row';
-  carryTr.innerHTML = `
-    <td class="td-date"></td>
-    <td class="td-voucher"></td>
-    <td class="td-amt"></td>
-    <td>${sheet.carryLabel || '上月結餘'}</td>
-    <td></td><td></td>
-    <td class="td-amt td-income">${sheet.carry >= 0 ? fmt(sheet.carry) : ''}</td>
-    <td class="td-amt"></td>
-    <td class="td-amt td-balance ${sheet.carry < 0 ? 'neg' : ''}">${fmt(sheet.carry)}</td>
-    <td></td>
-    <td class="td-actions"><button class="icon-btn" onclick="openCarry()" title="編輯">✎</button></td>`;
-  body.appendChild(carryTr);
-
-  // ── Entry rows ──
-  // 逐列結餘扣憑證金額；支出金額欄顯示數量×單價
-  function vAmt(e) { return e.voucherAmt || 0; }
-
-  let runBal = sheet.carry;
-  entries.forEach(e => {
-    if (e.type === 'income')  runBal += e.amt;
-    else if (e.type === 'expense') runBal -= vAmt(e);
-
-    const tr = document.createElement('tr');
-    tr.className = e.type === 'income' ? 'income-row' : '';
-    const d = e.date ? new Date(e.date + 'T00:00:00') : null;
-    const dateStr = d ? `${d.getMonth()+1}月${d.getDate()}日` : '';
-    const incomeCell = e.type === 'income'
-      ? `<td class="td-amt td-income">${fmt(e.amt)}</td><td class="td-amt"></td>`
-      : `<td class="td-amt"></td><td class="td-amt td-expense">${e.amt ? fmt(e.amt) : ''}</td>`;
-    tr.innerHTML = `
-      <td class="td-date">${dateStr}</td>
-      <td class="td-voucher">${e.voucher || ''}</td>
-      <td class="td-amt">${e.voucherAmt ? fmt(e.voucherAmt) : ''}</td>
-      <td>${e.desc}</td>
-      <td class="td-qty">${e.qty || ''}</td>
-      <td class="td-price">${e.price ? fmt(e.price) : ''}</td>
-      ${incomeCell}
-      <td class="td-amt td-balance ${runBal < 0 ? 'neg' : ''}">${fmt(runBal)}</td>
-      <td class="td-note">${e.note || ''}</td>
-      <td class="td-actions">
-        <button class="icon-btn" onclick="openEdit(${e.id})" title="編輯">✎</button>
-        <button class="icon-btn" onclick="deleteEntry(${e.id})" title="刪除" style="color:#c0392b">✕</button>
-      </td>`;
-    body.appendChild(tr);
-  });
-
-  if (!entries.length) {
-    const tr = document.createElement('tr');
-    tr.className = 'empty-row';
-    tr.innerHTML = '<td colspan="11">本月尚無明細，請點「新增明細」開始記帳</td>';
-    body.appendChild(tr);
-  }
-
-  // ── Footer row ──
-  const totalIncome = entries.filter(e => e.type === 'income').reduce((s, e) => s + e.amt, 0);
-  const totalExpense = entries.filter(e => e.type === 'expense').reduce((s, e) => s + vAmt(e), 0);
-  const endBalance = sheet.carry + totalIncome - totalExpense;
-
-  const foot = document.getElementById('ledgerFoot');
-  foot.innerHTML = `<tr class="subtotal-row">
-    <td colspan="3" style="text-align:center">合　計</td>
-    <td></td><td></td><td></td>
-    <td class="td-amt td-income">${fmt(totalIncome)}</td>
-    <td class="td-amt td-expense">${fmt(totalExpense)}</td>
-    <td class="td-amt td-balance ${endBalance < 0 ? 'neg' : ''}">${fmt(endBalance)}</td>
-    <td colspan="2"></td>
-  </tr>`;
-
-  // ── Summary cards ──
-  document.getElementById('sumIncome').textContent = fmt(totalIncome);
-  document.getElementById('sumExpense').textContent = fmt(totalExpense);
-  document.getElementById('sumBalance').textContent = fmt(endBalance);
-  document.getElementById('sumCarry').textContent = fmt(sheet.carry);
-  const balCard = document.getElementById('balCard');
-  balCard.classList.toggle('negative', endBalance < 0);
-
-  // ── Footer text ──
-  document.getElementById('sheetFooter').innerHTML =
-    `<span>${m}月支出金額 <strong>${fmt(totalExpense)}</strong> 元，結餘 <strong class="${endBalance < 0 ? 'td-balance neg' : ''}">${fmt(endBalance)}</strong> 元</span>
-     <span>製表：鍾文鶯　｜　平安診所江山里C據點</span>`;
-}
-
-function fmt(n) {
-  if (n === null || n === undefined || n === '') return '';
-  return Number(n).toLocaleString('zh-TW');
-}
-
-// ── Modals ─────────────────────────────────────────────────────────────────
-function openModal(id) { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-
-document.querySelectorAll('.modal-bg').forEach(bg => {
-  bg.addEventListener('click', e => { if (e.target === bg) bg.classList.remove('open'); });
+SITES.forEach((s,i)=>{
+  const d=document.createElement('div');
+  d.className='site-card';
+  d.dataset.idx=i;
+  d.innerHTML=`
+    <div class="sname">
+      <span>${s}</span>
+      <span class="stotal zero" id="rt-${i}">—</span>
+    </div>
+    <div class="rows">
+      <div class="datarow"><label><span class="badge bn">一般</span></label><input type="number" min="0" placeholder="0" data-col="n" data-row="${i}"></div>
+      <div class="datarow"><label><span class="badge bv">素食</span></label><input type="number" min="0" placeholder="0" data-col="v" data-row="${i}"></div>
+      <div class="datarow"><label><span class="badge bp">不豬</span></label><input type="number" min="0" placeholder="0" data-col="p" data-row="${i}"></div>
+    </div>
+    <div class="soup-row">
+      <label><span class="badge bs">湯份</span></label>
+      <input type="number" min="0" placeholder="0" data-col="s" data-row="${i}" style="max-width:60px">
+    </div>
+    <div class="remark-row">
+      <input type="text" placeholder="備註（選填）" data-col="remark" data-row="${i}" maxlength="200">
+    </div>
+    <button class="confirm-btn" id="confirm-btn-${i}" onclick="handleConfirmToggle(${i})">確認完成</button>
+    <div class="lock-overlay" id="overlay-${i}" onclick="handleConfirmToggle(${i})">
+      <div class="lo-badge">🔒</div>
+    </div>`;
+  kanban.appendChild(d);
 });
 
-// ── Add / Edit Entry ───────────────────────────────────────────────────────
-function openAdd() {
-  if (!currentKey) return alert('請先選擇月份');
-  editId = null;
-  document.getElementById('modalTitle').textContent = '新增明細';
-  // Default date = today
-  const today = new Date();
-  const [y, m] = currentKey.split('-');
-  const yr = 1911 + parseInt(y);
-  const iso = `${yr}-${String(m).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-  document.getElementById('fDate').value = iso;
-  document.getElementById('fType').value = 'expense';
-  document.getElementById('fDesc').value = '';
-  document.getElementById('fVoucher').value = '';
-  document.getElementById('fVoucherAmt').value = '';
-  document.getElementById('fQty').value = '';
-  document.getElementById('fPrice').value = '';
-  document.getElementById('fAmt').value = '';
-  document.getElementById('fNote').value = '';
-  onTypeChange();
-  openModal('entryModal');
-}
+function g(el){return parseInt(el.value)||0;}
 
-function openEdit(id) {
-  const entry = db[currentKey].entries.find(e => e.id === id);
-  if (!entry) return;
-  editId = id;
-  document.getElementById('modalTitle').textContent = '編輯明細';
-  document.getElementById('fDate').value = entry.date;
-  document.getElementById('fType').value = entry.type;
-  document.getElementById('fDesc').value = entry.desc;
-  document.getElementById('fVoucher').value = entry.voucher || '';
-  document.getElementById('fVoucherAmt').value = entry.voucherAmt || '';
-  document.getElementById('fQty').value = entry.qty || '';
-  document.getElementById('fPrice').value = entry.price || '';
-  document.getElementById('fAmt').value = entry.amt || '';
-  document.getElementById('fNote').value = entry.note || '';
-  onTypeChange();
-  openModal('entryModal');
-}
-
-function onTypeChange() {
-  const t = document.getElementById('fType').value;
-  const isIncome = t === 'income';
-  const isNote = t === 'note';
-  document.getElementById('grpQty').style.opacity = isIncome || isNote ? '.4' : '1';
-  document.getElementById('grpPrice').style.opacity = isIncome || isNote ? '.4' : '1';
-  document.getElementById('amtLabel').textContent =
-    isIncome ? '收入金額' : isNote ? '金額（備查，不計入）' : '金額（自動計算）';
-}
-
-function calcAmt() {
-  const q = parseFloat(document.getElementById('fQty').value) || 0;
-  const p = parseFloat(document.getElementById('fPrice').value) || 0;
-  if (q && p) document.getElementById('fAmt').value = q * p;
-}
-
-function saveEntry() {
-  const type = document.getElementById('fType').value;
-  const desc = document.getElementById('fDesc').value.trim();
-  if (!desc) return alert('請輸入摘要');
-  const amt = parseFloat(document.getElementById('fAmt').value) || 0;
-
-  const entry = {
-    id: editId || Date.now(),
-    date: document.getElementById('fDate').value,
-    type,
-    desc,
-    voucher: document.getElementById('fVoucher').value.trim(),
-    voucherAmt: parseFloat(document.getElementById('fVoucherAmt').value) || 0,
-    qty: parseFloat(document.getElementById('fQty').value) || 0,
-    price: parseFloat(document.getElementById('fPrice').value) || 0,
-    amt,
-    note: document.getElementById('fNote').value.trim(),
-  };
-
-  if (editId) {
-    const idx = db[currentKey].entries.findIndex(e => e.id === editId);
-    if (idx >= 0) db[currentKey].entries[idx] = entry;
-  } else {
-    db[currentKey].entries.push(entry);
-  }
-
-  save();
-  closeModal('entryModal');
-  renderSheet();
-}
-
-function deleteEntry(id) {
-  if (!confirm('確定刪除此筆明細？')) return;
-  db[currentKey].entries = db[currentKey].entries.filter(e => e.id !== id);
-  save();
-  renderSheet();
-}
-
-// ── Carry ──────────────────────────────────────────────────────────────────
-function openCarry() {
-  if (!currentKey) return alert('請先選擇月份');
-  const sheet = db[currentKey];
-  document.getElementById('fCarry').value = sheet.carry ?? '';
-  document.getElementById('fCarryLabel').value = sheet.carryLabel || '';
-  openModal('carryModal');
-}
-
-function saveCarry() {
-  const v = parseFloat(document.getElementById('fCarry').value);
-  if (isNaN(v)) return alert('請輸入數字');
-  db[currentKey].carry = v;
-  db[currentKey].carryLabel = document.getElementById('fCarryLabel').value.trim() || '上月結餘';
-  save();
-  closeModal('carryModal');
-  renderSheet();
-}
-
-// ── Add Month ──────────────────────────────────────────────────────────────
-function addMonth() {
-  const now = new Date();
-  // Convert to ROC year
-  document.getElementById('mYear').value = now.getFullYear() - 1911;
-  document.getElementById('mMonth').value = now.getMonth() + 1;
-  openModal('addMonthModal');
-}
-
-function confirmAddMonth() {
-  const y = parseInt(document.getElementById('mYear').value);
-  const m = parseInt(document.getElementById('mMonth').value);
-  if (!y || !m) return alert('請輸入年份與月份');
-  const k = `${y}-${m}`;
-  if (db[k]) { alert('此月份已存在'); closeModal('addMonthModal'); selectMonth(k); return; }
-
-  // Find previous month balance
-  const prevKey = `${m === 1 ? y-1 : y}-${m === 1 ? 12 : m-1}`;
-  const prevSheet = db[prevKey];
-  let prevBal = 0;
-  if (prevSheet) {
-    const ents = prevSheet.entries || [];
-    prevBal = prevSheet.carry + ents.filter(e=>e.type==='income').reduce((s,e)=>s+e.amt,0)
-                             - ents.filter(e=>e.type==='expense').reduce((s,e)=>s+(e.voucherAmt||0),0);
-  }
-
-  db[k] = {
-    carry: prevBal,
-    carryLabel: `${m === 1 ? 12 : m-1}月份結餘`,
-    entries: []
-  };
-  save();
-  closeModal('addMonthModal');
-  renderSidebar();
-  selectMonth(k);
-}
-
-// ── Export CSV ─────────────────────────────────────────────────────────────
-function exportCSV() {
-  if (!currentKey) return;
-  const sheet = db[currentKey];
-  const [y, m] = currentKey.split('-');
-  const rows = [['日期','憑證編號','憑證金額','摘要','數量','單價','收入金額','支出金額','結餘','備註']];
-
-  let runBal = sheet.carry;
-  rows.push(['','','', sheet.carryLabel || '上月結餘','','','','',runBal,'']);
-
-  const entries = [...sheet.entries].sort((a,b)=>a.date.localeCompare(b.date));
-  entries.forEach(e => {
-    if (e.type === 'income') runBal += e.amt;
-    else if (e.type === 'expense') runBal -= (e.voucherAmt || 0);
-    const d = e.date ? new Date(e.date+'T00:00:00') : null;
-    const ds = d ? `${d.getMonth()+1}月${d.getDate()}日` : '';
-    rows.push([ds, e.voucher||'', e.voucherAmt||'', e.desc,
-      e.qty||'', e.price||'',
-      e.type==='income' ? e.amt : '',
-      e.type==='expense' ? e.amt : '',
-      runBal, e.note||'']);
+function recalc(){
+  let tn=0,tv=0,tp=0,ts=0;
+  SITES.forEach((_,i)=>{
+    const card=kanban.querySelector(`[data-idx="${i}"]`);
+    const n=g(card.querySelector('[data-col=n]'));
+    const v=g(card.querySelector('[data-col=v]'));
+    const p=g(card.querySelector('[data-col=p]'));
+    const s=g(card.querySelector('[data-col=s]'));
+    const remark=card.querySelector('[data-col=remark]').value.trim();
+    const tot=n+v+p;
+    const rtEl=document.getElementById(`rt-${i}`);
+    rtEl.textContent=tot||'—';
+    rtEl.className='stotal'+(tot?'':' zero');
+    card.classList.toggle('has-data',!!(tot||s||remark)&&!confirmed[i]);
+    tn+=n;tv+=v;tp+=p;ts+=s;
   });
+  document.getElementById('chip-n').textContent=tn;
+  document.getElementById('chip-v').textContent=tv;
+  document.getElementById('chip-p').textContent=tp;
+  document.getElementById('chip-s').textContent=ts;
+  document.getElementById('chip-total').textContent=tn+tv+tp;
+}
+kanban.addEventListener('input',e=>{
+  recalc();
+  const row=e.target?.dataset?.row;
+  if(row!==undefined){
+    const i=parseInt(row);
+    if(confirmed[i]) applyConfirmUI(i,false); // 內容被改動，先取消確認狀態，避免顯示過期的「已確認」
+    schedulePush(i);
+  }
+});
 
-  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const bom = '\uFEFF';
-  const blob = new Blob([bom + csv], {type:'text/csv;charset=utf-8'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `江山里C據點_${y}年${m}月收支.csv`;
-  a.click();
+// 防呆①：數字欄位被focus時，滑鼠滾輪滑過去常會不小心把數字加減掉（瀏覽器原生行為），
+// 一律讓欄位先失焦，滾輪只用來滾頁面，不會偷改到數字
+kanban.addEventListener('wheel',e=>{
+  if(e.target.tagName==='INPUT' && e.target.type==='number' && document.activeElement===e.target){
+    e.target.blur();
+  }
+},{passive:true});
+
+// 防呆②：一般+素食+不豬 三項合計（不含湯）達到 26，離開欄位時跳出提醒（不會擋住輸入，只是提醒）
+const SUM_WARN_THRESHOLD=26;
+kanban.addEventListener('focusout',e=>{
+  const col=e.target?.dataset?.col;
+  if(e.target.tagName==='INPUT' && e.target.type==='number' && (col==='n'||col==='v'||col==='p')){
+    const card=e.target.closest('.site-card');
+    const n=g(card.querySelector('[data-col=n]'));
+    const v=g(card.querySelector('[data-col=v]'));
+    const p=g(card.querySelector('[data-col=p]'));
+    const sum=n+v+p;
+    if(sum>=SUM_WARN_THRESHOLD){
+      const siteName=card.querySelector('.sname span').textContent;
+      alert(`「${siteName}」一般＋素食＋不豬 合計已達 ${sum}（不含湯份），請確認數量是否正確。`);
+    }
+  }
+});
+
+/* ===== 雲端同步：GAS 通訊 ===== */
+async function gasGet(params){
+  if(!backendReady) return null;
+  try{
+    const qs=new URLSearchParams(params).toString();
+    const res=await fetch(`${GAS_URL}?${qs}`);
+    return await res.json();
+  }catch(err){
+    console.error('GAS GET 失敗',err);
+    setSyncStatus('err','連線失敗');
+    return null;
+  }
 }
 
-// ── Import CSV ───────────────────────────────────────────────────────────────
-function importCSV(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  // Infer month key from filename e.g. 江山里C據點_115年6月收支.csv
-  let inferredKey = null;
-  const fnm = file.name.match(/(\d{3})年(\d{1,2})月/);
-  if (fnm) inferredKey = `${fnm[1]}-${parseInt(fnm[2])}`;
-
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const text = e.target.result.replace(/^﻿/, ''); // strip BOM
-    const lines = text.split('\n').map(l => l.trim()).filter(l => l);
-
-    // Parse CSV rows
-    function parseRow(line) {
-      const cols = [];
-      let cur = '', inQ = false;
-      for (let i = 0; i < line.length; i++) {
-        const c = line[i];
-        if (c === '"' && !inQ) { inQ = true; }
-        else if (c === '"' && inQ && line[i+1] === '"') { cur += '"'; i++; }
-        else if (c === '"' && inQ) { inQ = false; }
-        else if (c === ',' && !inQ) { cols.push(cur); cur = ''; }
-        else cur += c;
-      }
-      cols.push(cur);
-      return cols;
-    }
-
-    const hdr = parseRow(lines[0]);
-    // Expected: 日期,憑證編號,憑證金額,摘要,數量,單價,收入金額,支出金額,結餘,備註
-
-    let carry = 0, carryLabel = '上月結餘', entries = [], key = inferredKey;
-    let eid = Date.now();
-
-    for (let i = 1; i < lines.length; i++) {
-      const cols = parseRow(lines[i]);
-      const [dateStr, voucher, vamt, desc, qty, price, incAmt, expAmt, bal, note] = cols;
-
-      // carry row: no date, desc contains 結餘
-      if (!dateStr && desc && desc.includes('結餘')) {
-        carry = parseFloat(bal?.replace(/,/g,'')) || 0;
-        carryLabel = desc;
-        continue;
-      }
-      // subtotal row
-      if (desc === '合　計' || desc === '合計') continue;
-      if (!desc) continue;
-
-      const incV  = parseFloat(incAmt?.replace(/,/g,'')) || 0;
-      const expV  = parseFloat(expAmt?.replace(/,/g,'')) || 0;
-      const type  = incV > 0 ? 'income' : 'expense';
-      const amt   = type === 'income' ? incV : expV;
-
-      // Parse date "6月11日" → ISO
-      let isoDate = '';
-      const dm = dateStr?.match(/(\d+)月(\d+)日/);
-      if (dm && key) {
-        const [ky, km] = key.split('-');
-        isoDate = `${1911+parseInt(ky)}-${String(dm[1]).padStart(2,'0')}-${String(dm[2]).padStart(2,'0')}`;
-      }
-
-      entries.push({
-        id: eid++,
-        date: isoDate,
-        type,
-        desc: desc || '',
-        voucher: voucher || '',
-        voucherAmt: parseFloat(vamt?.replace(/,/g,'')) || 0,
-        qty: parseFloat(qty?.replace(/,/g,'')) || 0,
-        price: parseFloat(price?.replace(/,/g,'')) || 0,
-        amt,
-        note: note || ''
-      });
-    }
-
-    if (!key) {
-      // Ask user which month
-      const input = prompt('無法從檔名判斷月份，請輸入月份（如 115-6）：');
-      if (!input) return;
-      key = input.trim();
-    }
-
-    if (!db[key]) db[key] = { carry: 0, carryLabel: '上月結餘', entries: [] };
-    const overwrite = db[key].entries.length > 0
-      ? confirm(`「${keyLabel(key)}」已有 ${db[key].entries.length} 筆資料，是否覆蓋？`)
-      : true;
-    if (!overwrite) return;
-
-    db[key] = { carry, carryLabel, entries };
-    save();
-    renderSidebar();
-    selectMonth(key);
-    alert(`✓ 已匯入「${keyLabel(key)}」共 ${entries.length} 筆，期初結餘 ${fmt(carry)}`);
-  };
-  reader.readAsText(file, 'UTF-8');
-  event.target.value = ''; // reset input
+async function gasPost(body){
+  if(!backendReady) return null;
+  try{
+    const res=await fetch(GAS_URL,{
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify(body)
+    });
+    return await res.json();
+  }catch(err){
+    console.error('GAS POST 失敗',err);
+    setSyncStatus('err','連線失敗');
+    return null;
+  }
 }
 
-// ── Start ──────────────────────────────────────────────────────────────────
-init();
+function setSyncStatus(kind,text){
+  const el=document.getElementById('sync-status');
+  el.className='sync-status '+kind;
+  document.getElementById('sync-status-text').textContent=text;
+}
+
+function schedulePush(i){
+  pendingEdit[i]=true;
+  clearTimeout(pushTimers[i]);
+  pushTimers[i]=setTimeout(()=>pushSite(i),PUSH_DEBOUNCE_MS);
+}
+
+async function pushSite(i){
+  if(!backendReady||confirmed[i]){ pendingEdit[i]=false; return; }
+  const card=kanban.querySelector(`[data-idx="${i}"]`);
+  const n=g(card.querySelector('[data-col=n]'));
+  const v=g(card.querySelector('[data-col=v]'));
+  const p=g(card.querySelector('[data-col=p]'));
+  const s=g(card.querySelector('[data-col=s]'));
+  const remark=card.querySelector('[data-col=remark]').value;
+  const res=await gasPost({action:'update',date:dateInput.value,site:SITES[i],n,v,p,s,remark});
+  pendingEdit[i]=false;
+  if(res&&res.ok){ setSyncStatus('ok','已同步'); }
+  else if(res&&res.error==='locked'){
+    // 這個據點剛好被鎖定（競爭狀況），這筆資料沒有送出，明確告知使用者
+    setSyncStatus('err','剛才的輸入未送出（此據點已鎖定）');
+    alert(`「${SITES[i]}」剛剛輸入的數量沒有送出，因為這個據點目前已被鎖定。請重新整理頁面確認目前狀態，需要密碼解鎖後再輸入一次。`);
+    loadDate(dateInput.value);
+  } else {
+    setSyncStatus('err','同步失敗，請檢查網路');
+  }
+}
+
+function applyCardLockUI(i,isLocked){
+  confirmed[i]=isLocked;
+  const card=kanban.querySelector(`[data-idx="${i}"]`);
+  const btn=document.getElementById(`confirm-btn-${i}`);
+  card.classList.toggle('is-confirmed',isLocked);
+  card.classList.toggle('is-locked',isLocked);
+  btn.classList.toggle('confirmed',isLocked);
+  btn.textContent=isLocked?'✓ 已確認（點擊解鎖）':'確認完成';
+  card.querySelectorAll('input').forEach(inp=>inp.disabled=isLocked);
+  document.getElementById(`overlay-${i}`).classList.toggle('show',isLocked);
+  recalc();
+}
+
+async function handleConfirmToggle(i){
+  if(confirmed[i]){
+    // 目前已鎖定，要解鎖：跳出輸入2位數字密碼的視窗
+    openModal('unlock',i,`解鎖「${SITES[i]}」`,'請輸入剛才設定的 2 位數字密碼');
+  } else {
+    const pinExists=backendReady?hasPin[i]:!!localSitePins[i];
+    if(!pinExists){
+      openModal('set',i,`設定「${SITES[i]}」鎖定密碼`,'請設定 2 位數字密碼，之後解鎖會用到');
+    } else {
+      await doLockSite(i,null);
+    }
+  }
+}
+
+async function doLockSite(i,newPin){
+  pendingEdit[i]=true;
+  if(backendReady){
+    const res=await gasPost({action:'siteLock',date:dateInput.value,site:SITES[i],pin:newPin||''});
+    pendingEdit[i]=false;
+    if(res&&res.ok){
+      if(newPin) hasPin[i]=true;
+      applyCardLockUI(i,true);
+      setSyncStatus('ok','已同步');
+    } else {
+      alert('鎖定失敗，請確認網路連線後再試一次。');
+    }
+  } else {
+    pendingEdit[i]=false;
+    if(newPin){ localSitePins[i]=newPin; hasPin[i]=true; }
+    applyCardLockUI(i,true);
+  }
+}
+
+async function doUnlockSite(i,pin){
+  if(backendReady){
+    const res=await gasPost({action:'siteUnlock',date:dateInput.value,site:SITES[i],pin});
+    if(res&&res.ok){ applyCardLockUI(i,false); return true; }
+    return false;
+  } else {
+    if(pin===localSitePins[i]){ applyCardLockUI(i,false); return true; }
+    return false;
+  }
+}
+
+async function loadDate(date){
+  if(!backendReady){ setSyncStatus('off','尚未連接雲端'); return; }
+  setSyncStatus('ok','讀取中…');
+  const res=await gasGet({action:'pull',date});
+  if(!res||!res.ok){ setSyncStatus('err','讀取失敗，稍後自動重試'); return; }
+  applyServerData(res.data,true);
+  setSyncStatus('ok','已連接雲端，即時同步中');
+}
+
+async function refreshFromServer(){
+  if(!backendReady) return;
+  const res=await gasGet({action:'pull',date:dateInput.value});
+  if(!res||!res.ok) return;
+  applyServerData(res.data,false);
+  setSyncStatus('ok','已連接雲端，即時同步中');
+}
+
+function applyServerData(dataObj,fullReplace){
+  SITES.forEach((s,i)=>{
+    const rec=dataObj[s];
+    const card=kanban.querySelector(`[data-idx="${i}"]`);
+    const inputs={
+      n:card.querySelector('[data-col=n]'),
+      v:card.querySelector('[data-col=v]'),
+      p:card.querySelector('[data-col=p]'),
+      s:card.querySelector('[data-col=s]'),
+      remark:card.querySelector('[data-col=remark]')
+    };
+    const anyFocused=Object.values(inputs).some(el=>el===document.activeElement);
+    const hasPendingEdit=anyFocused||!!pendingEdit[i];
+    if(rec){
+      hasPin[i]=!!rec.hasPin;
+      if(fullReplace||!hasPendingEdit){
+        inputs.n.value=rec.n||'';
+        inputs.v.value=rec.v||'';
+        inputs.p.value=rec.p||'';
+        inputs.s.value=rec.s||'';
+        inputs.remark.value=rec.remark||'';
+        if(!!confirmed[i]!==!!rec.locked) applyCardLockUI(i,!!rec.locked);
+      }
+    } else if(fullReplace){
+      inputs.n.value='';inputs.v.value='';inputs.p.value='';inputs.s.value='';inputs.remark.value='';
+      hasPin[i]=false;
+      if(confirmed[i]) applyCardLockUI(i,false);
+    }
+  });
+  recalc();
+}
+
+async function handleClearAll(){
+  const targets=SITES.map((_,i)=>i).filter(i=>!confirmed[i]);
+  const lockedCount=SITES.length-targets.length;
+  if(targets.length===0){
+    alert('所有據點目前都已鎖定，沒有可以清除的項目。');
+    return;
+  }
+  const msg=lockedCount>0
+    ?`確定清除「未鎖定」的 ${targets.length} 個據點的數量與備註？（已鎖定的 ${lockedCount} 個據點不會被清除）`
+    :'確定清除所有據點的數量與備註？'+(backendReady?'（雲端紀錄也會一併清除）':'');
+  if(confirm(msg)){
+    targets.forEach(i=>{
+      const card=kanban.querySelector(`[data-idx="${i}"]`);
+      card.querySelectorAll('input').forEach(el=>{ el.value=''; });
+    });
+    recalc();
+    if(backendReady){
+      const tasks=targets.map(i=>gasPost({action:'update',date:dateInput.value,site:SITES[i],n:0,v:0,p:0,s:0,remark:''}));
+      await Promise.all(tasks);
+    }
+  }
+}
+
+function openModal(mode,idx,title,desc){
+  modalCtx={mode,idx};
+  pinBuffer='';
+  updateDots();
+  document.getElementById('modal-title').textContent=title;
+  document.getElementById('modal-desc').textContent=desc;
+  document.getElementById('pin-err').textContent='';
+  document.getElementById('modal-bg').classList.add('show');
+}
+
+function closeModal(){
+  document.getElementById('modal-bg').classList.remove('show');
+  pinBuffer='';
+  updateDots();
+  document.getElementById('pin-err').textContent='';
+  modalCtx=null;
+}
+
+function updateDots(){
+  for(let i=0;i<2;i++) document.getElementById('d'+i).classList.toggle('filled',i<pinBuffer.length);
+}
+
+function pinInput(n){
+  if(pinBuffer.length>=2) return;
+  pinBuffer+=n;
+  updateDots();
+  document.getElementById('pin-err').textContent='';
+  if(pinBuffer.length===2) setTimeout(confirmPin,120);
+}
+
+function pinDel(){
+  if(pinBuffer.length>0){pinBuffer=pinBuffer.slice(0,-1);updateDots();}
+}
+
+async function confirmPin(){
+  if(!modalCtx||pinSubmitting) return;
+  const {mode,idx}=modalCtx;
+  pinSubmitting=true;
+  if(mode==='set'){
+    document.getElementById('pin-err').textContent='設定中…';
+    await doLockSite(idx,pinBuffer);
+    closeModal();
+  } else if(mode==='unlock'){
+    document.getElementById('pin-err').textContent='確認中…';
+    const ok=await doUnlockSite(idx,pinBuffer);
+    if(ok){
+      closeModal();
+    } else {
+      document.getElementById('pin-err').textContent='密碼錯誤，請再試一次';
+      pinBuffer='';updateDots();
+    }
+  }
+  pinSubmitting=false;
+}
+
+async function fetchExportRows(scope,btnLabel){
+  if(!backendReady){
+    alert('尚未連接雲端後端，目前沒有歷史紀錄可匯出。請先完成 Google 試算表連接設定。');
+    return null;
+  }
+  const btn=[...document.querySelectorAll('.btn')].find(b=>b.textContent.includes(btnLabel));
+  const orig=btn?btn.innerHTML:null;
+  if(btn) btn.innerHTML='匯出中…';
+  const res=await gasGet({action:'pullAll'});
+  if(btn) btn.innerHTML=orig;
+  if(!res||!res.ok){
+    alert('無法取得雲端歷史資料，請確認網路連線後再試一次。');
+    return null;
+  }
+  const curDate=dateInput.value;         // yyyy-mm-dd
+  const curMonth=curDate.slice(0,7);     // yyyy-mm
+  let rows=res.rows.filter(r=>scope==='day'?r.date===curDate:r.date.slice(0,7)===curMonth);
+  if(rows.length===0){
+    alert(scope==='day'?'這一天目前沒有任何紀錄。':'這個月目前沒有任何紀錄。');
+    return null;
+  }
+  const siteOrder=Object.fromEntries(SITES.map((s,i)=>[s,i]));
+  rows=rows.slice().sort((a,b)=>{
+    if(a.date!==b.date) return a.date.localeCompare(b.date);
+    return (siteOrder[a.site]??999)-(siteOrder[b.site]??999);
+  });
+  return rows;
+}
+
+function numOf(v){ const n=Number(v); return isNaN(n)?0:n; }
+function strOf(v){ return v==null?'':String(v).trim(); }
+
+function buildReportAOA(rows){
+  const header=['日期','據點','一般','素食','不豬','便當合計','湯份','備註','確認狀態','最後更新'];
+  const aoa=[header];
+  let idx=0;
+  while(idx<rows.length){
+    const curRowDate=rows[idx].date;
+    let tn=0,tv=0,tp=0,ts=0;
+    while(idx<rows.length && rows[idx].date===curRowDate){
+      const r=rows[idx];
+      const n=numOf(r.n),v=numOf(r.v),p=numOf(r.p),s=numOf(r.s);
+      const tot=n+v+p;
+      aoa.push([r.date,r.site,n,v,p,tot,s,strOf(r.remark),r.confirmed?'已確認':'',strOf(r.updated_at)]);
+      tn+=n;tv+=v;tp+=p;ts+=s;
+      idx++;
+    }
+    aoa.push([curRowDate,'合計',tn,tv,tp,tn+tv+tp,ts,'','','']);
+  }
+  return aoa;
+}
+
+function buildMonthlySummaryAOA(rows){
+  // 整月報表：每個據點一列（一般/素食/不豬/便當合計/湯份為整月加總，備註合併保留同一據點當月所有備註），
+  // 最後加一行「合計」彙總全部據點
+  const header=['據點','一般','素食','不豬','便當合計','湯份','備註'];
+  const aoa=[header];
+  const bySite={};
+  rows.forEach(r=>{
+    if(!bySite[r.site]) bySite[r.site]={n:0,v:0,p:0,s:0,remarks:[]};
+    bySite[r.site].n+=numOf(r.n);
+    bySite[r.site].v+=numOf(r.v);
+    bySite[r.site].p+=numOf(r.p);
+    bySite[r.site].s+=numOf(r.s);
+    const remarkText=strOf(r.remark);
+    if(remarkText) bySite[r.site].remarks.push(remarkText);
+  });
+  const orderedSites=[...SITES,...Object.keys(bySite).filter(s=>!SITES.includes(s))];
+  let gn=0,gv=0,gp=0,gs=0;
+  orderedSites.forEach(site=>{
+    const agg=bySite[site];
+    if(!agg) return;
+    aoa.push([site,agg.n,agg.v,agg.p,agg.n+agg.v+agg.p,agg.s,agg.remarks.join('；')]);
+    gn+=agg.n;gv+=agg.v;gp+=agg.p;gs+=agg.s;
+  });
+  aoa.push(['合計',gn,gv,gp,gn+gv+gp,gs,'']);
+  return aoa;
+}
+
+function monthlyTitleText(curMonth){
+  const monthNum=parseInt(curMonth.split('-')[1],10);
+  return `${monthNum}月份便當明細表`;
+}
+
+async function doExportExcel(scope){
+  const label=scope==='day'?'匯出當日':'匯出整月';
+  const rows=await fetchExportRows(scope,label);
+  if(!rows) return;
+  if(typeof XLSX==='undefined'){
+    alert('Excel 匯出元件載入失敗，請確認網路連線後重新整理頁面再試一次。');
+    return;
+  }
+  try{
+    const curDate=dateInput.value,curMonth=curDate.slice(0,7);
+    let aoa=scope==='month'?buildMonthlySummaryAOA(rows):buildReportAOA(rows);
+    if(scope==='month'){
+      aoa=[[monthlyTitleText(curMonth),'','','','','',''],...aoa];
+    }
+    const ws=XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols']=scope==='month'
+      ?[{wch:10},{wch:8},{wch:8},{wch:8},{wch:10},{wch:8},{wch:24}]
+      :[{wch:11},{wch:8},{wch:7},{wch:7},{wch:7},{wch:9},{wch:7},{wch:22},{wch:9},{wch:18}];
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,'便當記錄');
+    const suffix=scope==='day'?`當日_${curDate}`:`整月_${curMonth}`;
+    XLSX.writeFile(wb,`便當填報_C據點_${suffix}.xlsx`);
+  }catch(err){
+    console.error('Excel 匯出失敗',err);
+    alert('匯出 Excel 時發生錯誤，請稍後再試一次；如持續發生請回報此訊息：'+(err&&err.message?err.message:err));
+  }
+}
+
+function fitText(ctx,text,maxWidth){
+  text=String(text??'');
+  if(ctx.measureText(text).width<=maxWidth) return text;
+  let t=text;
+  while(t.length>0&&ctx.measureText(t+'…').width>maxWidth) t=t.slice(0,-1);
+  return t+'…';
+}
+
+function buildReportCanvas(aoa,titleText,colWidths){
+  colWidths=colWidths||[92,68,46,46,46,68,46,150,58,118];
+  const rowH=30,headerH=36,titleH=42,pad=16;
+  const innerWidth=colWidths.reduce((a,b)=>a+b,0);
+  const width=innerWidth+pad*2;
+  const height=titleH+headerH+(aoa.length-1)*rowH+pad*2;
+  const scale=2;
+  const canvas=document.createElement('canvas');
+  canvas.width=width*scale;
+  canvas.height=height*scale;
+  const ctx=canvas.getContext('2d');
+  ctx.scale(scale,scale);
+  ctx.fillStyle='#FFFFFF';
+  ctx.fillRect(0,0,width,height);
+  ctx.textBaseline='middle';
+  ctx.font='bold 17px "Noto Sans TC","Microsoft JhengHei",sans-serif';
+  ctx.fillStyle='#72243E';
+  ctx.textAlign='left';
+  ctx.fillText(titleText,pad,pad+titleH/2-4);
+
+  function drawRow(rowData,rowY,rowHeight,opts){
+    opts=opts||{};
+    let x=pad;
+    rowData.forEach((cell,ci)=>{
+      const w=colWidths[ci];
+      if(opts.bg){ ctx.fillStyle=opts.bg; ctx.fillRect(x,rowY,w,rowHeight); }
+      ctx.strokeStyle='#F4C0D1';
+      ctx.lineWidth=1;
+      ctx.strokeRect(x+0.5,rowY+0.5,w-1,rowHeight-1);
+      ctx.font=(opts.bold?'bold ':'')+'12px "Noto Sans TC","Microsoft JhengHei",sans-serif';
+      ctx.fillStyle=opts.color||'#3C2030';
+      ctx.textAlign='center';
+      ctx.fillText(fitText(ctx,cell,w-8),x+w/2,rowY+rowHeight/2);
+      x+=w;
+    });
+  }
+
+  let y=pad+titleH;
+  ctx.fillStyle='#FBEAF0';
+  ctx.fillRect(pad,y,innerWidth,headerH);
+  drawRow(aoa[0],y,headerH,{bold:true,color:'#72243E'});
+  y+=headerH;
+  for(let r=1;r<aoa.length;r++){
+    const isTotalRow=aoa[r][0]==='合計'||aoa[r][1]==='合計';
+    drawRow(aoa[r],y,rowH,isTotalRow?{bg:'#FDF4F8',bold:true,color:'#72243E'}:{});
+    y+=rowH;
+  }
+  return canvas;
+}
+
+async function doExportImage(scope){
+  const label=scope==='day'?'匯出當日':'匯出整月';
+  const rows=await fetchExportRows(scope,label);
+  if(!rows) return;
+  try{
+    const aoa=scope==='month'?buildMonthlySummaryAOA(rows):buildReportAOA(rows);
+    const colWidths=scope==='month'?[90,60,60,60,80,60,160]:undefined;
+    const curDate=dateInput.value,curMonth=curDate.slice(0,7);
+    const titleText=scope==='day'?`便當填報 C據點　${curDate}`:monthlyTitleText(curMonth);
+    const canvas=buildReportCanvas(aoa,titleText,colWidths);
+    canvas.toBlob(blob=>{
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      const suffix=scope==='day'?`當日_${curDate}`:`整月_${curMonth}`;
+      a.download=`便當填報_C據點_${suffix}.png`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    },'image/png');
+  }catch(err){
+    console.error('圖檔匯出失敗',err);
+    alert('匯出圖檔時發生錯誤，請稍後再試一次；如持續發生請回報此訊息：'+(err&&err.message?err.message:err));
+  }
+}
+
+let exportScopePending=null;
+
+function handleExportClick(scope){
+  exportScopePending=scope;
+  document.getElementById('format-modal-title').textContent=scope==='day'?'匯出當日報表':'匯出整月報表';
+  document.getElementById('format-modal-bg').classList.add('show');
+}
+
+function closeFormatModal(){
+  document.getElementById('format-modal-bg').classList.remove('show');
+  exportScopePending=null;
+}
+
+async function confirmExportFormat(fmt){
+  const scope=exportScopePending;
+  closeFormatModal();
+  if(!scope) return;
+  if(fmt==='xlsx') await doExportExcel(scope);
+  else await doExportImage(scope);
+}
+
+dateInput.addEventListener('change',()=>loadDate(dateInput.value));
+
+function updateClock(){
+  const now=new Date();
+  const hh=String(now.getHours()).padStart(2,'0');
+  const mm=String(now.getMinutes()).padStart(2,'0');
+  const ss=String(now.getSeconds()).padStart(2,'0');
+  document.getElementById('live-clock').textContent=`${hh}:${mm}:${ss}`;
+}
+
+updateClock();
+setInterval(updateClock,1000);
+
+if(backendReady){
+  loadDate(dateInput.value);
+  setInterval(refreshFromServer,POLL_INTERVAL_MS);
+} else {
+  setSyncStatus('off','尚未連接雲端（本機模式）');
+}
 </script>
-</body>
-</html>
