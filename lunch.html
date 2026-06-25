@@ -165,6 +165,7 @@ dateInput.value=localDateStr(new Date());
 const confirmed={}; // idx -> bool，該據點今天是否已確認並鎖定
 const pushTimers={};
 const pendingEdit={}; // idx -> bool，該據點是否還有「排隊中／送出中」尚未完成的編輯，避免被自動同步蓋掉
+const lastLocalEditAt={}; // idx -> timestamp，最後一次在本機編輯/鎖定這個據點的時間，用來判斷輪詢回應是否已經過期
 
 SITES.forEach((s,i)=>{
   const d=document.createElement('div');
@@ -305,6 +306,7 @@ function setSyncStatus(kind,text){
 
 function schedulePush(i){
   pendingEdit[i]=true;
+  lastLocalEditAt[i]=Date.now();
   clearTimeout(pushTimers[i]);
   pushTimers[i]=setTimeout(()=>pushSite(i),PUSH_DEBOUNCE_MS);
 }
@@ -353,6 +355,7 @@ async function handleConfirmToggle(i){
 }
 
 async function doLockSite(i){
+  lastLocalEditAt[i]=Date.now();
   clearTimeout(pushTimers[i]); // 取消還在排隊中的舊版更新，避免跟鎖定互相競爭
   const card=kanban.querySelector(`[data-idx="${i}"]`);
   const n=g(card.querySelector('[data-col=n]'));
@@ -379,21 +382,23 @@ async function doLockSite(i){
 async function loadDate(date){
   if(!backendReady){ setSyncStatus('off','尚未連接雲端'); return; }
   setSyncStatus('ok','讀取中…');
+  const pollSentAt=Date.now();
   const res=await gasGet({action:'pull',date});
   if(!res||!res.ok){ setSyncStatus('err','讀取失敗，稍後自動重試'); return; }
-  applyServerData(res.data,true);
+  applyServerData(res.data,true,pollSentAt);
   setSyncStatus('ok','已連接雲端，即時同步中');
 }
 
 async function refreshFromServer(){
   if(!backendReady) return;
+  const pollSentAt=Date.now();
   const res=await gasGet({action:'pull',date:dateInput.value});
   if(!res||!res.ok) return;
-  applyServerData(res.data,false);
+  applyServerData(res.data,false,pollSentAt);
   setSyncStatus('ok','已連接雲端，即時同步中');
 }
 
-function applyServerData(dataObj,fullReplace){
+function applyServerData(dataObj,fullReplace,pollSentAt){
   SITES.forEach((s,i)=>{
     const rec=dataObj[s];
     const card=kanban.querySelector(`[data-idx="${i}"]`);
@@ -405,7 +410,10 @@ function applyServerData(dataObj,fullReplace){
       remark:card.querySelector('[data-col=remark]')
     };
     const anyFocused=Object.values(inputs).some(el=>el===document.activeElement);
-    const hasPendingEdit=anyFocused||!!pendingEdit[i];
+    // 如果這次輪詢「送出」之後，這個據點又發生過新的本機編輯/鎖定，這次的回應已經過期，不能套用，
+    // 否則會把剛改好的資料蓋回送出輪詢當時的舊狀態（即使那筆編輯早就送完、pendingEdit 已經清掉）
+    const respondedAfterNewerEdit=pollSentAt!==undefined&&lastLocalEditAt[i]&&lastLocalEditAt[i]>pollSentAt;
+    const hasPendingEdit=anyFocused||!!pendingEdit[i]||respondedAfterNewerEdit;
     if(rec){
       if(fullReplace||!hasPendingEdit){
         inputs.n.value=rec.n||'';

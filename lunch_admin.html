@@ -182,6 +182,7 @@ dateInput.value=localDateStr(new Date());
 const locked={}; // idx -> bool，該據點目前是否鎖定
 const pushTimers={};
 const pendingEdit={};
+const lastLocalEditAt={}; // idx -> timestamp，最後一次在本機編輯/鎖定/解鎖這個據點的時間，用來判斷輪詢回應是否已經過期
 let pinBuffer='';
 let modalCtx=null; // {idx}
 let pinSubmitting=false;
@@ -318,6 +319,7 @@ function setSyncStatus(kind,text){
 
 function schedulePush(i){
   pendingEdit[i]=true;
+  lastLocalEditAt[i]=Date.now();
   clearTimeout(pushTimers[i]);
   pushTimers[i]=setTimeout(()=>pushSite(i),PUSH_DEBOUNCE_MS);
 }
@@ -362,6 +364,7 @@ function handleLockToggle(i){
 }
 
 async function doLock(i){
+  lastLocalEditAt[i]=Date.now();
   clearTimeout(pushTimers[i]); // 取消還在排隊中的舊版更新，避免跟鎖定互相競爭
   const card=kanban.querySelector(`[data-idx="${i}"]`);
   const n=g(card.querySelector('[data-col=n]'));
@@ -383,6 +386,7 @@ async function doLock(i){
 
 async function doSupervisorUnlock(i,pin){
   if(!backendReady) return false;
+  lastLocalEditAt[i]=Date.now();
   const res=await gasPost({action:'supervisorUnlock',date:dateInput.value,site:SITES[i],pin});
   if(res&&res.ok){ applyLockUI(i,false); return true; }
   return false;
@@ -391,21 +395,23 @@ async function doSupervisorUnlock(i,pin){
 async function loadDate(date){
   if(!backendReady){ setSyncStatus('off','尚未連接雲端'); return; }
   setSyncStatus('ok','讀取中…');
+  const pollSentAt=Date.now();
   const res=await gasGet({action:'pull',date});
   if(!res||!res.ok){ setSyncStatus('err','讀取失敗，稍後自動重試'); return; }
-  applyServerData(res.data,true);
+  applyServerData(res.data,true,pollSentAt);
   setSyncStatus('ok','已連接雲端，即時同步中');
 }
 
 async function refreshFromServer(){
   if(!backendReady) return;
+  const pollSentAt=Date.now();
   const res=await gasGet({action:'pull',date:dateInput.value});
   if(!res||!res.ok) return;
-  applyServerData(res.data,false);
+  applyServerData(res.data,false,pollSentAt);
   setSyncStatus('ok','已連接雲端，即時同步中');
 }
 
-function applyServerData(dataObj,fullReplace){
+function applyServerData(dataObj,fullReplace,pollSentAt){
   SITES.forEach((s,i)=>{
     const rec=dataObj[s];
     const card=kanban.querySelector(`[data-idx="${i}"]`);
@@ -417,7 +423,8 @@ function applyServerData(dataObj,fullReplace){
       remark:card.querySelector('[data-col=remark]')
     };
     const anyFocused=Object.values(inputs).some(el=>el===document.activeElement);
-    const hasPendingEdit=anyFocused||!!pendingEdit[i];
+    const respondedAfterNewerEdit=pollSentAt!==undefined&&lastLocalEditAt[i]&&lastLocalEditAt[i]>pollSentAt;
+    const hasPendingEdit=anyFocused||!!pendingEdit[i]||respondedAfterNewerEdit;
     if(rec){
       if(fullReplace||!hasPendingEdit){
         inputs.n.value=rec.n||'';
