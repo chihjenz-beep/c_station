@@ -54,11 +54,13 @@
 .site-card .remark-row input[type=text]:focus{outline:none;border-color:#D4537E;box-shadow:0 0 0 2px rgba(212,83,126,.12)}
 .site-card .remark-row input[type=text]:disabled{color:#D4A0B5;background:transparent;border-color:#F4C0D1}
 .site-card .remark-row input[type=text]::placeholder{color:#E3B8C8}
-.confirm-btn{width:100%;margin-top:6px;padding:5px 0;border-radius:6px;border:0.5px solid #F4C0D1;background:transparent;color:#993556;font-size:11px;font-weight:500;cursor:pointer}
+.confirm-btn{width:100%;margin-top:6px;padding:5px 0;border-radius:6px;border:0.5px solid #F4C0D1;background:transparent;color:#993556;font-size:11px;font-weight:500;cursor:pointer;transition:transform .08s}
 .confirm-btn:hover{background:#FDF4F8}
+.confirm-btn:active{transform:scale(0.95)}
 .confirm-btn:disabled{color:#E3B8C8;border-color:#F4C0D1;cursor:default;background:transparent}
-.confirm-btn.confirmed{background:#E8F3DC;border-color:#6FA52B;color:#3B6D11}
+.confirm-btn.confirmed{background:#E8F3DC;border-color:#6FA52B;color:#3B6D11;animation:lock-pulse .45s ease-out}
 .confirm-btn.confirmed:hover{background:#DCEDC9}
+@keyframes lock-pulse{0%{box-shadow:0 0 0 0 rgba(111,165,43,.55);transform:scale(.97)}70%{box-shadow:0 0 0 7px rgba(111,165,43,0);transform:scale(1)}100%{box-shadow:0 0 0 0 rgba(111,165,43,0)}}
 .site-card.is-confirmed{border-color:#6FA52B}
 .lock-overlay{display:none;position:absolute;inset:0;border-radius:8px;cursor:pointer}
 .lock-overlay.show{display:block}
@@ -351,19 +353,26 @@ async function handleConfirmToggle(i){
 }
 
 async function doLockSite(i){
+  clearTimeout(pushTimers[i]); // 取消還在排隊中的舊版更新，避免跟鎖定互相競爭
+  const card=kanban.querySelector(`[data-idx="${i}"]`);
+  const n=g(card.querySelector('[data-col=n]'));
+  const v=g(card.querySelector('[data-col=v]'));
+  const p=g(card.querySelector('[data-col=p]'));
+  const s=g(card.querySelector('[data-col=s]'));
+  const remark=card.querySelector('[data-col=remark]').value;
+  applyCardLockUI(i,true); // 先樂觀鎖定畫面，點下去馬上有反應，不用等網路往返
   pendingEdit[i]=true;
   if(backendReady){
-    const res=await gasPost({action:'siteLock',date:dateInput.value,site:SITES[i]});
+    const res=await gasPost({action:'siteLock',date:dateInput.value,site:SITES[i],n,v,p,s,remark});
     pendingEdit[i]=false;
     if(res&&res.ok){
-      applyCardLockUI(i,true);
       setSyncStatus('ok','已同步');
     } else {
+      applyCardLockUI(i,false); // 失敗就復原成未鎖定
       alert('鎖定失敗，請確認網路連線後再試一次。');
     }
   } else {
     pendingEdit[i]=false;
-    applyCardLockUI(i,true);
   }
 }
 

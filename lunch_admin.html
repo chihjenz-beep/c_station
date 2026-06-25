@@ -54,10 +54,12 @@
 .site-card .remark-row input[type=text]:focus{outline:none;border-color:#D4537E;box-shadow:0 0 0 2px rgba(212,83,126,.12)}
 .site-card .remark-row input[type=text]:disabled{color:#D4A0B5;background:transparent;border-color:#F4C0D1}
 .site-card .remark-row input[type=text]::placeholder{color:#E3B8C8}
-.lock-btn{width:100%;margin-top:6px;padding:5px 0;border-radius:6px;border:0.5px solid #F4C0D1;background:transparent;color:#993556;font-size:11px;font-weight:500;cursor:pointer}
+.lock-btn{width:100%;margin-top:6px;padding:5px 0;border-radius:6px;border:0.5px solid #F4C0D1;background:transparent;color:#993556;font-size:11px;font-weight:500;cursor:pointer;transition:transform .08s}
 .lock-btn:hover{background:#FDF4F8}
-.lock-btn.is-locked{background:#993556;border-color:#72243E;color:#FBEAF0}
+.lock-btn:active{transform:scale(0.95)}
+.lock-btn.is-locked{background:#993556;border-color:#72243E;color:#FBEAF0;animation:lock-pulse2 .45s ease-out}
 .lock-btn.is-locked:hover{background:#72243E}
+@keyframes lock-pulse2{0%{box-shadow:0 0 0 0 rgba(153,53,86,.55);transform:scale(.97)}70%{box-shadow:0 0 0 7px rgba(153,53,86,0);transform:scale(1)}100%{box-shadow:0 0 0 0 rgba(153,53,86,0)}}
 .toast-stack{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:50;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
 .toast{background:#FFF6E5;border:0.5px solid #E0A93C;color:#7A4E08;font-size:13px;padding:10px 18px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.12);max-width:90vw;text-align:center;opacity:0;transform:translateY(-8px);transition:opacity .2s,transform .2s}
 .toast.show{opacity:1;transform:translateY(0)}
@@ -360,15 +362,22 @@ function handleLockToggle(i){
 }
 
 async function doLock(i){
+  clearTimeout(pushTimers[i]); // 取消還在排隊中的舊版更新，避免跟鎖定互相競爭
+  const card=kanban.querySelector(`[data-idx="${i}"]`);
+  const n=g(card.querySelector('[data-col=n]'));
+  const v=g(card.querySelector('[data-col=v]'));
+  const p=g(card.querySelector('[data-col=p]'));
+  const s=g(card.querySelector('[data-col=s]'));
+  const remark=card.querySelector('[data-col=remark]').value;
+  applyLockUI(i,true); // 先樂觀鎖定畫面，點下去馬上有反應
   pendingEdit[i]=true;
   if(backendReady){
-    const res=await gasPost({action:'siteLock',date:dateInput.value,site:SITES[i]});
+    const res=await gasPost({action:'siteLock',date:dateInput.value,site:SITES[i],n,v,p,s,remark});
     pendingEdit[i]=false;
-    if(res&&res.ok){ applyLockUI(i,true); setSyncStatus('ok','已同步'); }
-    else { alert('鎖定失敗，請確認網路連線後再試一次。'); }
+    if(res&&res.ok){ setSyncStatus('ok','已同步'); }
+    else { applyLockUI(i,false); alert('鎖定失敗，請確認網路連線後再試一次。'); }
   } else {
     pendingEdit[i]=false;
-    applyLockUI(i,true);
   }
 }
 
