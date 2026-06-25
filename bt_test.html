@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>據點便當彙整單</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500;700&display=swap');
+
+  :root{
+    --paper:#F6F1E7;
+    --paper-deep:#EFE7D6;
+    --ink:#2B2420;
+    --ink-soft:#6B5F52;
+    --stamp:#A8362B;
+    --stamp-deep:#7E2620;
+    --line:#D9CDB8;
+    --good:#3F6B4F;
+    --tag-veg:#C97B2E;
+    --blue:#5B7A99;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    background-image:
+      radial-gradient(ellipse at top left, rgba(168,54,43,0.04), transparent 50%),
+      repeating-linear-gradient(0deg, rgba(0,0,0,0.012) 0px, rgba(0,0,0,0.012) 1px, transparent 1px, transparent 28px);
+    color:var(--ink);
+    font-family:'Noto Sans TC', sans-serif;
+    min-height:100vh;
+    padding-bottom:60px;
+  }
+
+  .wrap{max-width:920px;margin:0 auto;padding:28px 18px 0;}
+
+  /* ── Header ───────────────────────── */
+  header{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    border-bottom:3px solid var(--ink);
+    padding-bottom:14px;
+    margin-bottom:6px;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  .brand-mark{display:flex;align-items:center;gap:12px;}
+  .stamp-icon{
+    width:46px;height:46px;border-radius:50%;
+    border:2.5px solid var(--stamp);
+    display:flex;align-items:center;justify-content:center;
+    color:var(--stamp);font-family:'Noto Serif TC',serif;font-weight:900;font-size:20px;
+    transform:rotate(-6deg);
+    flex-shrink:0;
+  }
+  h1{
+    font-family:'Noto Serif TC',serif;
+    font-weight:900;
+    font-size:clamp(22px,5vw,30px);
+    margin:0;
+    letter-spacing:0.04em;
+    line-height:1.15;
+  }
+  .subtitle{color:var(--ink-soft);font-size:13px;margin-top:2px;letter-spacing:0.05em;}
+  .date-badge{text-align:right;font-family:'JetBrains Mono', monospace;}
+  .date-badge .label{font-size:11px;color:var(--ink-soft);letter-spacing:0.1em;}
+  .date-badge .value{font-size:20px;font-weight:700;color:var(--stamp-deep);}
+
+  /* ── Panels ───────────────────────── */
+  .panel{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:4px;
+    margin-top:22px;
+    box-shadow:0 1px 0 var(--line), 0 8px 18px -12px rgba(43,36,32,0.25);
+  }
+  .panel-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:13px 18px;
+    border-bottom:1px solid var(--line);
+    background:var(--paper-deep);
+    border-radius:4px 4px 0 0;
+    flex-wrap:wrap;gap:8px;
+  }
+  .panel-head h2{
+    font-family:'Noto Serif TC',serif;
+    font-size:15px;font-weight:700;margin:0;
+    display:flex;align-items:center;gap:8px;
+  }
+  .panel-head h2 .num{
+    background:var(--ink);color:var(--paper);
+    width:20px;height:20px;border-radius:50%;
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:11px;font-family:'JetBrains Mono',monospace;
+  }
+  .panel-body{padding:16px 18px 18px;}
+
+  /* ── API Key 設定 ───────────────────────── */
+  .key-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  input[type="text"], input[type="password"]{
+    border:1px solid var(--line);
+    border-radius:3px;
+    padding:9px 12px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px;
+    background:#FBF8F1;
+    color:var(--ink);
+    flex:1;
+    min-width:180px;
+  }
+  input:focus{outline:2px solid var(--stamp);outline-offset:1px;}
+  .key-status{font-size:12px;color:var(--good);font-weight:700;display:none;align-items:center;gap:4px;}
+  .key-status.show{display:flex;}
+  .key-status .dot{width:7px;height:7px;border-radius:50%;background:var(--good);}
+
+  /* ── 上傳區 ───────────────────────── */
+  .dropzone{
+    border:2px dashed var(--line);
+    border-radius:6px;
+    padding:32px 16px;
+    text-align:center;
+    background:#FBF8F1;
+    cursor:pointer;
+    transition:border-color 0.15s, background 0.15s;
+  }
+  .dropzone:hover, .dropzone.dragover{
+    border-color:var(--stamp);
+    background:#FBF1EC;
+  }
+  .dropzone .icon{font-size:32px;margin-bottom:6px;}
+  .dropzone .main-text{font-weight:700;font-size:14.5px;color:var(--ink);}
+  .dropzone .sub-text{font-size:12px;color:var(--ink-soft);margin-top:4px;}
+  #fileInput{display:none;}
+
+  .thumb-grid{
+    display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;
+  }
+  .thumb-item{
+    position:relative;
+    width:84px;height:84px;
+    border-radius:4px;
+    overflow:hidden;
+    border:1px solid var(--line);
+    background:#fff;
+  }
+  .thumb-item img{width:100%;height:100%;object-fit:cover;display:block;}
+  .thumb-item .status-overlay{
+    position:absolute;inset:0;
+    display:flex;align-items:center;justify-content:center;
+    font-size:11px;font-weight:700;color:#fff;
+    background:rgba(43,36,32,0.55);
+  }
+  .thumb-item .status-overlay.ok{background:rgba(63,107,79,0.0);display:none;}
+  .thumb-item .status-overlay.fail{background:rgba(168,54,43,0.7);}
+  .thumb-item .thumb-del{
+    position:absolute;top:2px;right:2px;
+    width:18px;height:18px;border-radius:50%;
+    background:rgba(0,0,0,0.6);color:#fff;
+    border:none;font-size:11px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    line-height:1;
+  }
+
+  .hint{font-size:12px;color:var(--ink-soft);margin-top:8px;line-height:1.6;}
+  .hint code{background:var(--paper-deep);padding:1px 5px;border-radius:2px;font-family:'JetBrains Mono',monospace;}
+
+  .btn-row{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;align-items:center;}
+  button{
+    font-family:'Noto Sans TC',sans-serif;
+    font-weight:700;
+    font-size:14px;
+    padding:10px 20px;
+    border-radius:3px;
+    border:none;
+    cursor:pointer;
+    transition:transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s;
+  }
+  button:active{transform:translateY(1px);}
+  button:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-primary{background:var(--stamp);color:#fff;box-shadow:0 2px 0 var(--stamp-deep);}
+  .btn-primary:hover:not(:disabled){background:var(--stamp-deep);}
+  .btn-ghost{background:transparent;color:var(--ink-soft);border:1px solid var(--line);}
+  .btn-ghost:hover{border-color:var(--ink-soft);color:var(--ink);}
+  .btn-export{background:var(--good);color:#fff;box-shadow:0 2px 0 #2c4d38;}
+  .btn-export:hover:not(:disabled){background:#345A41;}
+  .btn-small{padding:6px 14px;font-size:12.5px;}
+
+  /* ── 進度條 ───────────────────────── */
+  .progress-box{margin-top:14px;display:none;}
+  .progress-box.show{display:block;}
+  .progress-bar-track{
+    height:8px;background:var(--paper-deep);border-radius:5px;overflow:hidden;
+    border:1px solid var(--line);
+  }
+  .progress-bar-fill{
+    height:100%;background:var(--stamp);width:0%;
+    transition:width 0.3s ease;
+  }
+  .progress-label{font-size:12px;color:var(--ink-soft);margin-top:6px;font-family:'JetBrains Mono',monospace;}
+
+  /* ── 解析預覽（OCR後人工校對）───────────────────────── */
+  .ocr-preview{margin-top:14px;display:none;}
+  .ocr-preview.show{display:block;}
+  .ocr-card{
+    border:1px solid var(--line);
+    border-radius:4px;
+    margin-bottom:10px;
+    background:#FBF8F1;
+    overflow:hidden;
+  }
+  .ocr-card .ocr-head{
+    padding:8px 12px;font-size:11.5px;color:var(--ink-soft);
+    background:var(--paper-deep);border-bottom:1px solid var(--line);
+    display:flex;justify-content:space-between;
+  }
+  .ocr-card textarea.raw-text{
+    width:100%;border:none;background:transparent;
+    font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.7;
+    padding:10px 12px;min-height:80px;resize:vertical;color:var(--ink);
+  }
+  .ocr-card textarea.raw-text:focus{outline:none;background:#fff;}
+
+  /* ── Warnings ───────────────────────── */
+  .warn-box{
+    margin-top:14px;
+    background:#FBF1E6;
+    border:1px solid #E3C089;
+    border-left:4px solid var(--tag-veg);
+    border-radius:2px;
+    padding:10px 14px;
+    font-size:12.5px;
+    color:#7A5A1E;
+    display:none;
+  }
+  .warn-box.show{display:block;}
+  .warn-box ul{margin:6px 0 0;padding-left:18px;}
+
+  .err-box{
+    margin-top:14px;
+    background:#FBE9E7;
+    border:1px solid #E3A8A0;
+    border-left:4px solid var(--stamp);
+    border-radius:2px;
+    padding:10px 14px;
+    font-size:12.5px;
+    color:var(--stamp-deep);
+    display:none;
+  }
+  .err-box.show{display:block;}
+
+  /* ── Results Table ───────────────────────── */
+  .results{margin-top:26px;display:none;}
+  .results.show{display:block;}
+  .table-card{
+    background:#fff;border:1px solid var(--line);border-radius:4px;overflow:hidden;
+    box-shadow:0 1px 0 var(--line), 0 8px 18px -12px rgba(43,36,32,0.25);
+  }
+  .table-scroll{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;min-width:680px;}
+  thead th{
+    background:var(--ink);color:var(--paper);
+    font-family:'Noto Serif TC',serif;font-size:13px;font-weight:700;
+    text-align:left;padding:11px 12px;letter-spacing:0.03em;white-space:nowrap;
+  }
+  thead th.num{text-align:right;}
+  tbody td{padding:9px 12px;border-bottom:1px solid var(--line);font-size:13.5px;}
+  tbody tr:nth-child(even){background:#FBF8F1;}
+  tbody tr:hover{background:#F3EBDA;}
+  td.num{text-align:right;font-family:'JetBrains Mono',monospace;font-weight:700;}
+  td.site{font-weight:700;font-family:'Noto Serif TC',serif;}
+  td.author{color:var(--ink-soft);font-size:12.5px;}
+  .empty-dash{color:#C7BBA5;}
+
+  tfoot td{
+    padding:13px 12px;font-weight:900;font-family:'JetBrains Mono',monospace;
+    background:var(--paper-deep);border-top:2px solid var(--ink);font-size:14.5px;
+  }
+  tfoot td.label{font-family:'Noto Serif TC',serif;font-size:14px;}
+
+  .row-actions{text-align:center;}
+  .row-del{
+    background:none;border:none;color:#C0392B;cursor:pointer;font-size:16px;padding:2px 6px;font-weight:400;
+  }
+  .row-del:hover{color:#8E2A20;}
+
+  .meta-strip{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:10px 18px;background:var(--paper-deep);
+    font-size:12px;color:var(--ink-soft);border-top:1px solid var(--line);
+    flex-wrap:wrap;gap:8px;
+  }
+
+  textarea#noteInput{
+    width:100%;margin-top:14px;min-height:60px;
+    font-family:'Noto Sans TC',sans-serif;font-size:13px;
+    border:1px solid var(--line);border-radius:3px;padding:10px 12px;
+  }
+
+  footer{
+    text-align:center;color:var(--ink-soft);font-size:11.5px;
+    margin-top:30px;letter-spacing:0.05em;
+  }
+
+  details.collapse-box{margin-top:6px;}
+  details.collapse-box summary{
+    cursor:pointer;font-size:12.5px;color:var(--ink-soft);
+    padding:4px 0;
+  }
+  details.collapse-box summary:hover{color:var(--ink);}
+
+  @media (max-width:560px){
+    header{flex-direction:column;align-items:flex-start;gap:10px;}
+    .date-badge{text-align:left;}
+    .panel-body{padding:14px 12px;}
+  }
+
+  @media print{
+    body{background:#fff;padding:0;}
+    .panel, footer, .row-actions{display:none !important;}
+    .results{display:block !important;}
+    .wrap{max-width:100%;padding:0;}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header>
+    <div class="brand-mark">
+      <div class="stamp-icon">平</div>
+      <div>
+        <h1>據點便當彙整單</h1>
+        <div class="subtitle">平安展心團隊・每日餐點需求回報</div>
+      </div>
+    </div>
+    <div class="date-badge">
+      <div class="label">統計日期 DATE</div>
+      <div class="value" id="todayDate">—</div>
+    </div>
+  </header>
+
+  <!-- API Key 設定 -->
+  <section class="panel">
+    <div class="panel-head">
+      <h2><span class="num">1</span> OCR.space API Key 設定</h2>
+      <span class="key-status" id="keyStatus"><span class="dot"></span>已儲存於本機瀏覽器</span>
+    </div>
+    <div class="panel-body">
+      <div class="key-row">
+        <input type="password" id="apiKeyInput" placeholder="貼上您的 OCR.space API Key">
+        <button class="btn-primary btn-small" id="saveKeyBtn" type="button">儲存</button>
+        <button class="btn-ghost btn-small" id="clearKeyBtn" type="button">清除</button>
+      </div>
+      <div class="hint">
+        Key 僅儲存在「您目前這台裝置」的瀏覽器內（localStorage），不會上傳到任何伺服器，也不會寫進這個 HTML 檔案。換瀏覽器或清除瀏覽器資料需要重新輸入。沒有 Key 可至
+        <a href="https://ocr.space/ocrapi" target="_blank" rel="noopener">ocr.space/ocrapi</a> 免費申請。
+      </div>
+    </div>
+  </section>
+
+  <!-- 上傳區 -->
+  <section class="panel">
+    <div class="panel-head">
+      <h2><span class="num">2</span> 上傳留言截圖</h2>
+      <button class="btn-ghost btn-small" id="clearPhotosBtn" type="button">清空照片</button>
+    </div>
+    <div class="panel-body">
+      <div class="dropzone" id="dropzone">
+        <div class="icon">📷</div>
+        <div class="main-text">點此選擇照片，或將截圖拖曳至此</div>
+        <div class="sub-text">可一次選取多張，將依序自動辨識並合併結果</div>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" multiple>
+
+      <div class="thumb-grid" id="thumbGrid"></div>
+
+      <div class="progress-box" id="progressBox">
+        <div class="progress-bar-track"><div class="progress-bar-fill" id="progressFill"></div></div>
+        <div class="progress-label" id="progressLabel">辨識中...</div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-primary" id="ocrBtn" type="button">開始辨識並彙整</button>
+      </div>
+
+      <div class="err-box" id="errBox"></div>
+
+      <div class="ocr-preview" id="ocrPreview">
+        <details class="collapse-box" open>
+          <summary>OCR 辨識文字預覽（可手動修正後重新解析）</summary>
+          <div id="ocrCardsContainer"></div>
+          <div class="btn-row">
+            <button class="btn-primary btn-small" id="reparseBtn" type="button">重新解析以上文字</button>
+          </div>
+        </details>
+      </div>
+
+      <div class="warn-box" id="warnBox">
+        <strong>⚠ 以下幾行無法辨識，請檢查格式或手動修正上方文字：</strong>
+        <ul id="warnList"></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 結果區 -->
+  <section class="results" id="resultsSection">
+    <div class="panel-head" style="border-radius:4px 4px 0 0;border:1px solid var(--line);border-bottom:none;background:var(--paper-deep);padding:13px 18px;">
+      <h2 style="font-family:'Noto Serif TC',serif;font-size:15px;font-weight:700;margin:0;display:flex;align-items:center;gap:8px;">
+        <span class="num" style="background:var(--ink);color:var(--paper);width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-family:'JetBrains Mono',monospace;">3</span>
+        彙整結果
+      </h2>
+    </div>
+    <div class="table-card" style="border-radius:0 0 4px 4px;">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>據點</th>
+              <th>發文者</th>
+              <th class="num">總人數</th>
+              <th class="num">一般便當</th>
+              <th class="num">不豬(XP)</th>
+              <th class="num">湯數</th>
+              <th style="width:30px;"></th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody"></tbody>
+          <tfoot>
+            <tr>
+              <td class="label" colspan="2">合計</td>
+              <td class="num" id="totalPeople">0</td>
+              <td class="num" id="totalNormal">0</td>
+              <td class="num" id="totalVeg">0</td>
+              <td class="num" id="totalSoup">0</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <div class="meta-strip">
+        <span id="siteCount">共 0 個據點</span>
+        <span style="display:flex;align-items:center;gap:10px;">
+          <span id="lastUpdated"></span>
+          <button class="btn-export btn-small" id="saveDailyBtn" type="button" style="margin:0;">存入今日紀錄（累計到本月）</button>
+        </span>
+      </div>
+    </div>
+
+    <!-- 本月累計 -->
+    <div class="panel" style="margin-top:16px;">
+      <div class="panel-head">
+        <h2><span class="num">M</span> 本月累計 <span id="monthLabel" style="font-weight:400;color:var(--ink-soft);font-size:12.5px;"></span></h2>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-export btn-small" id="exportMonthBtn" type="button" style="background:var(--blue);box-shadow:0 2px 0 #3F596F;">匯出本月 Excel</button>
+          <button class="btn-ghost btn-small" id="clearMonthBtn" type="button">清除本月紀錄</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="save-confirm" id="saveConfirm" style="display:none;background:#EAF3ED;border:1px solid #B9D6C2;color:var(--good);padding:8px 12px;border-radius:3px;font-size:12.5px;margin-bottom:10px;"></div>
+        <div class="table-scroll">
+          <table id="monthTable">
+            <thead>
+              <tr>
+                <th>據點</th>
+                <th class="num">總人數</th>
+                <th class="num">一般便當</th>
+                <th class="num">不豬(XP)</th>
+                <th class="num">湯數</th>
+                <th class="num">已存天數</th>
+              </tr>
+            </thead>
+            <tbody id="monthBody"></tbody>
+            <tfoot>
+              <tr>
+                <td class="label">合計</td>
+                <td class="num" id="monthTotalPeople">0</td>
+                <td class="num" id="monthTotalNormal">0</td>
+                <td class="num" id="monthTotalVeg">0</td>
+                <td class="num" id="monthTotalSoup">0</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <div class="hint" id="monthEmptyHint" style="display:none;">本月尚無存檔紀錄。每天解析完成後按「存入今日紀錄」即可開始累計。</div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:16px;">
+      <div class="panel-head">
+        <h2><span class="num">4</span> 備註（會一併匯出）</h2>
+      </div>
+      <div class="panel-body">
+        <textarea id="noteInput" placeholder="例如：今日岱江里加開一桌、XX據點延後送餐..."></textarea>
+        <div class="btn-row">
+          <button class="btn-export" id="exportBtn" type="button">匯出 Excel</button>
+          <button class="btn-export" id="exportCsvBtn" type="button" style="background:var(--blue);box-shadow:0 2px 0 #3F596F;">匯出 CSV</button>
+          <button class="btn-ghost" id="printBtn" type="button">列印 / PDF</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>平安醫療長期照護體系 ・ 資料僅供內部彙整使用</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+(function(){
+  'use strict';
+
+  const STORAGE_KEY = 'lunch_parser_records_v2';
+  const API_KEY_STORAGE = 'ocr_space_api_key_v1';
+  let records = [];
+  let photos = []; // {id, file, dataUrl, status: 'pending'|'ok'|'fail', rawText, author}
+
+  // ── 日期顯示 ──────────────────────────
+  function formatToday(){
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const day = String(d.getDate()).padStart(2,'0');
+    const weekdays = ['日','一','二','三','四','五','六'];
+    return `${y}/${m}/${day} (${weekdays[d.getDay()]})`;
+  }
+  function todayFileTag(){
+    const d = new Date();
+    return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  }
+  document.getElementById('todayDate').textContent = formatToday();
+
+  function todayKey(){
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  function monthKey(){
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  }
+  const MONTH_STORAGE_PREFIX = 'lunch_parser_month_'; // + monthKey -> { 'YYYY-MM-DD': [records] }
+
+  document.getElementById('monthLabel').textContent = `（${monthKey()}）`;
+
+  // ── API Key 管理 ──────────────────────────
+  function getApiKey(){
+    return localStorage.getItem(API_KEY_STORAGE) || '';
+  }
+  function refreshKeyStatus(){
+    const has = !!getApiKey();
+    document.getElementById('keyStatus').classList.toggle('show', has);
+    document.getElementById('apiKeyInput').value = has ? getApiKey() : '';
+  }
+  document.getElementById('saveKeyBtn').addEventListener('click', () => {
+    const val = document.getElementById('apiKeyInput').value.trim();
+    if(!val){ alert('請輸入 API Key'); return; }
+    localStorage.setItem(API_KEY_STORAGE, val);
+    refreshKeyStatus();
+  });
+  document.getElementById('clearKeyBtn').addEventListener('click', () => {
+    localStorage.removeItem(API_KEY_STORAGE);
+    refreshKeyStatus();
+  });
+  refreshKeyStatus();
+
+  // ── 照片上傳 ──────────────────────────
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+
+  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+    handleFiles(e.dataTransfer.files);
+  });
+  fileInput.addEventListener('change', e => { handleFiles(e.target.files); fileInput.value = ''; });
+
+  function handleFiles(fileList){
+    Array.from(fileList).forEach(file => {
+      if(!file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        photos.push({
+          id: 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+          file, dataUrl: ev.target.result, status: 'pending', rawText: '', author: ''
+        });
+        renderThumbs();
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function renderThumbs(){
+    const grid = document.getElementById('thumbGrid');
+    grid.innerHTML = '';
+    photos.forEach(p => {
+      const div = document.createElement('div');
+      div.className = 'thumb-item';
+      const statusClass = p.status === 'fail' ? 'fail' : (p.status === 'ok' ? 'ok' : '');
+      const statusText = p.status === 'pending' ? '' : (p.status === 'ok' ? '✓' : '✕');
+      div.innerHTML = `
+        <img src="${p.dataUrl}" alt="">
+        ${statusText ? `<div class="status-overlay ${statusClass}">${statusText}</div>` : ''}
+        <button class="thumb-del" data-id="${p.id}" title="移除">✕</button>
+      `;
+      grid.appendChild(div);
+    });
+    grid.querySelectorAll('.thumb-del').forEach(btn => {
+      btn.addEventListener('click', () => {
+        photos = photos.filter(p => p.id !== btn.dataset.id);
+        renderThumbs();
+      });
+    });
+  }
+
+  document.getElementById('clearPhotosBtn').addEventListener('click', () => {
+    photos = [];
+    renderThumbs();
+    document.getElementById('ocrPreview').classList.remove('show');
+    document.getElementById('errBox').classList.remove('show');
+  });
+
+  // ── OCR.space 呼叫 ──────────────────────────
+  function dataUrlToBase64(dataUrl){
+    return dataUrl.split(',')[1];
+  }
+
+  async function ocrOneImage(dataUrl, apiKey){
+    const base64 = dataUrlToBase64(dataUrl);
+    const form = new FormData();
+    form.append('apikey', apiKey);
+    form.append('base64Image', 'data:image/jpeg;base64,' + base64);
+    form.append('language', 'cht'); // 繁體中文
+    form.append('isOverlayRequired', 'false');
+    form.append('OCREngine', '2');
+    form.append('scale', 'true');
+
+    const resp = await fetch('https://api.ocr.space/parse/image', {
+      method: 'POST',
+      body: form
+    });
+    if(!resp.ok) throw new Error('OCR API 連線失敗 (HTTP ' + resp.status + ')');
+    const json = await resp.json();
+    if(json.IsErroredOnProcessing){
+      throw new Error(json.ErrorMessage ? json.ErrorMessage.join('; ') : 'OCR 辨識失敗');
+    }
+    const text = (json.ParsedResults || []).map(r => r.ParsedText).join('\n');
+    return text;
+  }
+
+  // ── 從 OCR 文字中切出「發文者 + 留言內容」配對 ──────────────────────────
+  // LINE 記事本留言截圖典型結構：
+  //   發文者姓名 (單獨一行，通常較短、無數字)
+  //   留言內容 (含據點名稱與數字)
+  //   N天前的HH:MM
+  // 策略：逐行掃描，若該行符合「資料行」特徵（含數字且像據點回報），
+  // 則往上找最近一行「非資料行、非時間行、長度較短」的文字當作發文者。
+  function splitAuthorAndContent(rawText){
+    const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
+    const entries = [];
+    let lastAuthorCandidate = '';
+
+    const timeLineRe = /^\d+\s*天前|^\d{1,2}:\d{2}$|天前的\d{1,2}:\d{2}/;
+    const dataLineRe = /\d+/; // 含數字
+    // 「湯N包」這類續行：沒有據點名稱，只是上一則留言因截圖換行被拆開
+    const continuationRe = /^湯\s*\d+\s*(?:包)?$/;
+    // 廣告、相簿封面、UI標籤等非留言雜訊：整行命中即丟棄
+    const noiseRe = /LINE\s*POINTS|分享使用心得領|AD\s*[・·]|平安展心.*團隊|^留言|^回應|^說些什麼吧|^相簿|^記事本|^©|文字、@建立者/i;
+
+    for(let i=0;i<lines.length;i++){
+      const line = lines[i];
+
+      if(timeLineRe.test(line)) continue; // 時間行跳過
+      if(noiseRe.test(line)) continue; // 廣告/UI雜訊整行丟棄
+
+      if(continuationRe.test(line) && entries.length > 0){
+        // 接續上一則留言內容（同一筆留言因截圖換行被拆成兩行）
+        entries[entries.length-1].content += line;
+        continue;
+      }
+
+      if(dataLineRe.test(line) && line.length <= 30 && /[\u4e00-\u9fff]/.test(line)){
+        // 視為資料行（留言內容）：須含數字且含中文字（排除純數字欄位、符號）
+        entries.push({ author: lastAuthorCandidate, content: line });
+      } else if(line.length <= 12 && /[\u4e00-\u9fff]/.test(line)) {
+        // 視為可能的發文者名稱（短、含中文、不含數字大多是姓名）
+        lastAuthorCandidate = line;
+      }
+    }
+    return entries;
+  }
+
+  // ── 解析單行留言內容 ──────────────────────────
+  // 規則：總數(含N個XP/不豬) → 一般便當 = 總數 - 不豬數；湯另計獨立
+  function parseContentLine(content){
+    let body = content.replace(/[，,、]/g, ' ');
+
+    let veg = 0;
+    const vegMatch = body.match(/含\s*(\d+)\s*(?:個)?\s*(?:xp|XP|不豬)/i);
+    if(vegMatch) veg = parseInt(vegMatch[1], 10);
+
+    let soup = 0;
+    const soupMatch = body.match(/湯\s*(\d+)\s*(?:包)?/);
+    if(soupMatch) soup = parseInt(soupMatch[1], 10);
+
+    let stripped = body
+      .replace(/[（(]\s*含[^）)]*[）)]/g, ' ')
+      .replace(/含\s*\d+\s*(?:個)?\s*(?:xp|XP|不豬)/ig, ' ')
+      .replace(/湯\s*\d+\s*(?:包)?/g, ' ')
+      .replace(/\d{1,2}:\d{2}/g, ' ');
+
+    const totalMatch = stripped.match(/(\d+)/);
+    let total = null;
+    if(totalMatch) total = parseInt(totalMatch[1], 10);
+
+    let site = '';
+    if(totalMatch){
+      site = stripped.slice(0, stripped.indexOf(totalMatch[1]))
+        .replace(/便當|共|計/g, '')
+        .replace(/[、。\s]+$/, '')
+        .trim();
+    }
+
+    if(!site || total === null || isNaN(total)){
+      return { error: true };
+    }
+
+    const normal = total - veg;
+
+    return { error: false, site, total, normal, veg, soup };
+  }
+
+  // ── 主流程：OCR 全部照片 → 合併文字 → 解析 ──────────────────────────
+  document.getElementById('ocrBtn').addEventListener('click', async () => {
+    const apiKey = getApiKey();
+    if(!apiKey){ alert('請先在上方輸入並儲存 OCR.space API Key'); return; }
+    if(photos.length === 0){ alert('請先上傳至少一張截圖'); return; }
+
+    const errBox = document.getElementById('errBox');
+    errBox.classList.remove('show');
+    errBox.innerHTML = '';
+
+    const progressBox = document.getElementById('progressBox');
+    const progressFill = document.getElementById('progressFill');
+    const progressLabel = document.getElementById('progressLabel');
+    progressBox.classList.add('show');
+
+    const ocrBtn = document.getElementById('ocrBtn');
+    ocrBtn.disabled = true;
+
+    const errors = [];
+    const allEntries = [];
+
+    for(let i=0;i<photos.length;i++){
+      const p = photos[i];
+      progressLabel.textContent = `辨識中... (${i+1}/${photos.length})`;
+      progressFill.style.width = Math.round(((i)/photos.length)*100) + '%';
+
+      try{
+        const text = await ocrOneImage(p.dataUrl, apiKey);
+        p.rawText = text;
+        p.status = 'ok';
+        const entries = splitAuthorAndContent(text);
+        entries.forEach(e => allEntries.push(e));
+      }catch(err){
+        p.status = 'fail';
+        p.rawText = '';
+        errors.push(`第 ${i+1} 張照片辨識失敗：${err.message}`);
+      }
+      renderThumbs();
+    }
+
+    progressFill.style.width = '100%';
+    progressLabel.textContent = `完成 (${photos.length}/${photos.length})`;
+    setTimeout(() => progressBox.classList.remove('show'), 1200);
+    ocrBtn.disabled = false;
+
+    if(errors.length > 0){
+      errBox.innerHTML = '<strong>⚠ 部分照片無法辨識：</strong><br>' + errors.map(e => escapeHtml(e)).join('<br>');
+      errBox.classList.add('show');
+    }
+
+    renderOcrPreview();
+    applyEntries(allEntries);
+  });
+
+  function renderOcrPreview(){
+    const container = document.getElementById('ocrCardsContainer');
+    container.innerHTML = '';
+    const okPhotos = photos.filter(p => p.status === 'ok');
+    if(okPhotos.length === 0){
+      document.getElementById('ocrPreview').classList.remove('show');
+      return;
+    }
+    document.getElementById('ocrPreview').classList.add('show');
+    okPhotos.forEach((p, idx) => {
+      const card = document.createElement('div');
+      card.className = 'ocr-card';
+      card.innerHTML = `
+        <div class="ocr-head"><span>照片 ${idx+1} 辨識結果</span></div>
+        <textarea class="raw-text" data-pid="${p.id}">${escapeHtml(p.rawText)}</textarea>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  document.getElementById('reparseBtn').addEventListener('click', () => {
+    const textareas = document.querySelectorAll('.raw-text');
+    const allEntries = [];
+    textareas.forEach(ta => {
+      const entries = splitAuthorAndContent(ta.value);
+      entries.forEach(e => allEntries.push(e));
+    });
+    applyEntries(allEntries, true);
+  });
+
+  function applyEntries(entries, isReparse){
+    const failed = [];
+    const okList = [];
+
+    entries.forEach((e, idx) => {
+      const parsed = parseContentLine(e.content);
+      if(parsed.error){
+        failed.push({ lineNo: idx+1, original: e.content });
+        return;
+      }
+      okList.push({
+        site: parsed.site,
+        author: e.author || '',
+        total: parsed.total,
+        normal: parsed.normal,
+        veg: parsed.veg,
+        soup: parsed.soup,
+        id: Date.now() + '_' + idx + '_' + Math.random().toString(36).slice(2,7)
+      });
+    });
+
+    if(isReparse) records = []; // 重新解析時整批覆蓋，避免與舊資料混雜
+    okList.forEach(item => {
+      const existing = records.findIndex(r => r.site === item.site);
+      if(existing >= 0) records[existing] = item;
+      else records.push(item);
+    });
+    save();
+    render();
+
+    const warnBox = document.getElementById('warnBox');
+    const warnList = document.getElementById('warnList');
+    warnList.innerHTML = '';
+    if(failed.length > 0){
+      failed.forEach(f => {
+        const li = document.createElement('li');
+        li.textContent = `「${f.original}」`;
+        warnList.appendChild(li);
+      });
+      warnBox.classList.add('show');
+    } else {
+      warnBox.classList.remove('show');
+    }
+  }
+
+  // ── 結果表渲染 ──────────────────────────
+  function render(){
+    const body = document.getElementById('resultsBody');
+    body.innerHTML = '';
+
+    if(records.length === 0){
+      document.getElementById('resultsSection').classList.remove('show');
+      return;
+    }
+    document.getElementById('resultsSection').classList.add('show');
+
+    let totalPeople=0, totalNormal=0, totalVeg=0, totalSoup=0;
+
+    records.forEach(r => {
+      totalPeople += r.total;
+      totalNormal += r.normal;
+      totalVeg += r.veg;
+      totalSoup += r.soup;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="site">${escapeHtml(r.site)}</td>
+        <td class="author">${r.author ? escapeHtml(r.author) : '<span class="empty-dash">—</span>'}</td>
+        <td class="num">${r.total}</td>
+        <td class="num">${r.normal}</td>
+        <td class="num">${r.veg > 0 ? r.veg : '<span class="empty-dash">—</span>'}</td>
+        <td class="num">${r.soup > 0 ? r.soup : '<span class="empty-dash">—</span>'}</td>
+        <td class="row-actions"><button class="row-del" data-id="${r.id}" title="刪除此筆">✕</button></td>
+      `;
+      body.appendChild(tr);
+    });
+
+    document.getElementById('totalPeople').textContent = totalPeople;
+    document.getElementById('totalNormal').textContent = totalNormal;
+    document.getElementById('totalVeg').textContent = totalVeg;
+    document.getElementById('totalSoup').textContent = totalSoup;
+    document.getElementById('siteCount').textContent = `共 ${records.length} 個據點`;
+    document.getElementById('lastUpdated').textContent = `最後更新 ${new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})}`;
+
+    body.querySelectorAll('.row-del').forEach(btn => {
+      btn.addEventListener('click', () => {
+        records = records.filter(r => r.id !== btn.dataset.id);
+        save();
+        render();
+      });
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // ── 月累計：每日存檔 ──────────────────────────
+  function getMonthData(mKey){
+    try{
+      const raw = localStorage.getItem(MONTH_STORAGE_PREFIX + mKey);
+      return raw ? JSON.parse(raw) : {};
+    }catch(e){ return {}; }
+  }
+  function setMonthData(mKey, data){
+    try{ localStorage.setItem(MONTH_STORAGE_PREFIX + mKey, JSON.stringify(data)); }catch(e){}
+  }
+
+  document.getElementById('saveDailyBtn').addEventListener('click', () => {
+    if(records.length === 0){ alert('目前沒有資料可存檔'); return; }
+    const mKey = monthKey();
+    const dKey = todayKey();
+    const data = getMonthData(mKey);
+    // 簡化存檔內容（只存計算需要的欄位）
+    data[dKey] = records.map(r => ({ site:r.site, total:r.total, normal:r.normal, veg:r.veg, soup:r.soup }));
+    setMonthData(mKey, data);
+
+    const confirmBox = document.getElementById('saveConfirm');
+    confirmBox.textContent = `已存入 ${dKey} 的紀錄（共 ${records.length} 個據點）。同一天重複存檔會覆蓋舊資料，不會重複累加。`;
+    confirmBox.style.display = 'block';
+    setTimeout(() => { confirmBox.style.display = 'none'; }, 5000);
+
+    renderMonth();
+  });
+
+  function renderMonth(){
+    const mKey = monthKey();
+    const data = getMonthData(mKey);
+    const dateKeys = Object.keys(data).sort();
+
+    const body = document.getElementById('monthBody');
+    body.innerHTML = '';
+
+    if(dateKeys.length === 0){
+      document.getElementById('monthTable').style.display = 'none';
+      document.getElementById('monthEmptyHint').style.display = 'block';
+      document.getElementById('monthTotalPeople').textContent = '0';
+      document.getElementById('monthTotalNormal').textContent = '0';
+      document.getElementById('monthTotalVeg').textContent = '0';
+      document.getElementById('monthTotalSoup').textContent = '0';
+      return;
+    }
+    document.getElementById('monthTable').style.display = 'table';
+    document.getElementById('monthEmptyHint').style.display = 'none';
+
+    // 依據點彙整：site -> { total, normal, veg, soup, days }
+    const bySite = {};
+    dateKeys.forEach(dKey => {
+      data[dKey].forEach(r => {
+        if(!bySite[r.site]) bySite[r.site] = { total:0, normal:0, veg:0, soup:0, days:0 };
+        bySite[r.site].total += r.total;
+        bySite[r.site].normal += r.normal;
+        bySite[r.site].veg += r.veg;
+        bySite[r.site].soup += r.soup;
+        bySite[r.site].days += 1;
+      });
+    });
+
+    let mtp=0, mtn=0, mtv=0, mts=0;
+    Object.keys(bySite).sort().forEach(site => {
+      const s = bySite[site];
+      mtp += s.total; mtn += s.normal; mtv += s.veg; mts += s.soup;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="site">${escapeHtml(site)}</td>
+        <td class="num">${s.total}</td>
+        <td class="num">${s.normal}</td>
+        <td class="num">${s.veg > 0 ? s.veg : '<span class="empty-dash">—</span>'}</td>
+        <td class="num">${s.soup > 0 ? s.soup : '<span class="empty-dash">—</span>'}</td>
+        <td class="num">${s.days}</td>
+      `;
+      body.appendChild(tr);
+    });
+
+    document.getElementById('monthTotalPeople').textContent = mtp;
+    document.getElementById('monthTotalNormal').textContent = mtn;
+    document.getElementById('monthTotalVeg').textContent = mtv;
+    document.getElementById('monthTotalSoup').textContent = mts;
+  }
+
+  document.getElementById('clearMonthBtn').addEventListener('click', () => {
+    const mKey = monthKey();
+    if(!confirm(`確定要清除 ${mKey} 的所有累計紀錄嗎？此動作無法復原。`)) return;
+    localStorage.removeItem(MONTH_STORAGE_PREFIX + mKey);
+    renderMonth();
+  });
+
+  document.getElementById('exportMonthBtn').addEventListener('click', () => {
+    const mKey = monthKey();
+    const data = getMonthData(mKey);
+    const dateKeys = Object.keys(data).sort();
+    if(dateKeys.length === 0){ alert('本月尚無存檔紀錄'); return; }
+    if(typeof XLSX === 'undefined'){ alert('Excel 匯出元件載入失敗'); return; }
+
+    const bySite = {};
+    dateKeys.forEach(dKey => {
+      data[dKey].forEach(r => {
+        if(!bySite[r.site]) bySite[r.site] = { total:0, normal:0, veg:0, soup:0, days:0 };
+        bySite[r.site].total += r.total;
+        bySite[r.site].normal += r.normal;
+        bySite[r.site].veg += r.veg;
+        bySite[r.site].soup += r.soup;
+        bySite[r.site].days += 1;
+      });
+    });
+
+    const header = ['據點','總人數','一般便當','不豬(XP)','湯數','已存天數'];
+    const sortedSites = Object.keys(bySite).sort();
+    const dataRows = sortedSites.map(site => {
+      const s = bySite[site];
+      return [site, s.total, s.normal, s.veg, s.soup, s.days];
+    });
+    let mtp=0, mtn=0, mtv=0, mts=0;
+    sortedSites.forEach(site => { const s=bySite[site]; mtp+=s.total; mtn+=s.normal; mtv+=s.veg; mts+=s.soup; });
+
+    const aoa = [
+      [`據點便當月累計　統計月份：${mKey}　（已存 ${dateKeys.length} 天）`],
+      [],
+      header,
+      ...dataRows,
+      ['合計', mtp, mtn, mtv, mts, '']
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{wch:14},{wch:9},{wch:10},{wch:10},{wch:8},{wch:9}];
+    ws['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:5} }];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, `${mKey}月累計`);
+    XLSX.writeFile(wb, `據點便當月累計_${mKey.replace('-','')}.xlsx`);
+  });
+
+  // ── 暫存 (sessionStorage，避免重新整理遺失；換裝置不同步) ──────────────────────────
+  function save(){
+    try{ sessionStorage.setItem(STORAGE_KEY, JSON.stringify(records)); }catch(e){}
+  }
+  function restore(){
+    try{
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if(raw) records = JSON.parse(raw);
+    }catch(e){ records = []; }
+  }
+
+  document.getElementById('printBtn').addEventListener('click', () => window.print());
+
+  // ── 匯出 CSV ──────────────────────────
+  document.getElementById('exportCsvBtn').addEventListener('click', () => {
+    if(records.length === 0){ alert('目前沒有資料可匯出'); return; }
+    const note = document.getElementById('noteInput').value.trim();
+
+    let rows = [['據點','發文者','總人數','一般便當','不豬(XP)','湯數']];
+    let tp=0, tn=0, tv=0, ts=0;
+    records.forEach(r => {
+      rows.push([r.site, r.author, r.total, r.normal, r.veg, r.soup]);
+      tp+=r.total; tn+=r.normal; tv+=r.veg; ts+=r.soup;
+    });
+    rows.push(['合計','', tp, tn, tv, ts]);
+    if(note){ rows.push([]); rows.push(['備註', note]); }
+
+    const csv = rows.map(row => row.map(cell => {
+      const s = String(cell ?? '');
+      return /[,"\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+    }).join(',')).join('\n');
+
+    const blob = new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `據點便當彙整_${todayFileTag()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  // ── 匯出 Excel ──────────────────────────
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    if(records.length === 0){ alert('目前沒有資料可匯出'); return; }
+    if(typeof XLSX === 'undefined'){ alert('Excel 匯出元件載入失敗，請改用「匯出 CSV」'); return; }
+
+    const todayStr = formatToday();
+    const note = document.getElementById('noteInput').value.trim();
+
+    const header = ['據點','發文者','總人數','一般便當','不豬(XP)','湯數'];
+    const dataRows = records.map(r => [r.site, r.author, r.total, r.normal, r.veg, r.soup]);
+    let tp=0, tn=0, tv=0, ts=0;
+    records.forEach(r => { tp+=r.total; tn+=r.normal; tv+=r.veg; ts+=r.soup; });
+
+    const aoa = [
+      [`據點便當彙整單　統計日期：${todayStr}`],
+      [],
+      header,
+      ...dataRows,
+      ['合計','', tp, tn, tv, ts]
+    ];
+    if(note){ aoa.push([]); aoa.push(['備註', note]); }
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{wch:14},{wch:10},{wch:9},{wch:10},{wch:10},{wch:8}];
+    ws['!merges'] = [{ s:{r:0,c:0}, e:{r:0,c:5} }];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '便當彙整');
+    XLSX.writeFile(wb, `據點便當彙整_${todayFileTag()}.xlsx`);
+  });
+
+  // ── 初始化 ──────────────────────────
+  restore();
+  render();
+  renderMonth();
+})();
+</script>
+
+</body>
+</html>
