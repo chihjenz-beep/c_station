@@ -877,7 +877,7 @@ var XLSX={};function make_xlsx_lib(a){a.version="0.18.5",a.style_version="1.2.0"
     let currentEntry = null; // 目前正在累積內容的留言條目；null代表上一筆已結束
 
     // 時間行：「N天前」「天前的HH:MM」「HH:MM」「N月N日 HH:MM」（記事本可能顯示絕對日期而非相對天數）
-    const timeLineRe = /^\d+\s*天前|^\d+\s*分鐘前|^\d{1,2}:\d{2}$|天前的\d{1,2}:\d{2}|^\d{1,2}\s*月\s*\d{1,2}\s*日\s*\d{1,2}:\d{2}/;
+    const timeLineRe = /^\d+\s*天前|^\d+\s*小時前|^\d+\s*分鐘前|^\d{1,2}:\d{2}$|天前的\d{1,2}:\d{2}|^\d{1,2}\s*月\s*\d{1,2}\s*日\s*\d{1,2}:\d{2}/;
     const dataLineRe = /\d+/; // 含數字
     // 廣告、相簿封面、UI標籤等非留言雜訊：整行命中即丟棄
     const noiseRe = /LINE\s*POINTS|分享使用心得領|AD\s*[・·]|平安展心.*團隊|^留言|^回應|^說些什麼吧|^相簿|^記事本|^©|文字、@建立者/i;
