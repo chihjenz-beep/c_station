@@ -661,60 +661,7 @@ var XLSX={};function make_xlsx_lib(a){a.version="0.18.5",a.style_version="1.2.0"
     return text;
   }
 
-  // ── 從 OCR 文字中切出「發文者 + 留言內容」配對 ──────────────────────────
-  // LINE 記事本留言截圖典型結構：
-  //   發文者姓名 (單獨一行，通常較短、無數字)
-  //   留言內容 (含據點名稱與數字)
-  //   N天前的HH:MM
-  // 策略：逐行掃描，若該行符合「資料行」特徵（含數字且像據點回報），
-  // 則往上找最近一行「非資料行、非時間行、長度較短」的文字當作發文者。
-  function splitAuthorAndContent(rawText){
-    const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
-    const entries = [];
-    let lastAuthorCandidate = '';
-
-    // 時間行：「N天前」「天前的HH:MM」「HH:MM」「N月N日 HH:MM」（記事本可能顯示絕對日期而非相對天數）
-    const timeLineRe = /^\d+\s*天前|^\d{1,2}:\d{2}$|天前的\d{1,2}:\d{2}|^\d{1,2}\s*月\s*\d{1,2}\s*日\s*\d{1,2}:\d{2}/;
-    const dataLineRe = /\d+/; // 含數字
-    // 「湯N包」這類續行：沒有據點名稱，只是上一則留言因截圖換行被拆開
-    const continuationRe = /^湯\s*\d+\s*(?:包)?$/;
-    // 廣告、相簿封面、UI標籤等非留言雜訊：整行命中即丟棄
-    const noiseRe = /LINE\s*POINTS|分享使用心得領|AD\s*[・·]|平安展心.*團隊|^留言|^回應|^說些什麼吧|^相簿|^記事本|^©|文字、@建立者/i;
-    // 「・貼文者」「貼文者」標籤：可能跟在姓名後同一行（蔡尚文・貼文者），
-    // 也可能因OCR斷行被拆成獨立一行；獨立出現時不可覆蓋掉前面已捕捉的真實姓名候選人
-    const posterTagOnlyRe = /^[・·]?\s*貼文者\s*$/;
-
-    for(let i=0;i<lines.length;i++){
-      const line = lines[i];
-
-      if(timeLineRe.test(line)) continue; // 時間行跳過
-      if(noiseRe.test(line)) continue; // 廣告/UI雜訊整行丟棄
-
-      if(posterTagOnlyRe.test(line)){
-        // 「貼文者」標籤獨立成行時，不更新候選人（保留前一行抓到的真實姓名）
-        continue;
-      }
-
-      if(continuationRe.test(line) && entries.length > 0){
-        // 接續上一則留言內容（同一筆留言因截圖換行被拆成兩行）
-        entries[entries.length-1].content += line;
-        continue;
-      }
-
-      if(dataLineRe.test(line) && line.length <= 30 && /[\u4e00-\u9fff]/.test(line)){
-        // 視為資料行（留言內容）：須含數字且含中文字（排除純數字欄位、符號）
-        entries.push({ author: lastAuthorCandidate, content: line });
-      } else if(line.length <= 12 && /[\u4e00-\u9fff]/.test(line)) {
-        // 視為可能的發文者名稱（短、含中文、不含數字大多是姓名）
-        // 先移除可能附帶的「・貼文者」尾綴，保留純姓名
-        const cleaned = line.replace(/[・·]?\s*貼文者\s*$/, '').trim();
-        if(cleaned) lastAuthorCandidate = cleaned;
-      }
-    }
-    return entries;
-  }
-
-  // ── 合法據點白名單 ──────────────────────────
+  // ── 合法據點白名單與正規化對照表 ──────────────────────────
   // 14個社區據點：核心關鍵字 → 標準全名。LINE留言常見各種簡寫/變體
   // （例如「新岑」「新岑里」都是同一個據點、「岱江」「岱江便富」「岱江里」也是同一個據點），
   // 用「關鍵字」找出命中的據點後，統一轉換成標準全名，這樣彙整時才會正確合併加總，不會因寫法不同被當成不同據點。
@@ -744,6 +691,79 @@ var XLSX={};function make_xlsx_lib(a){a.version="0.18.5",a.style_version="1.2.0"
     }
     return null;
   }
+
+  // ── 從 OCR 文字中切出「發文者 + 留言內容」配對 ──────────────────────────
+  // LINE 記事本的每一筆留言，在畫面上是一個獨立的灰色泡泡框：框內所有文字（不論排版上跨了幾行）
+  // 都屬於同一筆留言的完整內容，必須先正確還原成一整段，再交給後續的數字解析。
+  //
+  // 核心規則（狀態機）：
+  //   - 從「發文者姓名行」之後開始，持續把後續的行都累積進「目前這筆留言」，
+  //     直到遇到「時間戳記」（代表這則留言確定結束），或是遇到一個「看起來像新發文者」的短中文行
+  //     且「目前累積的內容已經像一筆完整留言」（含已知據點關鍵字+數字+括號已收口）時，才視為新的一筆。
+  //   - 換句話說：除非目前內容已經完整，否則任何短中文行都會被視為內容的延續，而不會被誤判成新的發文者，
+  //     這樣才能正確涵蓋各種OCR斷行位置（括號中間、湯包數量、XP/不豬說明等），不需要為每種斷法各寫一條規則。
+  function hasUnclosedBracket(text){
+    const opens = (text.match(/[（(]/g) || []).length;
+    const closes = (text.match(/[）)]/g) || []).length;
+    return opens > closes;
+  }
+
+  function looksLikeCompleteEntry(content){
+    // 判斷「目前累積的留言內容」是否已經完整：括號已收口 + 含已知據點關鍵字 + 含數字
+    if(hasUnclosedBracket(content)) return false;
+    const hasKnownSite = VALID_SITE_KEYWORDS.some(kw => content.includes(kw));
+    const hasNumber = /\d/.test(content);
+    return hasKnownSite && hasNumber;
+  }
+
+  function splitAuthorAndContent(rawText){
+    const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
+    const entries = [];
+    let lastAuthorCandidate = '';
+    let currentEntry = null; // 目前正在累積內容的留言條目；null代表上一筆已結束
+
+    // 時間行：「N天前」「天前的HH:MM」「HH:MM」「N月N日 HH:MM」（記事本可能顯示絕對日期而非相對天數）
+    const timeLineRe = /^\d+\s*天前|^\d{1,2}:\d{2}$|天前的\d{1,2}:\d{2}|^\d{1,2}\s*月\s*\d{1,2}\s*日\s*\d{1,2}:\d{2}/;
+    const dataLineRe = /\d+/; // 含數字
+    // 廣告、相簿封面、UI標籤等非留言雜訊：整行命中即丟棄
+    const noiseRe = /LINE\s*POINTS|分享使用心得領|AD\s*[・·]|平安展心.*團隊|^留言|^回應|^說些什麼吧|^相簿|^記事本|^©|文字、@建立者/i;
+    // 「・貼文者」「貼文者」標籤：可能跟在姓名後同一行（蔡尚文・貼文者），也可能因OCR斷行被拆成獨立一行
+    const posterTagOnlyRe = /^[・·]?\s*貼文者\s*$/;
+
+    for(let i=0;i<lines.length;i++){
+      const line = lines[i];
+
+      if(timeLineRe.test(line)){
+        currentEntry = null; // 時間戳記出現，代表上一筆留言內容正式結束
+        continue;
+      }
+      if(noiseRe.test(line)) continue; // 廣告/UI雜訊整行丟棄
+      if(posterTagOnlyRe.test(line)) continue; // 「貼文者」標籤獨立成行時不更新候選人
+
+      // 判斷這行是否「看起來像姓名」：短、含中文、不含數字
+      const isShortNonDataLine = line.length <= 12 && /[\u4e00-\u9fff]/.test(line) && !dataLineRe.test(line);
+
+      // 只有在「上一筆留言已結束」或「目前累積的內容已經完整」時，才能把這個短中文行當作新發文者；
+      // 否則代表目前這筆留言內容還沒寫完，這行其實是內容的延續（不該被打斷）
+      if(isShortNonDataLine && (currentEntry === null || looksLikeCompleteEntry(currentEntry.content))){
+        currentEntry = null;
+        const cleaned = line.replace(/[・·]?\s*貼文者\s*$/, '').trim();
+        if(cleaned) lastAuthorCandidate = cleaned;
+        continue;
+      }
+
+      if(currentEntry === null){
+        // 開啟新的一筆留言
+        currentEntry = { author: lastAuthorCandidate, content: line };
+        entries.push(currentEntry);
+      } else {
+        // 接續目前這筆留言（不論這行長什麼樣，只要還沒結束就算同一筆）
+        currentEntry.content += line;
+      }
+    }
+    return entries;
+  }
+
 
   // ── 解析單行留言內容 ──────────────────────────
   // 規則：總數(含N個XP/不豬, 素食另記) → 一般便當 = 總數 - 不豬數 - 素食數；湯另計獨立
