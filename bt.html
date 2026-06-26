@@ -803,14 +803,35 @@ var XLSX={};function make_xlsx_lib(a){a.version="0.18.5",a.style_version="1.2.0"
         currentEntry = null; // 時間戳記出現，代表上一筆留言內容正式結束
         continue;
       }
+
+      // 「留言N」「回應」這類UI區塊標記：代表真正的留言列表從這裡開始。
+      // 在這個標記之前，畫面上方的廣告、手機狀態列、相簿封面等雜訊文字常常型態各異、無法逐一列舉，
+      // 一旦被誤判成姓名或內容，會在狀態機裡一路累積、把後面第一筆真實留言也拖進去污染掉。
+      // 因此遇到這個標記時，不只是跳過，還要把「目前還在累積中、尚未被新行正式結束」的那一筆
+      // 從entries中移除（它必定是標記之前的雜訊，不會是真實留言），並重置所有狀態，乾淨地重新開始。
+      if(/^留言\s*\d*$|^回應$/.test(line)){
+        if(currentEntry !== null){
+          const idx = entries.indexOf(currentEntry);
+          if(idx !== -1) entries.splice(idx, 1);
+        }
+        currentEntry = null;
+        lastAuthorCandidate = '';
+        continue;
+      }
+
       if(noiseRe.test(line)) continue; // 廣告/UI雜訊整行丟棄
       if(posterTagOnlyRe.test(line)) continue; // 「貼文者」標籤獨立成行時不更新候選人
 
+      // 純符號行（©、=、•等單獨出現，常見於畫面角落圖示OCR誤判）：永遠忽略，不參與任何累積判斷
+      if(/^[©=•※◇◆■□▲▼\-_]+$/.test(line)) continue;
+
       // 純數字短行（不含中文）：通常是按讚數、留言數等UI介面數字，不是留言內容本身。
-      // 只有在「目前累積的內容已經完整」時才丟棄這種行，避免誤刪掉「總數還沒寫完、後面才接數字」的真實情況
-      // （例如OCR把"7"跟後面的中文內容分開，這種情況目前內容還不完整，不該被當成讚數丟棄）
+      // 兩種情況都該忽略：
+      //   (a) currentEntry為null時：代表上一筆已經正式結束，這種短數字必定是讚數雜訊，不可能是新留言的開頭
+      //       （否則會像「包→1→1」這樣被誤判成「開啟新的一筆，內容是11」）
+      //   (b) currentEntry不為null但內容已經完整時：代表這筆留言已經寫完，後面接的數字是讚數，不是內容延續
       const isPureNumberLine = /^\d+$/.test(line) && line.length <= 4;
-      if(isPureNumberLine && currentEntry !== null && looksLikeCompleteEntry(currentEntry.content)){
+      if(isPureNumberLine && (currentEntry === null || looksLikeCompleteEntry(currentEntry.content))){
         continue;
       }
 
