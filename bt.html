@@ -115,6 +115,13 @@
   .key-status .dot{width:7px;height:7px;border-radius:50%;background:var(--good);}
 
   /* ── 上傳區 ───────────────────────── */
+  .upload-row{
+    display:flex;
+    gap:12px;
+    align-items:stretch;
+  }
+  .upload-row .dropzone{flex:1;min-width:0;}
+
   .dropzone{
     border:2px dashed var(--line);
     border-radius:6px;
@@ -132,6 +139,53 @@
   .dropzone .main-text{font-weight:700;font-size:14.5px;color:var(--ink);}
   .dropzone .sub-text{font-size:12px;color:var(--ink-soft);margin-top:4px;}
   #fileInput{display:none;}
+
+  .pastezone{
+    flex:1;
+    min-width:0;
+    position:relative;
+    border:2px dashed var(--line);
+    border-radius:6px;
+    padding:32px 16px;
+    text-align:center;
+    background:#FBF8F1;
+    cursor:text;
+    transition:border-color 0.15s, background 0.15s;
+    outline:none;
+  }
+  .pastezone:hover{
+    border-color:var(--blue);
+    background:#EEF4F9;
+  }
+  .pastezone:focus-within{
+    border-color:var(--blue);
+    background:#EEF4F9;
+    box-shadow:0 0 0 3px rgba(91,122,153,0.15);
+  }
+  .pastezone .icon{font-size:32px;margin-bottom:6px;}
+  .pastezone .main-text{font-weight:700;font-size:14.5px;color:var(--ink);}
+  .pastezone .sub-text{font-size:12px;color:var(--ink-soft);margin-top:4px;}
+  .pastezone.paste-success{
+    border-color:var(--good);
+    background:#EAF3ED;
+  }
+  /* 隱藏的textarea：視覺上完全不可見，純粹用來穩定接收瀏覽器的paste事件（業界標準作法），
+     比起依賴非contenteditable元素的paste支援度，這個方式在各瀏覽器間的相容性更一致可靠 */
+  .paste-capture-input{
+    position:absolute;
+    top:0; left:0;
+    width:100%; height:100%;
+    opacity:0;
+    cursor:text;
+    border:none;
+    outline:none;
+    resize:none;
+    background:transparent;
+  }
+
+  @media (max-width:600px){
+    .upload-row{flex-direction:column;}
+  }
 
   .thumb-grid{
     display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;
@@ -367,10 +421,18 @@
       <button class="btn-ghost btn-small" id="clearPhotosBtn" type="button">清空照片</button>
     </div>
     <div class="panel-body">
-      <div class="dropzone" id="dropzone">
-        <div class="icon">📷</div>
-        <div class="main-text">點此選擇照片，或將截圖拖曳至此</div>
-        <div class="sub-text">可一次選取多張，將依序自動辨識並合併結果</div>
+      <div class="upload-row">
+        <div class="dropzone" id="dropzone">
+          <div class="icon">📷</div>
+          <div class="main-text">點此選擇照片，或將截圖拖曳至此</div>
+          <div class="sub-text">可一次選取多張，將依序自動辨識並合併結果</div>
+        </div>
+        <div class="pastezone" id="pastezone">
+          <div class="icon">📋</div>
+          <div class="main-text">點此區塊後按 Ctrl+V（Mac：⌘+V）</div>
+          <div class="sub-text">直接貼上剪貼簿中複製的截圖，不需先存成檔案</div>
+          <textarea id="pasteCapture" class="paste-capture-input" aria-hidden="true"></textarea>
+        </div>
       </div>
       <input type="file" id="fileInput" accept="image/*" multiple>
 
@@ -587,6 +649,46 @@ var XLSX={};function make_xlsx_lib(a){a.version="0.18.5",a.style_version="1.2.0"
     handleFiles(e.dataTransfer.files);
   });
   fileInput.addEventListener('change', e => { handleFiles(e.target.files); fileInput.value = ''; });
+
+  // 貼上剪貼簿圖片：實際接收paste事件的是視覺隱藏的textarea（業界標準作法，跨瀏覽器相容性較穩定），
+  // 外層卡片只負責提供視覺樣式與點擊聚焦的入口。
+  const pastezone = document.getElementById('pastezone');
+  const pasteCapture = document.getElementById('pasteCapture');
+  pastezone.addEventListener('click', () => pasteCapture.focus());
+
+  pasteCapture.addEventListener('paste', e => {
+    e.preventDefault();
+    const items = (e.clipboardData && e.clipboardData.items) ? Array.from(e.clipboardData.items) : [];
+    const imageFiles = items
+      .filter(item => item.kind === 'file' && item.type.startsWith('image/'))
+      .map(item => item.getAsFile())
+      .filter(Boolean);
+
+    const subTextEl = pastezone.querySelector('.sub-text');
+    const mainTextEl = pastezone.querySelector('.main-text');
+
+    if(imageFiles.length === 0){
+      // 剪貼簿裡沒有圖片（可能只複製了文字），給予提示但不視為錯誤
+      const originalSub = subTextEl.textContent;
+      subTextEl.textContent = '剪貼簿中沒有偵測到圖片，請先複製截圖';
+      setTimeout(() => { subTextEl.textContent = originalSub; }, 2500);
+      return;
+    }
+
+    handleFiles(imageFiles);
+
+    // 短暫顯示貼上成功的視覺回饋
+    pastezone.classList.add('paste-success');
+    const originalMain = mainTextEl.textContent;
+    mainTextEl.textContent = `已貼上 ${imageFiles.length} 張圖片 ✓`;
+    setTimeout(() => {
+      pastezone.classList.remove('paste-success');
+      mainTextEl.textContent = originalMain;
+    }, 2000);
+  });
+  // textarea本身不應殘留任何文字（即使貼上的是純文字也不留痕跡，因為已用preventDefault阻擋預設貼上行為，
+  // 這裡額外保護避免某些瀏覽器仍寫入內容）
+  pasteCapture.addEventListener('input', () => { pasteCapture.value = ''; });
 
   function handleFiles(fileList){
     Array.from(fileList).forEach(file => {
@@ -885,15 +987,18 @@ var XLSX={};function make_xlsx_lib(a){a.version="0.18.5",a.style_version="1.2.0"
     let body = content.replace(/[，,、]/g, ' ');
 
     let veg = 0;
+    let vegCaught = false; // 是否成功用標準「含N個XP/不豬」句型捕捉到不豬數
     const vegMatch = body.match(/含\s*(\d+)\s*(?:個)?\s*(?:xp|XP|不豬)/i);
-    if(vegMatch) veg = parseInt(vegMatch[1], 10);
+    if(vegMatch){ veg = parseInt(vegMatch[1], 10); vegCaught = true; }
 
     // 素食：任何「素」字緊鄰數字（含N素、含N個素、素N個 等），目前業務上尚無實例，先備用
     // 採保守規則：僅辨識「含...素」或「素」緊跟在括號/空白後的數字，避免吃掉總數字
     let veggie = 0;
+    let veggieCaught = false; // 是否成功用標準句型捕捉到素食數
     const veggieMatch = body.match(/含\s*(\d+)\s*(?:個)?\s*素食?|[（(]\s*素\s*(\d+)\s*(?:個)?[）)]?/);
     if(veggieMatch){
       veggie = parseInt(veggieMatch[1] || veggieMatch[2], 10);
+      veggieCaught = true;
     }
 
     let soup = 0;
@@ -921,6 +1026,17 @@ var XLSX={};function make_xlsx_lib(a){a.version="0.18.5",a.style_version="1.2.0"
     }
 
     if(!site || total === null || isNaN(total)){
+      return { error: true };
+    }
+
+    // 格式完整性檢查：留言裡出現「XP/不豬/素」字樣，但沒有用標準的「含N個XP」「（素N）」句型寫法，
+    // 代表發文者用了不被支援的寫法（例如「6XP」沒有含字、「素食2」拆成獨立一段）。
+    // 這種情況不該照單全收只抓到總數、漏掉真正的不豬或素食數，寧可整筆判定失敗，
+    // 提示使用者去檢查並要求發文者改用標準格式重新發布，也不要用不完整的猜測數字混進彙整表。
+    if(/xp|不豬/i.test(body) && !vegCaught){
+      return { error: true };
+    }
+    if(/素/.test(body) && !veggieCaught){
       return { error: true };
     }
 
