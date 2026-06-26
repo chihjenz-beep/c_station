@@ -716,6 +716,58 @@ var XLSX={};function make_xlsx_lib(a){a.version="0.18.5",a.style_version="1.2.0"
     return hasKnownSite && hasNumber;
   }
 
+  // ── 黏行預處理：修正OCR偶爾把整批留言「斷行失敗、全部黏成一行」的情況 ──────────────────────────
+  // 正常情況下OCR會依照畫面排版逐行輸出，但同一張截圖在不同次呼叫偶爾會斷行失準，
+  // 把「時間戳記、電量、廣告字樣、發文者姓名、留言內容」全部黏成一長串（例如：
+  // 「22:28 27% LG官網評論活動AD・LG侯妙薇考試里19（含3xp）」）。
+  // 這種情況無法靠「逐行」邏輯處理，必須在同一行內部，依據點關鍵字出現的位置切出多筆資料。
+  function countSiteOccurrences(line){
+    let count = 0;
+    VALID_SITE_KEYWORDS.forEach(kw => {
+      let idx = line.indexOf(kw);
+      while(idx !== -1){ count++; idx = line.indexOf(kw, idx + 1); }
+    });
+    return count;
+  }
+
+  // 檢查「第一個據點關鍵字之前」是否還殘留著雜訊（數字、符號、過長文字），
+  // 這代表姓名跟據點資訊前面還黏著時間戳記、讚數等不該混在一起的內容
+  function hasPrefixNoiseBeforeSite(line){
+    const idxs = VALID_SITE_KEYWORDS.map(kw => line.indexOf(kw)).filter(i => i !== -1);
+    if(idxs.length === 0) return false;
+    const before = line.slice(0, Math.min(...idxs));
+    return /[0-9：:%.<>=「」《》・,\uFF0C\uFF1A$]/.test(before) || before.length > 6;
+  }
+
+  // 把一行黏在一起的多筆資料，依據點關鍵字出現位置切開，並嘗試從每段切片前方反推出發文者姓名
+  function splitGluedLine(line){
+    const positions = [];
+    VALID_SITE_KEYWORDS.forEach(kw => {
+      let idx = line.indexOf(kw);
+      while(idx !== -1){
+        positions.push(idx);
+        idx = line.indexOf(kw, idx + 1);
+      }
+    });
+    if(positions.length === 0) return [];
+    const uniqueSorted = [...new Set(positions)].sort((a,b) => a-b);
+
+    const segments = [];
+    uniqueSorted.forEach((startIdx, i) => {
+      const endIdx = (i+1 < uniqueSorted.length) ? uniqueSorted[i+1] : line.length;
+      const contentPart = line.slice(startIdx, endIdx);
+      const beforePart = line.slice(0, startIdx);
+      // 清掉時間戳記、百分比、LG廣告字樣、特殊符號等雜訊，只留下可能是姓名的中文字
+      const cleanedBefore = beforePart
+        .replace(/[0-9：:%.<>=「」《》・,\uFF0C\uFF1A$]/g, ' ')
+        .replace(/LG|官網|評論|活動|AD|MAM/gi, ' ');
+      const nameMatch = cleanedBefore.match(/([\u4e00-\u9fff]{1,6})\s*$/);
+      const author = nameMatch ? nameMatch[1] : '';
+      segments.push({ author, content: contentPart });
+    });
+    return segments;
+  }
+
   function splitAuthorAndContent(rawText){
     const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
     const entries = [];
@@ -723,7 +775,7 @@ var XLSX={};function make_xlsx_lib(a){a.version="0.18.5",a.style_version="1.2.0"
     let currentEntry = null; // 目前正在累積內容的留言條目；null代表上一筆已結束
 
     // 時間行：「N天前」「天前的HH:MM」「HH:MM」「N月N日 HH:MM」（記事本可能顯示絕對日期而非相對天數）
-    const timeLineRe = /^\d+\s*天前|^\d{1,2}:\d{2}$|天前的\d{1,2}:\d{2}|^\d{1,2}\s*月\s*\d{1,2}\s*日\s*\d{1,2}:\d{2}/;
+    const timeLineRe = /^\d+\s*天前|^\d+\s*分鐘前|^\d{1,2}:\d{2}$|天前的\d{1,2}:\d{2}|^\d{1,2}\s*月\s*\d{1,2}\s*日\s*\d{1,2}:\d{2}/;
     const dataLineRe = /\d+/; // 含數字
     // 廣告、相簿封面、UI標籤等非留言雜訊：整行命中即丟棄
     const noiseRe = /LINE\s*POINTS|分享使用心得領|AD\s*[・·]|平安展心.*團隊|^留言|^回應|^說些什麼吧|^相簿|^記事本|^©|文字、@建立者/i;
@@ -733,12 +785,34 @@ var XLSX={};function make_xlsx_lib(a){a.version="0.18.5",a.style_version="1.2.0"
     for(let i=0;i<lines.length;i++){
       const line = lines[i];
 
+      // 黏行偵測（優先檢查）：若這一行同時包含2個以上的據點關鍵字，
+      // 或據點關鍵字前方殘留著時間戳記/讚數/廣告字樣等雜訊，代表OCR這次沒有正常斷行，
+      // 整批內容被黏成一長串。此時不能再依賴逐行狀態機，必須在行內直接切出多筆資料。
+      if(countSiteOccurrences(line) >= 2 || hasPrefixNoiseBeforeSite(line)){
+        currentEntry = null; // 結束目前狀態機的累積狀態，避免跟黏行內容混在一起
+        const segments = splitGluedLine(line);
+        segments.forEach(seg => {
+          // 若行內反推不出姓名（被雜訊蓋掉），退而使用前一筆已知的候選人，總比完全空白更有參考價值
+          const finalAuthor = seg.author || lastAuthorCandidate;
+          entries.push({ author: finalAuthor, content: seg.content });
+        });
+        continue;
+      }
+
       if(timeLineRe.test(line)){
         currentEntry = null; // 時間戳記出現，代表上一筆留言內容正式結束
         continue;
       }
       if(noiseRe.test(line)) continue; // 廣告/UI雜訊整行丟棄
       if(posterTagOnlyRe.test(line)) continue; // 「貼文者」標籤獨立成行時不更新候選人
+
+      // 純數字短行（不含中文）：通常是按讚數、留言數等UI介面數字，不是留言內容本身。
+      // 只有在「目前累積的內容已經完整」時才丟棄這種行，避免誤刪掉「總數還沒寫完、後面才接數字」的真實情況
+      // （例如OCR把"7"跟後面的中文內容分開，這種情況目前內容還不完整，不該被當成讚數丟棄）
+      const isPureNumberLine = /^\d+$/.test(line) && line.length <= 4;
+      if(isPureNumberLine && currentEntry !== null && looksLikeCompleteEntry(currentEntry.content)){
+        continue;
+      }
 
       // 判斷這行是否「看起來像姓名」：短、含中文、不含數字
       const isShortNonDataLine = line.length <= 12 && /[\u4e00-\u9fff]/.test(line) && !dataLineRe.test(line);
@@ -747,7 +821,13 @@ var XLSX={};function make_xlsx_lib(a){a.version="0.18.5",a.style_version="1.2.0"
       // 否則代表目前這筆留言內容還沒寫完，這行其實是內容的延續（不該被打斷）
       if(isShortNonDataLine && (currentEntry === null || looksLikeCompleteEntry(currentEntry.content))){
         currentEntry = null;
-        const cleaned = line.replace(/[・·]?\s*貼文者\s*$/, '').trim();
+        // 清理姓名候選字串：移除「・貼文者」尾綴；
+        // 若OCR把「・貼文者」斷成兩行（這行只殘留結尾的「・」、「貼文者」在下一行才出現），
+        // 也要把這個孤立的分隔符號清掉，否則姓名會殘留成「蔡尚文・」這種不乾淨的格式
+        const cleaned = line
+          .replace(/[・·]?\s*貼文者\s*$/, '')
+          .replace(/[・·]\s*$/, '')
+          .trim();
         if(cleaned) lastAuthorCandidate = cleaned;
         continue;
       }
@@ -757,8 +837,21 @@ var XLSX={};function make_xlsx_lib(a){a.version="0.18.5",a.style_version="1.2.0"
         currentEntry = { author: lastAuthorCandidate, content: line };
         entries.push(currentEntry);
       } else {
-        // 接續目前這筆留言（不論這行長什麼樣，只要還沒結束就算同一筆）
-        currentEntry.content += line;
+        // 保險機制：若「這一行本身」已經是一筆看起來完整獨立的資料（含已知據點關鍵字+數字），
+        // 且「目前累積中的內容」也已經含有自己的據點關鍵字+數字，代表目前這筆很可能是因為
+        // OCR辨識瑕疵（例如右括號被漏看、時間戳記沒被認出來）卡在「未完成」狀態，
+        // 而不是真的還沒寫完。此時不該把這行繼續吞進去（會導致這一整筆完整資料憑空消失），
+        // 而是強制把目前這筆結束、另開新的一筆，寧可讓舊的那筆解析失敗，也不能讓新的這筆被吞掉。
+        const lineLooksLikeNewEntry = VALID_SITE_KEYWORDS.some(kw => line.includes(kw)) && dataLineRe.test(line);
+        const currentAlreadyHasSite = VALID_SITE_KEYWORDS.some(kw => currentEntry.content.includes(kw)) && dataLineRe.test(currentEntry.content);
+
+        if(lineLooksLikeNewEntry && currentAlreadyHasSite){
+          currentEntry = { author: lastAuthorCandidate, content: line };
+          entries.push(currentEntry);
+        } else {
+          // 接續目前這筆留言（不論這行長什麼樣，只要還沒結束就算同一筆）
+          currentEntry.content += line;
+        }
       }
     }
     return entries;
