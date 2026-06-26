@@ -988,14 +988,16 @@ var XLSX={};function make_xlsx_lib(a){a.version="0.18.5",a.style_version="1.2.0"
 
     let veg = 0;
     let vegCaught = false; // 是否成功用標準「含N個XP/不豬」句型捕捉到不豬數
-    const vegMatch = body.match(/含\s*(\d+)\s*(?:個)?\s*(?:xp|XP|不豬)/i);
+    // 「XP/不豬」前後允許多包一層可選括號（例如OCR或發文者誤打成「含2（XP）」而非「含2XP」），
+    // 仍視為標準寫法的變體，不需要發文者重新發布
+    const vegMatch = body.match(/含\s*(\d+)\s*(?:個)?\s*[（(]?\s*(?:xp|XP|不豬)\s*[）)]?/i);
     if(vegMatch){ veg = parseInt(vegMatch[1], 10); vegCaught = true; }
 
     // 素食：任何「素」字緊鄰數字（含N素、含N個素、素N個 等），目前業務上尚無實例，先備用
     // 採保守規則：僅辨識「含...素」或「素」緊跟在括號/空白後的數字，避免吃掉總數字
     let veggie = 0;
     let veggieCaught = false; // 是否成功用標準句型捕捉到素食數
-    const veggieMatch = body.match(/含\s*(\d+)\s*(?:個)?\s*素食?|[（(]\s*素\s*(\d+)\s*(?:個)?[）)]?/);
+    const veggieMatch = body.match(/含\s*(\d+)\s*(?:個)?\s*[（(]?\s*素食?\s*[）)]?|[（(]\s*素\s*(\d+)\s*(?:個)?[）)]?/);
     if(veggieMatch){
       veggie = parseInt(veggieMatch[1] || veggieMatch[2], 10);
       veggieCaught = true;
@@ -1005,12 +1007,14 @@ var XLSX={};function make_xlsx_lib(a){a.version="0.18.5",a.style_version="1.2.0"
     const soupMatch = body.match(/湯\s*(\d+)\s*(?:包)?/);
     if(soupMatch) soup = parseInt(soupMatch[1], 10);
 
-    let stripped = body
-      .replace(/[（(]\s*含[^）)]*[）)]/g, ' ')
-      .replace(/含\s*\d+\s*(?:個)?\s*(?:xp|XP|不豬)/ig, ' ')
-      .replace(/含\s*\d+\s*(?:個)?\s*素食?/g, ' ')
-      .replace(/[（(]\s*素\s*\d+\s*(?:個)?[）)]?/g, ' ')
-      .replace(/湯\s*\d+\s*(?:包)?/g, ' ')
+    // 用「精確匹配到的字串」逐項替換移除，而非用寬鬆的括號邊界猜測（後者在雙括號等變體寫法下
+    // 容易把不該移除的內容一併吃掉，導致關鍵字消失而觸發格式不標準的誤判）
+    let stripped = body;
+    if(vegMatch) stripped = stripped.replace(vegMatch[0], ' ');
+    if(veggieMatch) stripped = stripped.replace(veggieMatch[0], ' ');
+    if(soupMatch) stripped = stripped.replace(soupMatch[0], ' ');
+    stripped = stripped
+      .replace(/[（(]\s*[）)]/g, ' ')  // 移除替換後可能殘留的空括號對（例如雙括號寫法只移除內層後，外層還留著）
       .replace(/\d{1,2}:\d{2}/g, ' ');
 
     const totalMatch = stripped.match(/(\d+)/);
@@ -1021,7 +1025,7 @@ var XLSX={};function make_xlsx_lib(a){a.version="0.18.5",a.style_version="1.2.0"
     if(totalMatch){
       site = stripped.slice(0, stripped.indexOf(totalMatch[1]))
         .replace(/便當|共|計/g, '')
-        .replace(/[、。\s]+$/, '')
+        .replace(/[、。\s（(]+$/, '')
         .trim();
     }
 
