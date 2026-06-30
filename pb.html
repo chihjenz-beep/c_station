@@ -697,7 +697,7 @@
         <div id="copyMonthSection">
           <div class="form-line">
             <label>人員</label>
-            <select id="copyMonthStaffSel" style="flex:1;"></select>
+            <div id="copyMonthStaffChecklist" class="bulk-staff-checklist"></div>
           </div>
           <div class="form-line">
             <label>來源</label>
@@ -713,7 +713,7 @@
         <div id="copyPersonSection" style="display:none;">
           <div class="form-line">
             <label>來源</label>
-            <select id="copySourceStaffSel" style="flex:1;" onchange="renderCopyTargetStaffChecklist()"></select>
+            <div id="copySourceStaffChecklist" class="bulk-staff-checklist"></div>
           </div>
           <div class="form-line">
             <label>月份</label>
@@ -2429,21 +2429,47 @@ function setCopyMode(mode){
   document.getElementById('copyResultReport').innerHTML = '';
   if(mode==='clear' && typeof setClearMode==='function') setClearMode('person');
 }
+let copyMonthSelectedStaff = null; // 「複製月份班表」目前選定的人員(單選)
+let copySourceSelectedStaff = null; // 「複製給其他人」目前選定的來源人員(單選)
+
 function populateCopyStaffSelects(){
   const opts = staff.filter(s=>s.active).map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
-  document.getElementById('copyMonthStaffSel').innerHTML = opts;
-  document.getElementById('copySourceStaffSel').innerHTML = opts;
   document.getElementById('clearMonthStaffSel').innerHTML = opts;
+  renderCopyMonthStaffChecklist();
+  renderCopySourceStaffChecklist();
   renderCopyTargetStaffChecklist();
 }
-// 建立地點選單的HTML選項字串（共用：診所＋所有據點），currentValue對應的選項會標記selected
-function buildSiteOptionsHtml(currentValue){
-  const opts = [{ id:'clinic', name:'🏥 診所' }, ...sites.map(s=>({ id:s.id, name:'📍 '+s.name }))];
-  return opts.map(o=>`<option value="${o.id}" ${o.id===currentValue?'selected':''}>${o.name}</option>`).join('');
+function renderCopyMonthStaffChecklist(){
+  const container = document.getElementById('copyMonthStaffChecklist');
+  if(!container) return;
+  const activeStaff = staff.filter(s=>s.active);
+  if(copyMonthSelectedStaff===null && activeStaff.length>0) copyMonthSelectedStaff = activeStaff[0].id;
+  container.innerHTML = activeStaff.map(s=>
+    `<span class="bulk-staff-chip ${copyMonthSelectedStaff===s.id?'selected':''}" onclick="selectCopyMonthStaff('${s.id}')">${s.name}</span>`
+  ).join('');
+}
+function selectCopyMonthStaff(staffId){
+  copyMonthSelectedStaff = staffId;
+  renderCopyMonthStaffChecklist();
+}
+function renderCopySourceStaffChecklist(){
+  const container = document.getElementById('copySourceStaffChecklist');
+  if(!container) return;
+  const activeStaff = staff.filter(s=>s.active);
+  if(copySourceSelectedStaff===null && activeStaff.length>0) copySourceSelectedStaff = activeStaff[0].id;
+  container.innerHTML = activeStaff.map(s=>
+    `<span class="bulk-staff-chip ${copySourceSelectedStaff===s.id?'selected':''}" onclick="selectCopySourceStaff('${s.id}')">${s.name}</span>`
+  ).join('');
+}
+function selectCopySourceStaff(staffId){
+  copySourceSelectedStaff = staffId;
+  renderCopySourceStaffChecklist();
+  renderCopyTargetStaffChecklist(); // 來源人員變更時，目標清單要排除新的來源人員(避免複製給自己)
 }
 function renderCopyTargetStaffChecklist(){
   const container = document.getElementById('copyTargetStaffChecklist');
-  const sourceId = document.getElementById('copySourceStaffSel').value;
+  if(!container) return;
+  const sourceId = copySourceSelectedStaff;
   container.innerHTML = staff.filter(s=>s.active && s.id!==sourceId).map(s=>
     `<span class="bulk-staff-chip ${copyTargetStaffIds.includes(s.id)?'selected':''}" onclick="toggleCopyTargetStaff('${s.id}')">${s.name}</span>`
   ).join('');
@@ -2468,19 +2494,21 @@ function renderCopyTargetSiteList(){
     container.innerHTML = '';
     return;
   }
+  const siteOpts = [{ id:'__keep__', name:'維持原地點不變' }, { id:'clinic', name:'🏥 診所' }, ...sites.map(s=>({ id:s.id, name:'📍 '+s.name }))];
   container.innerHTML = copyTargetStaffIds.map(id=>{
     const current = copyTargetSites[id] || '__keep__';
-    return `<div class="target-site-row">
-      <span class="tsr-name">${getStaffName(id)}</span>
-      <select onchange="setCopyTargetSite('${id}', this.value)">
-        <option value="__keep__" ${current==='__keep__'?'selected':''}>維持原地點不變</option>
-        ${buildSiteOptionsHtml(current)}
-      </select>
+    const chipsHtml = siteOpts.map(o=>
+      `<span class="bulk-staff-chip ${current===o.id?'selected':''}" onclick="setCopyTargetSite('${id}','${o.id}')">${o.name}</span>`
+    ).join('');
+    return `<div class="target-site-row" style="flex-direction:column;align-items:stretch;">
+      <span class="tsr-name" style="margin-bottom:6px;">${getStaffName(id)}</span>
+      <div class="bulk-staff-checklist" style="border:none;padding:0;max-height:none;">${chipsHtml}</div>
     </div>`;
   }).join('');
 }
 function setCopyTargetSite(staffId, site){
   copyTargetSites[staffId] = site;
+  renderCopyTargetSiteList();
 }
 
 // 取得某人在某月份('YYYY-MM')的所有排班紀錄，附帶當月日期清單
@@ -2502,7 +2530,7 @@ function staffHasScheduleInMonth(staffId, monthStr){
 }
 
 function runCopyMonth(){
-  const staffId = document.getElementById('copyMonthStaffSel').value;
+  const staffId = copyMonthSelectedStaff;
   const sourceMonth = document.getElementById('copySourceMonth').value;
   const targetMonth = document.getElementById('copyTargetMonth').value;
   if(!staffId){ alert('請選擇人員'); return; }
@@ -2678,7 +2706,7 @@ function runClearMonthAll(startMonth, endMonth){
 }
 
 function runCopyToPersons(){
-  const sourceId = document.getElementById('copySourceStaffSel').value;
+  const sourceId = copySourceSelectedStaff;
   const monthStr = document.getElementById('copyPersonMonth').value;
   if(!sourceId){ alert('請選擇來源人員'); return; }
   if(!monthStr){ alert('請選擇月份'); return; }
