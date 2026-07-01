@@ -1305,41 +1305,46 @@ let leaves   = loadStore(STORE_KEYS.leaves, {});      // { 'YYYY-MM-DD': [ {staf
 const LEAVE_TYPES = ['請假','排休','特休','公假','事假','病假'];
 
 // ===========================================================
-// 請假登記鎖定規則：每月21號起，「下個月」整月鎖定不可登記/取消請假
-// 滾動式規則：只鎖「下個月」這一個月，再下個月之後永遠不受影響
+// 請假登記鎖定規則（滾動式）：
+//   1) 「本月」的假永遠鎖定，不開放登記/取消（本月班表已定案，需臨時異動請洽主管協調）
+//   2) 「下個月」的假：每月21號起鎖定，20號（含）以前開放登記
+//   3) 下下個月以後：永遠開放，不受限制
+// 隨著時間推進，原本的「下個月」會變成「本月」而自動鎖定，
+// 原本的「下下個月」會變成新的「下個月」而套用21號規則，以此類推。
 // ===========================================================
-function getLockedMonth(){
-  // 回傳目前是否處於鎖定期間，以及被鎖定的月份('YYYY-MM')；非鎖定期間回傳 null
+function getLockedMonths(){
+  // 回傳目前被鎖定的月份清單（'YYYY-MM'字串陣列），本月一定在清單內
   const today = new Date();
   const day = today.getDate();
-  if(day < 21) return null; // 20號（含）以前，沒有任何月份被鎖
-  // 21號起，鎖定「下個月」
-  const nextMonth = new Date(today.getFullYear(), today.getMonth()+1, 1);
-  const y = nextMonth.getFullYear();
-  const m = String(nextMonth.getMonth()+1).padStart(2,'0');
-  return `${y}-${m}`;
+  const y = today.getFullYear();
+  const m = today.getMonth(); // 0-indexed
+  const currentMonthStr = `${y}-${String(m+1).padStart(2,'0')}`;
+  const locked = [currentMonthStr]; // 本月永遠鎖定
+  if(day >= 21){
+    // 21號起，下個月也一併鎖定
+    const nextMonth = new Date(y, m+1, 1);
+    const ny = nextMonth.getFullYear();
+    const nm = String(nextMonth.getMonth()+1).padStart(2,'0');
+    locked.push(`${ny}-${nm}`);
+  }
+  return locked;
 }
 // 判斷某個日期字串('YYYY-MM-DD')是否落在目前被鎖定的月份內
 function isDateLeaveLocked(dateStr){
   if(!dateStr) return false;
-  const lockedMonth = getLockedMonth();
-  if(!lockedMonth) return false;
-  return dateStr.slice(0,7) === lockedMonth;
+  const lockedMonths = getLockedMonths();
+  return lockedMonths.includes(dateStr.slice(0,7));
 }
 function leaveLockMessage(){
-  const lockedMonth = getLockedMonth();
-  return `🔒 ${lockedMonth} 的請假登記已鎖定（每月21號起鎖定下個月），若需臨時請假請洽主管協調班表。`;
+  const lockedMonths = getLockedMonths();
+  return `🔒 ${lockedMonths.join('、')} 的請假登記已鎖定（本月不開放請假；下個月自每月21號起鎖定），若需臨時請假請洽主管協調班表。`;
 }
 function renderM4LockBanner(){
   const banner = document.getElementById('m4LockBanner');
   if(!banner) return;
-  const lockedMonth = getLockedMonth();
-  if(lockedMonth){
-    banner.style.display = 'block';
-    banner.innerHTML = `<div class="lock-banner">🔒 目前為鎖定期間：<strong>${lockedMonth}</strong> 的請假登記與取消皆已鎖定。若需臨時請假，請洽主管協調班表。</div>`;
-  } else {
-    banner.style.display = 'none';
-  }
+  const lockedMonths = getLockedMonths();
+  banner.style.display = 'block';
+  banner.innerHTML = `<div class="lock-banner">🔒 目前鎖定月份：<strong>${lockedMonths.join('、')}</strong>（本月一律鎖定；下個月自21號起鎖定）的請假登記與取消皆已鎖定。若需臨時請假，請洽主管協調班表。</div>`;
 }
 let sites    = loadStore(STORE_KEYS.sites, null) || buildDefaultSites();
 let externalTeachers = loadStore(STORE_KEYS.externalTeachers, []); // [{id, name, type:'internal'|'external', staffId|null, contact, assignments:[{siteId, categories:[]}]}]
