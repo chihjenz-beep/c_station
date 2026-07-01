@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>服藥運動紀錄月曆</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --paper:#F7F5F0;
+    --ink:#1F2B2B;
+    --ink-soft:#5B6B68;
+    --line:#E1DDD3;
+    --teal:#2F6361;
+    --teal-soft:#DCE9E7;
+    --moss:#5D7A3A;
+    --moss-soft:#E3EAD7;
+    --amber:#C97B3D;
+    --amber-soft:#F5E3D1;
+    --alert:#B23A2E;
+    --alert-soft:#F4DBD6;
+    --good-soft:#DCEEDC;
+    --good:#3E7A3E;
+    --card:#FFFFFF;
+    --radius:14px;
+    font-size:16px;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Microsoft JhengHei","Noto Sans TC",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{
+    max-width:480px;
+    margin:0 auto;
+    min-height:100vh;
+    padding:16px 14px 90px;
+    position:relative;
+  }
+  /* ---- Header ---- */
+  header.top{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    margin-bottom:14px;
+  }
+  .title-row{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+  }
+  .title-row h1{
+    font-size:1.05rem;
+    font-weight:700;
+    letter-spacing:.02em;
+    margin:0;
+    color:var(--teal);
+  }
+  .export-btn{
+    border:1px solid var(--teal);
+    background:transparent;
+    color:var(--teal);
+    font-size:.78rem;
+    font-weight:600;
+    padding:7px 12px;
+    border-radius:20px;
+    cursor:pointer;
+    transition:background .15s;
+  }
+  .export-btn:active{background:var(--teal-soft);}
+  .month-nav{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--card);
+    border-radius:var(--radius);
+    padding:10px 8px;
+    box-shadow:0 1px 3px rgba(0,0,0,.05);
+  }
+  .nav-btn{
+    width:38px;height:38px;
+    border:none;background:transparent;
+    color:var(--teal);
+    font-size:1.2rem;
+    border-radius:50%;
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .nav-btn:active{background:var(--teal-soft);}
+  .month-label{
+    font-size:1.15rem;
+    font-weight:700;
+    text-align:center;
+    flex:1;
+  }
+  .today-btn{
+    font-size:.72rem;
+    color:var(--ink-soft);
+    border:1px solid var(--line);
+    background:#fff;
+    padding:5px 10px;
+    border-radius:14px;
+    cursor:pointer;
+  }
+  /* ---- Legend ---- */
+  .legend{
+    display:flex;
+    gap:12px;
+    font-size:.68rem;
+    color:var(--ink-soft);
+    margin:10px 2px 12px;
+    flex-wrap:wrap;
+  }
+  .legend span{display:flex;align-items:center;gap:4px;}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
+  .dot.med{background:var(--teal);}
+  .dot.ex{background:var(--moss);}
+  .dot.bp-ok{background:var(--good);}
+  .dot.bp-warn{background:var(--alert);}
+
+  /* ---- Calendar grid ---- */
+  .weekdays{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    text-align:center;
+    font-size:.72rem;
+    color:var(--ink-soft);
+    margin-bottom:6px;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    gap:5px;
+  }
+  .day{
+    aspect-ratio:1/1.08;
+    background:var(--card);
+    border-radius:10px;
+    border:1px solid var(--line);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-start;
+    padding:5px 2px 4px;
+    cursor:pointer;
+    position:relative;
+    transition:transform .08s, box-shadow .08s;
+  }
+  .day:active{transform:scale(.96);}
+  .day.empty{
+    visibility:hidden;
+    pointer-events:none;
+  }
+  .day .num{
+    font-size:.8rem;
+    font-weight:600;
+    color:var(--ink);
+  }
+  .day.today{
+    border:2px solid var(--teal);
+  }
+  .day.today .num{color:var(--teal);}
+  .day .dots{
+    display:flex;
+    gap:2px;
+    margin-top:4px;
+    flex-wrap:wrap;
+    justify-content:center;
+    min-height:6px;
+  }
+  .day .dots i{
+    width:5px;height:5px;border-radius:50%;display:block;
+  }
+  .day .bp-chip{
+    font-size:.55rem;
+    font-weight:700;
+    margin-top:3px;
+    padding:1px 4px;
+    border-radius:6px;
+    line-height:1.3;
+  }
+  .day .wt{
+    font-size:.52rem;
+    color:var(--ink-soft);
+    margin-top:1px;
+  }
+
+  /* ---- Bottom sheet ---- */
+  .overlay{
+    position:fixed;inset:0;
+    background:rgba(20,25,25,.42);
+    opacity:0;visibility:hidden;
+    transition:opacity .2s;
+    z-index:50;
+  }
+  .overlay.show{opacity:1;visibility:visible;}
+  .sheet{
+    position:fixed;
+    left:0;right:0;bottom:0;
+    background:var(--paper);
+    border-radius:20px 20px 0 0;
+    max-width:480px;
+    margin:0 auto;
+    transform:translateY(105%);
+    transition:transform .25s ease;
+    z-index:51;
+    max-height:88vh;
+    overflow-y:auto;
+    box-shadow:0 -4px 24px rgba(0,0,0,.18);
+    padding-bottom:env(safe-area-inset-bottom,16px);
+  }
+  .sheet.show{transform:translateY(0);}
+  .sheet-handle{
+    width:38px;height:4px;background:var(--line);
+    border-radius:2px;margin:10px auto 4px;
+  }
+  .sheet-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:6px 18px 4px;
+  }
+  .sheet-head h2{
+    font-size:1.05rem;
+    margin:0;
+  }
+  .close-btn{
+    border:none;background:var(--teal-soft);color:var(--teal);
+    width:30px;height:30px;border-radius:50%;
+    font-size:1rem;cursor:pointer;
+  }
+  .section{
+    padding:12px 18px 4px;
+  }
+  .section h3{
+    font-size:.78rem;
+    color:var(--ink-soft);
+    font-weight:700;
+    letter-spacing:.04em;
+    margin:0 0 8px;
+  }
+  .toggle-row{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .toggle{
+    flex:1;
+    min-width:84px;
+    text-align:center;
+    padding:11px 6px;
+    border-radius:12px;
+    border:1.5px solid var(--line);
+    background:#fff;
+    font-size:.85rem;
+    font-weight:600;
+    color:var(--ink-soft);
+    cursor:pointer;
+    user-select:none;
+    transition:all .12s;
+  }
+  .toggle.med.active{
+    background:var(--teal-soft);
+    border-color:var(--teal);
+    color:var(--teal);
+  }
+  .toggle.ex.active{
+    background:var(--moss-soft);
+    border-color:var(--moss);
+    color:var(--moss);
+  }
+  .vitals-row{
+    display:flex;
+    gap:10px;
+  }
+  .field{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+  .field label{
+    font-size:.72rem;
+    color:var(--ink-soft);
+  }
+  .field input{
+    border:1.5px solid var(--line);
+    border-radius:10px;
+    padding:10px 10px;
+    font-size:.95rem;
+    font-family:inherit;
+    color:var(--ink);
+    width:100%;
+  }
+  .field input:focus{
+    outline:none;
+    border-color:var(--teal);
+  }
+  .bp-hint{
+    font-size:.68rem;
+    color:var(--ink-soft);
+    margin-top:6px;
+  }
+  .bp-hint.warn{color:var(--alert);font-weight:600;}
+  .sheet-footer{
+    padding:16px 18px 8px;
+    display:flex;
+    gap:10px;
+  }
+  .clear-btn{
+    flex:1;
+    padding:12px;
+    border-radius:12px;
+    border:1.5px solid var(--alert);
+    background:#fff;
+    color:var(--alert);
+    font-weight:600;
+    font-size:.88rem;
+    cursor:pointer;
+  }
+  .save-hint{
+    text-align:center;
+    font-size:.7rem;
+    color:var(--ink-soft);
+    padding:0 18px 14px;
+  }
+  :focus-visible{outline:2px solid var(--teal);outline-offset:2px;}
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="top">
+    <div class="title-row">
+      <h1>服藥運動紀錄</h1>
+      <div style="display:flex;gap:8px;">
+        <button class="export-btn" id="importBtn">匯入</button>
+        <button class="export-btn" id="exportBtn">匯出 Excel</button>
+      </div>
+      <input type="file" id="importFile" accept=".xlsx,.xls" style="display:none;">
+    </div>
+    <div class="month-nav">
+      <button class="nav-btn" id="prevBtn" aria-label="上個月">‹</button>
+      <div class="month-label" id="monthLabel"></div>
+      <button class="nav-btn" id="nextBtn" aria-label="下個月">›</button>
+    </div>
+  </header>
+
+  <div class="legend">
+    <span><i class="dot med"></i>服藥</span>
+    <span><i class="dot ex"></i>運動</span>
+    <span><i class="dot bp-ok"></i>血壓正常</span>
+    <span><i class="dot bp-warn"></i>血壓偏高</span>
+    <button class="today-btn" id="todayBtn" style="margin-left:auto;">回到今天</button>
+  </div>
+
+  <div class="weekdays">
+    <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
+  </div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<div class="overlay" id="overlay"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head">
+    <h2 id="sheetDate">7月15日（三）</h2>
+    <button class="close-btn" id="closeBtn" aria-label="關閉">✕</button>
+  </div>
+
+  <div class="section">
+    <h3>服藥</h3>
+    <div class="toggle-row">
+      <div class="toggle med" data-cat="meds" data-key="bp">血壓藥</div>
+      <div class="toggle med" data-cat="meds" data-key="headache">頭痛藥</div>
+      <div class="toggle med" data-cat="meds" data-key="b12">B12</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>運動</h3>
+    <div class="toggle-row">
+      <div class="toggle ex" data-cat="exercise" data-key="walk">散步</div>
+      <div class="toggle ex" data-cat="exercise" data-key="run">跑步</div>
+      <div class="toggle ex" data-cat="exercise" data-key="resistance">阻力訓練</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>體重 / 血壓</h3>
+    <div class="vitals-row">
+      <div class="field">
+        <label for="weightInput">體重 (kg)</label>
+        <input type="number" inputmode="decimal" step="0.1" id="weightInput" placeholder="--">
+      </div>
+      <div class="field">
+        <label for="sbpInput">收縮壓</label>
+        <input type="number" inputmode="numeric" id="sbpInput" placeholder="--">
+      </div>
+      <div class="field">
+        <label for="dbpInput">舒張壓</label>
+        <input type="number" inputmode="numeric" id="dbpInput" placeholder="--">
+      </div>
+    </div>
+    <div class="bp-hint" id="bpHint"></div>
+  </div>
+
+  <div class="sheet-footer">
+    <button class="clear-btn" id="clearBtn">清除本日紀錄</button>
+  </div>
+  <div class="save-hint">變更會自動儲存於本機</div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var STORAGE_KEY = "healthCalRecords_v1";
+  var data = {};
+  try{ data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }catch(e){ data = {}; }
+
+  var current = new Date();
+  current.setDate(1);
+  var selectedDateStr = null;
+
+  var grid = document.getElementById("grid");
+  var monthLabel = document.getElementById("monthLabel");
+  var overlay = document.getElementById("overlay");
+  var sheet = document.getElementById("sheet");
+  var sheetDate = document.getElementById("sheetDate");
+  var weightInput = document.getElementById("weightInput");
+  var sbpInput = document.getElementById("sbpInput");
+  var dbpInput = document.getElementById("dbpInput");
+  var bpHint = document.getElementById("bpHint");
+
+  function pad(n){ return n < 10 ? "0"+n : ""+n; }
+  function fmtKey(y,m,d){ return y+"-"+pad(m+1)+"-"+pad(d); }
+  function todayKey(){ var t=new Date(); return fmtKey(t.getFullYear(), t.getMonth(), t.getDate()); }
+  function weekdayName(date){ return ["日","一","二","三","四","五","六"][date.getDay()]; }
+
+  function save(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }
+
+  function getRecord(key){
+    if(!data[key]){
+      data[key] = { meds:{bp:false,headache:false,b12:false}, exercise:{walk:false,run:false,resistance:false}, weight:null, sbp:null, dbp:null };
+    }
+    return data[key];
+  }
+
+  function recordIsEmpty(rec){
+    if(!rec) return true;
+    var anyMed = rec.meds.bp || rec.meds.headache || rec.meds.b12;
+    var anyEx = rec.exercise.walk || rec.exercise.run || rec.exercise.resistance;
+    return !anyMed && !anyEx && !rec.weight && !rec.sbp && !rec.dbp;
+  }
+
+  function bpLevel(sbp, dbp){
+    if(!sbp && !dbp) return null;
+    if(sbp >= 140 || dbp >= 90) return "high";
+    if(sbp >= 130 || dbp >= 85) return "elevated";
+    return "normal";
+  }
+
+  function renderCalendar(){
+    var y = current.getFullYear();
+    var m = current.getMonth();
+    monthLabel.textContent = y + "年 " + (m+1) + "月";
+
+    grid.innerHTML = "";
+    var firstDow = new Date(y, m, 1).getDay();
+    var daysInMonth = new Date(y, m+1, 0).getDate();
+    var tKey = todayKey();
+
+    for(var i=0;i<firstDow;i++){
+      var blank = document.createElement("div");
+      blank.className = "day empty";
+      grid.appendChild(blank);
+    }
+
+    for(var d=1; d<=daysInMonth; d++){
+      var key = fmtKey(y,m,d);
+      var rec = data[key];
+      var cell = document.createElement("div");
+      cell.className = "day";
+      if(key === tKey) cell.classList.add("today");
+      cell.setAttribute("data-key", key);
+
+      var num = document.createElement("div");
+      num.className = "num";
+      num.textContent = d;
+      cell.appendChild(num);
+
+      var dots = document.createElement("div");
+      dots.className = "dots";
+      if(rec){
+        if(rec.meds.bp) dots.appendChild(makeDot("med"));
+        if(rec.meds.headache) dots.appendChild(makeDot("med"));
+        if(rec.meds.b12) dots.appendChild(makeDot("med"));
+        if(rec.exercise.walk) dots.appendChild(makeDot("ex"));
+        if(rec.exercise.run) dots.appendChild(makeDot("ex"));
+        if(rec.exercise.resistance) dots.appendChild(makeDot("ex"));
+      }
+      cell.appendChild(dots);
+
+      if(rec && (rec.sbp || rec.dbp)){
+        var level = bpLevel(rec.sbp, rec.dbp);
+        var chip = document.createElement("div");
+        chip.className = "bp-chip";
+        chip.textContent = (rec.sbp||"-") + "/" + (rec.dbp||"-");
+        if(level === "high"){ chip.style.background = "var(--alert-soft)"; chip.style.color = "var(--alert)"; }
+        else if(level === "elevated"){ chip.style.background = "var(--amber-soft)"; chip.style.color = "var(--amber)"; }
+        else { chip.style.background = "var(--good-soft)"; chip.style.color = "var(--good)"; }
+        cell.appendChild(chip);
+      }
+      if(rec && rec.weight){
+        var wt = document.createElement("div");
+        wt.className = "wt";
+        wt.textContent = rec.weight + "kg";
+        cell.appendChild(wt);
+      }
+
+      cell.addEventListener("click", function(){ openSheet(this.getAttribute("data-key")); });
+      grid.appendChild(cell);
+    }
+  }
+
+  function makeDot(cls){
+    var i = document.createElement("i");
+    i.style.background = cls === "med" ? "var(--teal)" : "var(--moss)";
+    return i;
+  }
+
+  function openSheet(key){
+    selectedDateStr = key;
+    var parts = key.split("-").map(Number);
+    var dateObj = new Date(parts[0], parts[1]-1, parts[2]);
+    sheetDate.textContent = (parts[1]) + "月" + (parts[2]) + "日（" + weekdayName(dateObj) + "）";
+
+    var rec = getRecord(key);
+    document.querySelectorAll(".toggle").forEach(function(t){
+      var cat = t.getAttribute("data-cat"), k = t.getAttribute("data-key");
+      t.classList.toggle("active", !!rec[cat][k]);
+    });
+    weightInput.value = rec.weight || "";
+    sbpInput.value = rec.sbp || "";
+    dbpInput.value = rec.dbp || "";
+    updateBpHint(rec.sbp, rec.dbp);
+
+    overlay.classList.add("show");
+    sheet.classList.add("show");
+  }
+
+  function closeSheet(){
+    overlay.classList.remove("show");
+    sheet.classList.remove("show");
+    if(selectedDateStr && recordIsEmpty(data[selectedDateStr])){
+      delete data[selectedDateStr];
+    }
+    save();
+    renderCalendar();
+    selectedDateStr = null;
+  }
+
+  function updateBpHint(sbp, dbp){
+    var level = bpLevel(sbp, dbp);
+    if(!level){ bpHint.textContent = ""; bpHint.className = "bp-hint"; return; }
+    if(level === "high"){
+      bpHint.textContent = "血壓偏高（收縮壓≥140 或 舒張壓≥90），建議留意並追蹤。";
+      bpHint.className = "bp-hint warn";
+    } else if(level === "elevated"){
+      bpHint.textContent = "血壓略偏高，建議持續觀察。";
+      bpHint.className = "bp-hint warn";
+    } else {
+      bpHint.textContent = "血壓在一般範圍內。";
+      bpHint.className = "bp-hint";
+    }
+  }
+
+  document.querySelectorAll(".toggle").forEach(function(t){
+    t.addEventListener("click", function(){
+      if(!selectedDateStr) return;
+      var rec = getRecord(selectedDateStr);
+      var cat = this.getAttribute("data-cat"), k = this.getAttribute("data-key");
+      rec[cat][k] = !rec[cat][k];
+      this.classList.toggle("active", rec[cat][k]);
+      save();
+    });
+  });
+
+  function bindNumber(input, field){
+    input.addEventListener("input", function(){
+      if(!selectedDateStr) return;
+      var rec = getRecord(selectedDateStr);
+      var v = this.value === "" ? null : parseFloat(this.value);
+      rec[field] = v;
+      save();
+      if(field === "sbp" || field === "dbp"){
+        updateBpHint(rec.sbp, rec.dbp);
+      }
+    });
+  }
+  bindNumber(weightInput, "weight");
+  bindNumber(sbpInput, "sbp");
+  bindNumber(dbpInput, "dbp");
+
+  document.getElementById("closeBtn").addEventListener("click", closeSheet);
+  overlay.addEventListener("click", closeSheet);
+  document.getElementById("clearBtn").addEventListener("click", function(){
+    if(!selectedDateStr) return;
+    delete data[selectedDateStr];
+    save();
+    closeSheet();
+  });
+
+  document.getElementById("prevBtn").addEventListener("click", function(){
+    current.setMonth(current.getMonth()-1);
+    renderCalendar();
+  });
+  document.getElementById("nextBtn").addEventListener("click", function(){
+    current.setMonth(current.getMonth()+1);
+    renderCalendar();
+  });
+  document.getElementById("todayBtn").addEventListener("click", function(){
+    var t = new Date(); t.setDate(1);
+    current = t;
+    renderCalendar();
+  });
+
+  document.getElementById("importBtn").addEventListener("click", function(){
+    document.getElementById("importFile").click();
+  });
+
+  document.getElementById("importFile").addEventListener("change", function(e){
+    var file = e.target.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(evt){
+      try{
+        var buf = new Uint8Array(evt.target.result);
+        var wb = XLSX.read(buf, {type:"array"});
+        var ws = wb.Sheets[wb.SheetNames[0]];
+        var rows = XLSX.utils.sheet_to_json(ws, {header:1});
+
+        if(!rows.length){ alert("這個檔案沒有資料。"); return; }
+        // first row is header, skip it
+        var ok = confirm("確定要匯入嗎？匯入的日期會覆蓋目前手機上同一天的紀錄，其他日期不受影響。");
+        if(!ok){ e.target.value = ""; return; }
+
+        var imported = 0;
+        var lastKey = null;
+        for(var i=1;i<rows.length;i++){
+          var row = rows[i];
+          if(!row || !row[0]) continue;
+          var key = normalizeDateKey(row[0]);
+          if(!key) continue;
+
+          var rec = {
+            meds:{
+              bp: row[2] === "✓" || row[2] === "v" || row[2] === "V" || row[2] === 1,
+              headache: row[3] === "✓" || row[3] === "v" || row[3] === "V" || row[3] === 1,
+              b12: row[4] === "✓" || row[4] === "v" || row[4] === "V" || row[4] === 1
+            },
+            exercise:{
+              walk: row[5] === "✓" || row[5] === "v" || row[5] === "V" || row[5] === 1,
+              run: row[6] === "✓" || row[6] === "v" || row[6] === "V" || row[6] === 1,
+              resistance: row[7] === "✓" || row[7] === "v" || row[7] === "V" || row[7] === 1
+            },
+            weight: (row[8] !== undefined && row[8] !== "") ? parseFloat(row[8]) : null,
+            sbp: (row[9] !== undefined && row[9] !== "") ? parseFloat(row[9]) : null,
+            dbp: (row[10] !== undefined && row[10] !== "") ? parseFloat(row[10]) : null
+          };
+          if(recordIsEmpty(rec)) continue;
+          data[key] = rec;
+          imported++;
+          lastKey = key;
+        }
+
+        if(imported === 0){
+          alert("沒有找到可以匯入的紀錄，請確認檔案格式是否為本工具匯出的Excel檔。");
+        } else {
+          save();
+          if(lastKey){
+            var p = lastKey.split("-").map(Number);
+            current = new Date(p[0], p[1]-1, 1);
+          }
+          renderCalendar();
+          alert("已匯入 " + imported + " 天的紀錄。");
+        }
+      }catch(err){
+        alert("匯入失敗，請確認檔案是否為本工具匯出的Excel檔案。");
+      }
+      e.target.value = "";
+    };
+    reader.readAsArrayBuffer(file);
+  });
+
+  function normalizeDateKey(val){
+    // Accept "YYYY-MM-DD" strings, or Excel serial date numbers
+    if(typeof val === "string"){
+      var m = val.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+      if(m){ return m[1]+"-"+pad(parseInt(m[2],10))+"-"+pad(parseInt(m[3],10)); }
+      return null;
+    }
+    if(typeof val === "number"){
+      var d = XLSX.SSF.parse_date_code(val);
+      if(d){ return d.y+"-"+pad(d.m)+"-"+pad(d.d); }
+    }
+    return null;
+  }
+
+  document.getElementById("exportBtn").addEventListener("click", function(){
+    var keys = Object.keys(data).sort();
+    if(keys.length === 0){
+      alert("目前沒有任何紀錄可匯出。");
+      return;
+    }
+    var rows = [["日期","星期","血壓藥","頭痛藥","B12","散步","跑步","阻力訓練","體重(kg)","收縮壓","舒張壓"]];
+    keys.forEach(function(key){
+      var rec = data[key];
+      var parts = key.split("-").map(Number);
+      var dateObj = new Date(parts[0], parts[1]-1, parts[2]);
+      rows.push([
+        key,
+        weekdayName(dateObj),
+        rec.meds.bp ? "✓" : "",
+        rec.meds.headache ? "✓" : "",
+        rec.meds.b12 ? "✓" : "",
+        rec.exercise.walk ? "✓" : "",
+        rec.exercise.run ? "✓" : "",
+        rec.exercise.resistance ? "✓" : "",
+        rec.weight || "",
+        rec.sbp || "",
+        rec.dbp || ""
+      ]);
+    });
+    var ws = XLSX.utils.aoa_to_sheet(rows);
+    ws["!cols"] = [{wch:11},{wch:6},{wch:8},{wch:8},{wch:6},{wch:6},{wch:6},{wch:10},{wch:9},{wch:8},{wch:8}];
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "服藥運動紀錄");
+    var now = new Date();
+    var fname = "服藥運動紀錄_" + now.getFullYear() + pad(now.getMonth()+1) + pad(now.getDate()) + ".xlsx";
+    XLSX.writeFile(wb, fname);
+  });
+
+  renderCalendar();
+})();
+</script>
+</body>
+</html>
