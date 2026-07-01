@@ -1305,23 +1305,27 @@ let leaves   = loadStore(STORE_KEYS.leaves, {});      // { 'YYYY-MM-DD': [ {staf
 const LEAVE_TYPES = ['請假','排休','特休','公假','事假','病假'];
 
 // ===========================================================
-// 請假登記鎖定規則（滾動式）：
-//   1) 「本月」的假永遠鎖定，不開放登記/取消（本月班表已定案，需臨時異動請洽主管協調）
-//   2) 「下個月」的假：每月21號起鎖定，20號（含）以前開放登記
-//   3) 下下個月以後：永遠開放，不受限制
-// 隨著時間推進，原本的「下個月」會變成「本月」而自動鎖定，
-// 原本的「下下個月」會變成新的「下個月」而套用21號規則，以此類推。
+// 請假登記鎖定規則（滾動式，新增/取消分開判斷）：
+//   【新增申請】
+//     1) 「本月」永遠鎖定，不開放新增申請（本月班表已定案）
+//     2) 「下個月」自每月21號起鎖定，20號（含）以前開放申請
+//     3) 下下個月以後：永遠開放
+//   【取消請假】為保留人力調度彈性，本月的假仍可隨時取消：
+//     1) 「本月」不鎖定，可隨時取消（利於臨時調班）
+//     2) 「下個月」自每月21號起鎖定取消，20號（含）以前可取消
+//     3) 下下個月以後：永遠可取消
+// 隨著時間推進，原本的「下個月」會變成「本月」，原本的「下下個月」
+// 會變成新的「下個月」而套用21號規則，以此類推。
 // ===========================================================
-function getLockedMonths(){
-  // 回傳目前被鎖定的月份清單（'YYYY-MM'字串陣列），本月一定在清單內
+function getLockedMonthsForAdd(){
+  // 新增申請的鎖定月份清單（'YYYY-MM'字串陣列），本月一定在清單內
   const today = new Date();
   const day = today.getDate();
   const y = today.getFullYear();
   const m = today.getMonth(); // 0-indexed
   const currentMonthStr = `${y}-${String(m+1).padStart(2,'0')}`;
-  const locked = [currentMonthStr]; // 本月永遠鎖定
+  const locked = [currentMonthStr]; // 本月永遠鎖定新增
   if(day >= 21){
-    // 21號起，下個月也一併鎖定
     const nextMonth = new Date(y, m+1, 1);
     const ny = nextMonth.getFullYear();
     const nm = String(nextMonth.getMonth()+1).padStart(2,'0');
@@ -1329,22 +1333,44 @@ function getLockedMonths(){
   }
   return locked;
 }
-// 判斷某個日期字串('YYYY-MM-DD')是否落在目前被鎖定的月份內
-function isDateLeaveLocked(dateStr){
+function getLockedMonthsForCancel(){
+  // 取消請假的鎖定月份清單：本月不鎖，只有21號起的「下個月」會鎖
+  const today = new Date();
+  const day = today.getDate();
+  if(day < 21) return [];
+  const y = today.getFullYear();
+  const m = today.getMonth();
+  const nextMonth = new Date(y, m+1, 1);
+  const ny = nextMonth.getFullYear();
+  const nm = String(nextMonth.getMonth()+1).padStart(2,'0');
+  return [`${ny}-${nm}`];
+}
+// 判斷某個日期字串('YYYY-MM-DD')在指定動作('add'新增／'cancel'取消)下是否被鎖定
+function isDateLeaveLocked(dateStr, action='add'){
   if(!dateStr) return false;
-  const lockedMonths = getLockedMonths();
+  const lockedMonths = action==='cancel' ? getLockedMonthsForCancel() : getLockedMonthsForAdd();
   return lockedMonths.includes(dateStr.slice(0,7));
 }
-function leaveLockMessage(){
-  const lockedMonths = getLockedMonths();
-  return `🔒 ${lockedMonths.join('、')} 的請假登記已鎖定（本月不開放請假；下個月自每月21號起鎖定），若需臨時請假請洽主管協調班表。`;
+function leaveLockMessage(action='add'){
+  const lockedMonths = action==='cancel' ? getLockedMonthsForCancel() : getLockedMonthsForAdd();
+  if(action==='cancel'){
+    return `🔒 ${lockedMonths.join('、')} 的請假取消已鎖定（下個月自每月21號起鎖定取消，本月仍可隨時取消），若需臨時調整請洽主管協調班表。`;
+  }
+  return `🔒 ${lockedMonths.join('、')} 的請假登記已鎖定（本月不開放新增申請；下個月自每月21號起鎖定），若需臨時請假請洽主管協調班表。`;
 }
 function renderM4LockBanner(){
   const banner = document.getElementById('m4LockBanner');
   if(!banner) return;
-  const lockedMonths = getLockedMonths();
+  const addLocked = getLockedMonthsForAdd();
+  const cancelLocked = getLockedMonthsForCancel();
+  let msg = `🔒 目前鎖定新增申請月份：<strong>${addLocked.join('、')}</strong>（本月一律鎖定新增；下個月自21號起鎖定）。`;
+  if(cancelLocked.length>0){
+    msg += `<br>🔒 取消請假另鎖定：<strong>${cancelLocked.join('、')}</strong>（本月仍可隨時取消）。`;
+  } else {
+    msg += `本月的假仍可隨時取消，利於臨時調班。`;
+  }
   banner.style.display = 'block';
-  banner.innerHTML = `<div class="lock-banner">🔒 目前鎖定月份：<strong>${lockedMonths.join('、')}</strong>（本月一律鎖定；下個月自21號起鎖定）的請假登記與取消皆已鎖定。若需臨時請假，請洽主管協調班表。</div>`;
+  banner.innerHTML = `<div class="lock-banner">${msg}</div>`;
 }
 let sites    = loadStore(STORE_KEYS.sites, null) || buildDefaultSites();
 let externalTeachers = loadStore(STORE_KEYS.externalTeachers, []); // [{id, name, type:'internal'|'external', staffId|null, contact, assignments:[{siteId, categories:[]}]}]
@@ -2004,7 +2030,7 @@ function addLeaveEntry(){
   if(typeof renderConflictOverview==='function') renderConflictOverview();
 }
 function deleteLeaveEntry(idx){
-  if(isDateLeaveLocked(modalDate)){ alert(leaveLockMessage()); return; }
+  if(isDateLeaveLocked(modalDate, 'cancel')){ alert(leaveLockMessage('cancel')); return; }
   if(!leaves[modalDate]) return;
   leaves[modalDate].splice(idx,1);
   if(leaves[modalDate].length===0) delete leaves[modalDate];
@@ -2792,7 +2818,7 @@ function renderLeaveOverview(){
     return;
   }
   container.innerHTML = rows.map(r=>{
-    const locked = isDateLeaveLocked(r.dateStr);
+    const locked = isDateLeaveLocked(r.dateStr, 'cancel');
     const delBtn = locked
       ? `<span style="font-size:11px;color:var(--warn);font-weight:600;">🔒 已鎖定</span>`
       : `<button class="row-del" onclick="deleteLeaveFromOverview('${r.dateStr}',${r.idx})">✕ 刪除</button>`;
@@ -2806,7 +2832,7 @@ function renderLeaveOverview(){
   `;}).join('');
 }
 function deleteLeaveFromOverview(dateStr, idx){
-  if(isDateLeaveLocked(dateStr)){ alert(leaveLockMessage()); return; }
+  if(isDateLeaveLocked(dateStr, 'cancel')){ alert(leaveLockMessage('cancel')); return; }
   if(!leaves[dateStr]) return;
   leaves[dateStr].splice(idx,1);
   if(leaves[dateStr].length===0) delete leaves[dateStr];
