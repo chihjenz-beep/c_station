@@ -61,7 +61,7 @@
     border-bottom:3px solid transparent;white-space:nowrap;
   }
   .tab-btn.active{color:var(--brown-dark);border-bottom-color:var(--gold);}
-  main{padding:14px;max-width:1100px;margin:0 auto;padding-bottom:60px;}
+  main{padding:14px;max-width:1600px;margin:0 auto;padding-bottom:60px;}
   .panel{display:none;}
   .panel.active{display:block;animation:fade .2s ease;}
   @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
@@ -293,26 +293,26 @@
     overflow:auto;max-height:70vh;border:1px solid var(--border);border-radius:8px;
     position:relative;
   }
-  .matrix-table{border-collapse:separate;border-spacing:0;font-size:10.5px;white-space:nowrap;}
+  .matrix-table{border-collapse:separate;border-spacing:0;font-size:15px;white-space:nowrap;}
   .matrix-table th, .matrix-table td{
     border-right:1px solid var(--border);border-bottom:1px solid var(--border);
-    padding:4px 6px;text-align:center;background:var(--paper);
+    padding:6px 8px;text-align:center;background:var(--paper);
   }
   .matrix-table thead th{
     position:sticky;top:0;z-index:3;background:var(--gold-light);color:var(--brown-dark);
-    font-weight:700;min-width:34px;
+    font-weight:700;min-width:46px;
   }
   .matrix-table thead th.weekend-col{background:#ecd9b8;}
   .matrix-table tbody th{
     position:sticky;left:0;z-index:2;background:var(--gold-light);color:var(--brown-dark);
-    text-align:left;font-weight:700;min-width:64px;max-width:64px;overflow:hidden;text-overflow:ellipsis;
+    text-align:left;font-weight:700;min-width:84px;max-width:84px;overflow:hidden;text-overflow:ellipsis;
   }
   .matrix-table thead th:first-child{
-    position:sticky;left:0;top:0;z-index:4;min-width:64px;
+    position:sticky;left:0;top:0;z-index:4;min-width:84px;
   }
   .matrix-cell{
-    min-width:34px;height:30px;cursor:pointer;font-size:9px;line-height:1.15;
-    padding:2px 3px;vertical-align:middle;position:relative;
+    min-width:48px;height:44px;cursor:pointer;font-size:13.5px;line-height:1.25;
+    padding:3px 4px;vertical-align:middle;position:relative;
   }
   .matrix-cell:hover{filter:brightness(0.93);}
   .matrix-cell.conflict-cell{box-shadow:inset 0 0 0 2px var(--danger);}
@@ -320,12 +320,14 @@
     background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.35) 0 4px, transparent 4px 8px);
   }
   .matrix-cell.multi-site::after{
-    content:"◆"; position:absolute; top:1px; right:2px; font-size:7px; color:#fff; opacity:.9;
+    content:"◆"; position:absolute; top:1px; right:3px; font-size:10px; color:#fff; opacity:.9;
   }
   .matrix-cell .mc-site{font-weight:700;display:block;}
-  .matrix-cell .mc-time{display:block;opacity:.85;font-size:8px;}
-  .matrix-legend{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;font-size:10px;}
-  .matrix-legend-chip{padding:2px 7px;border-radius:10px;color:#fff;font-weight:600;}
+  .matrix-cell .mc-time{display:block;opacity:.85;font-size:11.5px;}
+  .matrix-cell.matrix-leave-cell{background:#e8e2d5;}
+  .matrix-cell .mc-leave{font-weight:700;display:block;color:var(--text-soft);text-align:center;}
+  .matrix-legend{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;font-size:13.5px;}
+  .matrix-legend-chip{padding:3px 9px;border-radius:10px;color:#fff;font-weight:600;}
   .bulk-rule-count{
     font-size:12px;color:var(--brown);background:var(--gold-light);border-radius:8px;
     padding:8px 12px;margin-top:8px;display:none;
@@ -684,10 +686,11 @@
         <button class="modal-close" onclick="closeCopyScheduleModal()">✕</button>
       </div>
       <div class="modal-body">
-        <div style="display:flex;gap:6px;margin-bottom:12px;">
-          <button class="btn gold" id="copyModeMonthBtn" onclick="setCopyMode('month')" style="flex:1;">📅 複製月份班表</button>
-          <button class="btn outline" id="copyModePersonBtn" onclick="setCopyMode('person')" style="flex:1;">👥 複製給其他人</button>
-          <button class="btn outline" id="copyModeClearBtn" onclick="setCopyMode('clear')" style="flex:1;">🗑️ 清空整月</button>
+        <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;">
+          <button class="btn gold" id="copyModeMonthBtn" onclick="setCopyMode('month')" style="flex:1;min-width:100px;">📅 複製月份班表</button>
+          <button class="btn outline" id="copyModeFullBtn" onclick="setCopyMode('full')" style="flex:1;min-width:100px;">📆 整月複製(全員)</button>
+          <button class="btn outline" id="copyModePersonBtn" onclick="setCopyMode('person')" style="flex:1;min-width:100px;">👥 複製給其他人</button>
+          <button class="btn outline" id="copyModeClearBtn" onclick="setCopyMode('clear')" style="flex:1;min-width:100px;">🗑️ 清空整月</button>
         </div>
 
         <div class="desc" id="copyModeDesc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
@@ -708,6 +711,23 @@
             <input type="month" id="copyTargetMonth">
           </div>
           <button class="btn gold" style="width:100%;margin-top:6px;" onclick="runCopyMonth()">📅 複製月份班表</button>
+        </div>
+
+        <div id="copyFullMonthSection" style="display:none;">
+          <div class="form-line">
+            <label>來源</label>
+            <input type="month" id="copyFullSourceMonth">
+          </div>
+          <div class="form-line">
+            <label>目標</label>
+            <input type="month" id="copyFullTargetMonth">
+          </div>
+          <div class="desc" style="font-size:11px;color:var(--text-soft);margin:-2px 0 8px;">
+            會依「星期幾＋第幾次出現」對齊複製（例如來源月的第2個星期一→目標月的第2個星期一），避免因兩個月1號星期幾不同，
+            造成平日班表錯位到週末的問題。完整保留每天每個人的地點/時段/自訂時間。若來源某天在目標月份中沒有對應的星期次數
+            （例如來源有第5個星期一，目標月只有4個），該天會自動略過。不含請假紀錄，只複製排班。
+          </div>
+          <button class="btn gold" style="width:100%;margin-top:6px;" onclick="runCopyFullMonth()">📆 整月複製給全員</button>
         </div>
 
         <div id="copyPersonSection" style="display:none;">
@@ -1815,6 +1835,11 @@ function buildMatrixTableHtml(year, month, onCellClick){
       const hasConflict = entries.some(e=>conflictIdx.has(e._idx));
       const clickAttr = onCellClick ? `onclick="${onCellClick}('${dateStr}')"` : '';
       if(entries.length===0){
+        // 沒有排班紀錄時，檢查該人員當天是否有登記請假/排休，若有則顯示假別文字，而不是留空白格
+        const leaveEntry = (leaves[dateStr]||[]).find(l=>l.staffId===s.id);
+        if(leaveEntry){
+          return `<td class="matrix-cell matrix-leave-cell" ${clickAttr}><span class="mc-leave">${leaveEntry.type}</span></td>`;
+        }
         return `<td class="matrix-cell" ${clickAttr}></td>`;
       }
       const cellContent = entries.map(e=>
@@ -2423,15 +2448,20 @@ function setCopyMode(mode){
   copyMode = mode;
   document.getElementById('copyModeMonthBtn').classList.toggle('gold', mode==='month');
   document.getElementById('copyModeMonthBtn').classList.toggle('outline', mode!=='month');
+  document.getElementById('copyModeFullBtn').classList.toggle('gold', mode==='full');
+  document.getElementById('copyModeFullBtn').classList.toggle('outline', mode!=='full');
   document.getElementById('copyModePersonBtn').classList.toggle('gold', mode==='person');
   document.getElementById('copyModePersonBtn').classList.toggle('outline', mode!=='person');
   document.getElementById('copyModeClearBtn').classList.toggle('gold', mode==='clear');
   document.getElementById('copyModeClearBtn').classList.toggle('outline', mode!=='clear');
   document.getElementById('copyMonthSection').style.display = mode==='month' ? '' : 'none';
+  document.getElementById('copyFullMonthSection').style.display = mode==='full' ? '' : 'none';
   document.getElementById('copyPersonSection').style.display = mode==='person' ? '' : 'none';
   document.getElementById('copyClearSection').style.display = mode==='clear' ? '' : 'none';
   if(mode==='month'){
     document.getElementById('copyModeDesc').textContent = '選一位人員，把他某個月份的班表完整複製到另一個月份（適合固定排班的據點人員）。若目標月份已有班表，會拒絕複製。';
+  } else if(mode==='full'){
+    document.getElementById('copyModeDesc').textContent = '把整個月份「所有人員、所有地點」的排班，逐日複製到另一個月份（適合整月班表要原封不動搬到下個月的情況）。若目標月份已有任何排班，會拒絕複製。';
   } else if(mode==='person'){
     document.getElementById('copyModeDesc').textContent = '選一位來源人員與月份，複製給多位目標人員（複製後每個人都可以自己再微調地點/時間）。若目標人員當月已有班表，會拒絕複製。';
   } else {
@@ -2603,6 +2633,82 @@ function runCopyMonth(){
     reportHtml += `<br>已自動排除 ${skippedWeekendCount} 天週六／週日。`;
   }
   reportHtml += '可至M3微調地點或時間。</div>';
+  document.getElementById('copyResultReport').innerHTML = reportHtml;
+}
+
+// 整月複製（全員）：把來源月份所有人員、所有地點的排班，複製到目標月份
+// 對齊方式：依「星期幾＋該月第幾次出現」對齊（例如來源月的「第2個星期一」對到目標月的「第2個星期一」），
+// 而不是直接對照日期數字——因為兩個月份的1號可能不是同一個星期幾，若直接用數字對照，
+// 平日班表會被複製到週末、週末反而變成平日的錯位問題。
+function getWeekdayOccurrence(dateStr){
+  // 回傳 { dow: 0~6, occurrence: 這是該月第幾次出現此星期幾 }
+  const d = new Date(dateStr+'T00:00:00');
+  const dow = d.getDay();
+  const day = d.getDate();
+  const occurrence = Math.floor((day-1)/7) + 1; // 同星期幾在月曆中必定每7天出現一次，用日期反推第幾次很安全
+  return { dow, occurrence };
+}
+function findDateByWeekdayOccurrence(monthStr, dow, occurrence){
+  // 在目標月份中找出「第occurrence次出現的星期dow」是幾號；若該月沒有這麼多次則回傳null
+  const year = Number(monthStr.slice(0,4));
+  const month = Number(monthStr.slice(5,7));
+  const daysInMonth = new Date(year, month, 0).getDate();
+  let count = 0;
+  for(let day=1; day<=daysInMonth; day++){
+    const dt = new Date(year, month-1, day);
+    if(dt.getDay()===dow){
+      count++;
+      if(count===occurrence) return monthStr + '-' + String(day).padStart(2,'0');
+    }
+  }
+  return null;
+}
+function runCopyFullMonth(){
+  const sourceMonth = document.getElementById('copyFullSourceMonth').value;
+  const targetMonth = document.getElementById('copyFullTargetMonth').value;
+  if(!sourceMonth || !targetMonth){ alert('請選擇來源與目標月份'); return; }
+  if(sourceMonth===targetMonth){ alert('來源與目標月份不能相同'); return; }
+
+  // 蒐集來源月份所有排班紀錄（依日）
+  const sourceDates = Object.keys(schedule).filter(d=>d.startsWith(sourceMonth) && (schedule[d]||[]).length>0);
+  if(sourceDates.length===0){
+    document.getElementById('copyResultReport').innerHTML =
+      `<div class="bulk-report-box">ℹ️ ${sourceMonth} 沒有任何排班紀錄，無法複製。</div>`;
+    return;
+  }
+  // 目標月份若已有任何排班，拒絕複製（避免覆蓋掉既有安排；需要重排請先用「清空整月」）
+  const targetHasAny = Object.keys(schedule).some(d=>d.startsWith(targetMonth) && (schedule[d]||[]).length>0);
+  if(targetHasAny){
+    document.getElementById('copyResultReport').innerHTML =
+      `<div class="bulk-report-box" style="background:var(--danger-bg);border-color:var(--danger);color:var(--danger);">
+        ❌ 複製失敗：目標月份 ${targetMonth} 已有排班資料，請先用「🗑️ 清空整月」清空後再複製，避免覆蓋既有安排。
+      </div>`;
+    return;
+  }
+
+  let copiedCount = 0;
+  let skippedOutOfRangeDays = 0;
+  sourceDates.forEach(sourceDateStr=>{
+    const { dow, occurrence } = getWeekdayOccurrence(sourceDateStr);
+    const targetDateStr = findDateByWeekdayOccurrence(targetMonth, dow, occurrence);
+    if(!targetDateStr){ skippedOutOfRangeDays++; return; } // 目標月份沒有「第occurrence次的星期dow」（例如來源有第5個星期一，目標月只有4個）
+    if(!schedule[targetDateStr]) schedule[targetDateStr] = [];
+    (schedule[sourceDateStr]||[]).forEach(entry=>{
+      // 完整複製每筆排班內容（人員/地點/時段/自訂時間），狀態一律設為草稿，方便複製後再統一確認發布
+      schedule[targetDateStr].push({ ...entry, status: 'draft' });
+      copiedCount++;
+    });
+  });
+
+  saveStore(STORE_KEYS.schedule, schedule);
+  renderCalendar();
+  if(typeof renderConflictOverview==='function') renderConflictOverview();
+
+  let reportHtml = `<div class="bulk-report-box success">✅ 已將 ${sourceMonth} 整月排班（全員、全地點）依星期對齊複製到 ${targetMonth}，共 <strong>${copiedCount}</strong> 筆。`;
+  if(skippedOutOfRangeDays>0){
+    reportHtml += `<br>來源月份有 ${skippedOutOfRangeDays} 天在目標月份中沒有對應的星期次數，已自動略過。`;
+  }
+  reportHtml += '複製後狀態皆為草稿，請至M3或M7確認後再發布。</div>';
   document.getElementById('copyResultReport').innerHTML = reportHtml;
 }
 
