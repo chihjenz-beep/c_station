@@ -480,9 +480,18 @@ function save() {
   // after entry doesn't lose data
   if (fbReady) {
     pendingSync = true;
+    if (window._fbWriteLock) window._fbWriteLock(true);
     fbDb.ref(FB_PATH).set(db)
-      .then(() => { pendingSync = false; setSyncStatus('✓ 已同步至雲端', '#7bed9f'); })
-      .catch(err => { pendingSync = false; setSyncStatus('✗ 同步失敗：' + err.message, '#ff6b6b'); });
+      .then(() => {
+        pendingSync = false;
+        setSyncStatus('✓ 已同步至雲端', '#7bed9f');
+        setTimeout(() => { if (window._fbWriteLock) window._fbWriteLock(false); }, 2000);
+      })
+      .catch(err => {
+        pendingSync = false;
+        setSyncStatus('✗ 同步失敗：' + err.message, '#ff6b6b');
+        if (window._fbWriteLock) window._fbWriteLock(false);
+      });
   }
 }
 
@@ -2318,13 +2327,14 @@ fbDb.ref(FB_PATH).once('value')
     init();
 
     // Listen for live updates from other devices
+    let _writing = false; // lock: ignore updates triggered by our own saves
+    window._fbWriteLock = (v) => { _writing = v; };
     fbDb.ref(FB_PATH).on('value', snapshot => {
+      if (_writing) return; // our own write, skip
       const cloud = snapshot.val();
       if (!cloud) return;
       const cloudStr = JSON.stringify(cloud);
       if (cloudStr !== JSON.stringify(db)) {
-        // Only accept incoming cloud update if it doesn't have fewer entries
-        // than what we currently hold (guards against stale overwrites)
         if (countEntries(cloud) >= countEntries(db)) {
           db = cloud;
           storage.setItem(KEY, cloudStr);
