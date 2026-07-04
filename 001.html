@@ -474,6 +474,21 @@ let fbSyncTimer = null;
 let db = JSON.parse(storage.getItem(KEY) || '{}');
 // db = { ... }
 
+// Firebase stores empty arrays as null - normalize on load
+function normalizeDb() {
+  Object.keys(db).forEach(k => {
+    const sheet = db[k];
+    if (!sheet) return;
+    // entries: null → [], object (Firebase converts array to object) → array
+    if (!sheet.entries || typeof sheet.entries !== 'object') {
+      sheet.entries = [];
+    } else if (!Array.isArray(sheet.entries)) {
+      // Firebase may convert array to {0:{...}, 1:{...}} object
+      sheet.entries = Object.values(sheet.entries);
+    }
+  });
+}
+
 function save() {
   storage.setItem(KEY, JSON.stringify(db));
   // Push to Firebase immediately (no debounce) so closing the page right
@@ -1906,7 +1921,7 @@ function renderSheet() {
     `民國 <span>${y}</span> 年 <span>${m}</span> 月 收支明細`;
 
   const sheet = db[currentKey];
-  const entries = [...sheet.entries].sort((a, b) => a.date.localeCompare(b.date));
+  const entries = [...(Array.isArray(sheet.entries) ? sheet.entries : [])].sort((a, b) => a.date.localeCompare(b.date));
   const body = document.getElementById('ledgerBody');
   body.innerHTML = '';
 
@@ -2324,6 +2339,7 @@ fbDb.ref(FB_PATH).once('value')
       fbDb.ref(FB_PATH).set(db).catch(()=>{});
     }
     fbReady = true;
+    normalizeDb();
     init();
 
     // Listen for live updates from other devices
@@ -2337,7 +2353,8 @@ fbDb.ref(FB_PATH).once('value')
       if (cloudStr !== JSON.stringify(db)) {
         if (countEntries(cloud) >= countEntries(db)) {
           db = cloud;
-          storage.setItem(KEY, cloudStr);
+          normalizeDb();
+          storage.setItem(KEY, JSON.stringify(db));
           renderSidebar();
           if (currentKey) renderSheet();
           setSyncStatus('✓ 已更新（其他裝置同步）', '#7bed9f');
