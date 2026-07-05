@@ -1,0 +1,1379 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>峇裡島行程管理系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F3EFDF;           /* 稻田晨霧米 */
+    --bg-alt:#EAE3CD;
+    --ink:#2A2E27;          /* 火山岩深綠黑 */
+    --ink-soft:#5B6156;
+    --stone:#8B8677;        /* 石階灰 */
+    --stone-line:#D9D2BC;
+    --terrace:#5B7A52;      /* 梯田綠 primary */
+    --terrace-deep:#3F5A38;
+    --frangipani:#C98A3E;   /* 雞蛋花黃橙 secondary */
+    --clay:#A6473A;         /* 磚紅 danger/expense */
+    --card:#FBF9F2;
+    --shadow: 0 1px 2px rgba(42,46,39,0.06), 0 4px 14px rgba(42,46,39,0.06);
+    --radius: 10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Inter',sans-serif; font-size:14px; line-height:1.5;
+  }
+  .mono{font-family:'JetBrains Mono',monospace;}
+  h1,h2,h3,.display{font-family:'Fraunces',serif;}
+
+  /* ---------- Layout ---------- */
+  #app{display:flex; min-height:100vh;}
+  #sidebar{
+    width:250px; flex-shrink:0; background:var(--ink); color:#EDEAD9;
+    display:flex; flex-direction:column; padding:22px 16px;
+  }
+  #sidebar .brand{padding:0 6px 20px; border-bottom:1px solid rgba(255,255,255,0.12); margin-bottom:16px;}
+  #sidebar .brand h1{font-size:19px; margin:0 0 2px; letter-spacing:.5px; color:#fff;}
+  #sidebar .brand .sub{font-size:11px; color:#B7C4AE; letter-spacing:1px;}
+  #sidebar .role-badge{
+    display:inline-block; margin-top:10px; font-size:11px; padding:3px 9px;
+    border-radius:20px; background:rgba(91,122,82,0.35); color:#CFE0C7; font-family:'JetBrains Mono',monospace;
+  }
+  #newTeamBtn{
+    margin:14px 0 10px; padding:10px; border:none; border-radius:8px; cursor:pointer;
+    background:var(--terrace); color:#fff; font-weight:600; font-size:13px;
+  }
+  #newTeamBtn:hover{background:var(--terrace-deep);}
+  #teamNav{flex:1; overflow-y:auto; margin-top:4px;}
+  .nav-item{
+    padding:10px 10px; border-radius:8px; cursor:pointer; margin-bottom:4px;
+    border:1px solid transparent; transition:background .15s;
+  }
+  .nav-item:hover{background:rgba(255,255,255,0.06);}
+  .nav-item.active{background:rgba(91,122,82,0.28); border-color:rgba(91,122,82,0.5);}
+  .nav-item .t-name{font-size:13.5px; font-weight:600; color:#F2EFE2;}
+  .nav-item .t-meta{font-size:11px; color:#A9A290; margin-top:2px; font-family:'JetBrains Mono',monospace;}
+  .nav-item .t-status{display:inline-block; font-size:10px; margin-top:5px; padding:1px 7px; border-radius:10px;}
+  .st-planning{background:#4A4536; color:#E3C777;}
+  .st-confirmed{background:rgba(91,122,82,0.4); color:#CFE0C7;}
+  .st-active{background:rgba(201,138,62,0.35); color:#F0CE9A;}
+  .st-done{background:rgba(255,255,255,0.08); color:#9A9486;}
+
+  #main{flex:1; padding:26px 34px; overflow-y:auto;}
+  .topbar{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:22px;}
+  .topbar h2{margin:0; font-size:24px;}
+  .topbar .desc{color:var(--ink-soft); font-size:13px; margin-top:4px;}
+
+  /* ---------- Dashboard cards ---------- */
+  #dashGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px;}
+  .team-card{
+    background:var(--card); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow);
+    cursor:pointer; border:1px solid var(--stone-line); transition:transform .15s, box-shadow .15s;
+  }
+  .team-card:hover{transform:translateY(-2px); box-shadow:0 6px 20px rgba(42,46,39,0.12);}
+  .team-card .code{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--stone);}
+  .team-card h3{margin:4px 0 8px; font-size:17px;}
+  .team-card .rows{display:flex; flex-direction:column; gap:4px; font-size:12.5px; color:var(--ink-soft);}
+  .team-card .badge{
+    display:inline-block; margin-top:10px; font-size:11px; padding:2px 9px; border-radius:20px; font-weight:600;
+  }
+  .b-planning{background:#F1E3B8; color:#8A6A1F;}
+  .b-confirmed{background:#DCEAD5; color:#3F5A38;}
+  .b-active{background:#F3DCB4; color:#8A5A1F;}
+  .b-done{background:#E6E2D3; color:#6D6858;}
+
+  .empty-state{
+    text-align:center; padding:60px 20px; color:var(--stone);
+  }
+  .empty-state .icon{font-size:34px; margin-bottom:10px;}
+
+  /* ---------- Modal / form ---------- */
+  .overlay{
+    position:fixed; inset:0; background:rgba(42,46,39,0.45); display:none;
+    align-items:center; justify-content:center; z-index:50;
+  }
+  .overlay.show{display:flex;}
+  .modal{
+    background:var(--card); border-radius:14px; padding:26px; width:420px; max-width:92vw;
+    box-shadow:0 20px 50px rgba(0,0,0,0.25); max-height:88vh; overflow-y:auto;
+  }
+  .modal h3{margin:0 0 16px;}
+  .field{margin-bottom:13px;}
+  .field label{display:block; font-size:12px; color:var(--ink-soft); margin-bottom:5px; font-weight:600;}
+  .field input, .field select, .field textarea{
+    width:100%; padding:9px 10px; border:1px solid var(--stone-line); border-radius:7px;
+    font-family:'Inter',sans-serif; font-size:13.5px; background:#fff; color:var(--ink);
+  }
+  .field textarea{resize:vertical; min-height:56px;}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .modal-actions{display:flex; justify-content:flex-end; gap:8px; margin-top:18px;}
+  .btn{padding:9px 16px; border-radius:7px; border:none; cursor:pointer; font-weight:600; font-size:13px;}
+  .btn-primary{background:var(--terrace); color:#fff;}
+  .btn-primary:hover{background:var(--terrace-deep);}
+  .btn-ghost{background:transparent; color:var(--ink-soft); border:1px solid var(--stone-line);}
+  .btn-ghost:hover{background:var(--bg-alt);}
+  .btn-danger{background:var(--clay); color:#fff;}
+
+  /* ---------- Team detail ---------- */
+  .back-link{cursor:pointer; color:var(--terrace-deep); font-size:13px; font-weight:600; margin-bottom:10px; display:inline-block;}
+  .detail-head{
+    background:var(--card); border-radius:var(--radius); padding:20px 22px; box-shadow:var(--shadow); margin-bottom:18px;
+    border:1px solid var(--stone-line);
+  }
+  .detail-head .top{display:flex; justify-content:space-between; align-items:flex-start;}
+  .detail-head h2{margin:0 0 6px;}
+  .detail-head .meta-line{color:var(--ink-soft); font-size:13px;}
+  .tabbar{display:flex; gap:6px; margin-bottom:18px; border-bottom:1px solid var(--stone-line);}
+  .tab{
+    padding:9px 16px; cursor:pointer; font-weight:600; font-size:13.5px; color:var(--stone);
+    border-bottom:2px solid transparent; margin-bottom:-1px;
+  }
+  .tab.active{color:var(--terrace-deep); border-bottom-color:var(--terrace);}
+  .tab.disabled{color:#C9C4B3; cursor:not-allowed;}
+  .tab .soon{font-size:10px; margin-left:5px; color:var(--frangipani);}
+
+  /* Terraced itinerary — signature element */
+  #terraceWrap{display:flex; flex-direction:column; gap:0;}
+  .day-terrace{
+    position:relative; background:var(--card); border:1px solid var(--stone-line);
+    border-radius:10px; margin-bottom:14px; padding:16px 18px 16px 84px;
+    margin-left:calc(var(--depth,0) * 14px);
+    box-shadow:var(--shadow);
+  }
+  .day-tablet{
+    position:absolute; left:14px; top:16px; width:56px; text-align:center;
+    background:var(--terrace); color:#fff; border-radius:7px; padding:8px 4px;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .day-tablet .d-num{font-size:18px; font-weight:700; line-height:1;}
+  .day-tablet .d-label{font-size:9px; letter-spacing:1px; opacity:.85;}
+  .day-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;}
+  .day-head .date{font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--stone);}
+  .add-item-btn{
+    background:none; border:1px dashed var(--stone); color:var(--ink-soft); border-radius:7px;
+    padding:5px 12px; font-size:12px; cursor:pointer;
+  }
+  .add-item-btn:hover{border-color:var(--terrace); color:var(--terrace-deep);}
+  .item-row{
+    display:flex; align-items:flex-start; gap:12px; padding:9px 0; border-top:1px solid var(--stone-line);
+  }
+  .item-row:first-of-type{border-top:none;}
+  .item-time{width:52px; flex-shrink:0; font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--terrace-deep); font-weight:600; padding-top:2px;}
+  .item-body{flex:1;}
+  .item-name{font-weight:600; font-size:13.5px;}
+  .item-sub{font-size:12px; color:var(--ink-soft); margin-top:2px;}
+  .item-type{
+    font-size:10px; padding:1px 8px; border-radius:20px; font-weight:600; flex-shrink:0; margin-top:2px;
+  }
+  .type-sight{background:#DCEAD5; color:#3F5A38;}
+  .type-food{background:#F3DCB4; color:#8A5A1F;}
+  .type-transport{background:#DCE4EC; color:#3A5470;}
+  .type-free{background:#E6E2D3; color:#6D6858;}
+  .item-actions{display:flex; gap:6px; opacity:0; transition:opacity .12s;}
+  .item-row:hover .item-actions{opacity:1;}
+  .icon-btn{background:none; border:none; cursor:pointer; color:var(--stone); font-size:13px; padding:2px 4px;}
+  .icon-btn:hover{color:var(--clay);}
+  .no-items{color:var(--stone); font-size:12.5px; padding:6px 0;}
+
+  .locked-note{
+    background:#F1E3B8; color:#8A6A1F; font-size:12px; padding:8px 12px; border-radius:7px; margin-bottom:14px;
+  }
+
+  /* ---------- M2: 住宿與交通 ---------- */
+  .lt-section{
+    background:var(--card); border:1px solid var(--stone-line); border-radius:var(--radius);
+    padding:18px 20px; box-shadow:var(--shadow); margin-bottom:18px;
+  }
+  .lt-section .lt-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;}
+  .lt-section .lt-head h3{margin:0; font-size:16px;}
+  .lt-table{width:100%; border-collapse:collapse; font-size:13px;}
+  .lt-table th{
+    text-align:left; font-size:11px; color:var(--stone); font-weight:600; letter-spacing:.3px;
+    padding:6px 10px; border-bottom:1px solid var(--stone-line);
+  }
+  .lt-table td{padding:9px 10px; border-bottom:1px solid var(--stone-line); vertical-align:top;}
+  .lt-table tr:last-child td{border-bottom:none;}
+  .lt-table .num{font-family:'JetBrains Mono',monospace;}
+  .pay-badge{font-size:10px; padding:2px 8px; border-radius:20px; font-weight:600;}
+  .pay-unpaid{background:#F1D6D2; color:var(--clay);}
+  .pay-deposit{background:#F1E3B8; color:#8A6A1F;}
+  .pay-paid{background:#DCEAD5; color:#3F5A38;}
+  .lt-actions{display:flex; gap:4px;}
+
+  /* ---------- M3: 收支記帳 ---------- */
+  .ledger-summary{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:16px;}
+  .sum-card{
+    background:var(--card); border:1px solid var(--stone-line); border-radius:var(--radius);
+    padding:16px 18px; box-shadow:var(--shadow);
+  }
+  .sum-card .label{font-size:11px; color:var(--stone); letter-spacing:.5px; font-weight:600;}
+  .sum-card .value{font-family:'JetBrains Mono',monospace; font-size:22px; font-weight:700; margin-top:4px;}
+  .sum-income .value{color:var(--terrace-deep);}
+  .sum-expense .value{color:var(--clay);}
+  .sum-net .value{color:var(--ink);}
+  .type-tag{font-size:10px; padding:2px 8px; border-radius:20px; font-weight:600;}
+  .tag-income{background:#DCEAD5; color:#3F5A38;}
+  .tag-expense{background:#F1D6D2; color:var(--clay);}
+  .row-voided{opacity:.45; text-decoration:line-through;}
+  .void-badge{font-size:10px; color:var(--clay); font-weight:600; margin-left:6px; text-decoration:none; display:inline-block;}
+
+  /* ---------- 航班資訊 ---------- */
+  .dir-badge{font-size:10px; padding:2px 8px; border-radius:20px; font-weight:600;}
+  .dir-depart{background:#DCE4EC; color:#3A5470;}
+  .dir-return{background:#F3DCB4; color:#8A5A1F;}
+  .dir-transfer{background:#E6E2D3; color:#6D6858;}
+  ::-webkit-scrollbar{width:9px;}
+  ::-webkit-scrollbar-thumb{background:var(--stone-line); border-radius:6px;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="sidebar">
+    <div class="brand">
+      <h1>峇裡島行程管理</h1>
+      <div class="sub">BALI ITINERARY OPS</div>
+      <span class="role-badge" id="roleBadge">role: admin</span>
+      <div id="syncBadge" style="margin-top:6px; font-size:11px; color:#A9A290;">💾 僅本機模式</div>
+    </div>
+    <button id="newTeamBtn" onclick="openTeamModal()">+ 新增團體</button>
+    <div id="teamNav"></div>
+  </div>
+  <div id="main"></div>
+</div>
+
+<!-- 新增/編輯團體 Modal -->
+<div class="overlay" id="teamModalOverlay">
+  <div class="modal">
+    <h3 id="teamModalTitle">新增團體</h3>
+    <input type="hidden" id="f_teamId">
+    <div class="field">
+      <label>團名 / 客戶名稱</label>
+      <input type="text" id="f_teamName" placeholder="例:王氏家族峇裡島六日遊">
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>出發日</label>
+        <input type="date" id="f_startDate">
+      </div>
+      <div class="field">
+        <label>回程日</label>
+        <input type="date" id="f_endDate">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>人數</label>
+        <input type="number" id="f_pax" min="1" value="2">
+      </div>
+      <div class="field">
+        <label>狀態</label>
+        <select id="f_status">
+          <option value="planning">規劃中</option>
+          <option value="confirmed">已確認</option>
+          <option value="active">進行中</option>
+          <option value="done">已結團</option>
+        </select>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>負責業務</label>
+        <input type="text" id="f_sales" placeholder="業務姓名">
+      </div>
+      <div class="field">
+        <label>導遊</label>
+        <input type="text" id="f_guide" placeholder="導遊姓名">
+      </div>
+    </div>
+    <div class="field">
+      <label>備註</label>
+      <textarea id="f_note" placeholder="特殊需求、飲食禁忌等"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeTeamModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveTeam()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 新增/編輯行程項目 Modal -->
+<div class="overlay" id="itemModalOverlay">
+  <div class="modal">
+    <h3 id="itemModalTitle">新增行程項目</h3>
+    <input type="hidden" id="i_itemId">
+    <input type="hidden" id="i_dayIndex">
+    <div class="row2">
+      <div class="field">
+        <label>時間</label>
+        <input type="time" id="i_time">
+      </div>
+      <div class="field">
+        <label>類型</label>
+        <select id="i_type">
+          <option value="sight">景點</option>
+          <option value="food">餐飲</option>
+          <option value="transport">交通</option>
+          <option value="free">自由活動</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>活動名稱</label>
+      <input type="text" id="i_name" placeholder="例:烏布聖猴森林">
+    </div>
+    <div class="field">
+      <label>地點 / 備註</label>
+      <input type="text" id="i_place" placeholder="地點或補充說明">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeItemModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveItem()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 新增/編輯住宿訂房 Modal -->
+<div class="overlay" id="lodgeModalOverlay">
+  <div class="modal">
+    <h3 id="lodgeModalTitle">新增住宿訂房</h3>
+    <input type="hidden" id="l_id">
+    <div class="row2">
+      <div class="field">
+        <label>入住日</label>
+        <input type="date" id="l_checkin">
+      </div>
+      <div class="field">
+        <label>退房日</label>
+        <input type="date" id="l_checkout">
+      </div>
+    </div>
+    <div class="field">
+      <label>飯店 / 民宿名稱</label>
+      <input type="text" id="l_hotel" placeholder="例:烏布哈達瑪度假村">
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>房型</label>
+        <input type="text" id="l_roomtype" placeholder="例:泳池villa">
+      </div>
+      <div class="field">
+        <label>房數</label>
+        <input type="number" id="l_roomcount" min="1" value="1">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>每晚房價</label>
+        <input type="number" id="l_pricepernight" min="0" placeholder="以印尼盾或台幣計">
+      </div>
+      <div class="field">
+        <label>訂單編號</label>
+        <input type="text" id="l_orderno" placeholder="訂房平台或飯店確認碼">
+      </div>
+    </div>
+    <div class="field">
+      <label>訂房狀態</label>
+      <select id="l_status">
+        <option value="unpaid">已訂未付</option>
+        <option value="deposit">已付訂</option>
+        <option value="paid">已付清</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeLodgeModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveLodge()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 新增/編輯包車交通 Modal -->
+<div class="overlay" id="transModalOverlay">
+  <div class="modal">
+    <h3 id="transModalTitle">新增包車 / 交通安排</h3>
+    <input type="hidden" id="tr_id">
+    <div class="row2">
+      <div class="field">
+        <label>日期</label>
+        <input type="date" id="tr_date">
+      </div>
+      <div class="field">
+        <label>時段</label>
+        <input type="text" id="tr_timeslot" placeholder="例:08:00-18:00">
+      </div>
+    </div>
+    <div class="field">
+      <label>司機 / 車輛</label>
+      <input type="text" id="tr_driver" placeholder="司機姓名或車行車輛編號">
+    </div>
+    <div class="field">
+      <label>路線(起點 → 終點)</label>
+      <input type="text" id="tr_route" placeholder="例:機場 → 烏布飯店">
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>費用</label>
+        <input type="number" id="tr_cost" min="0">
+      </div>
+      <div class="field">
+        <label>備註</label>
+        <input type="text" id="tr_note" placeholder="行李數、特殊需求等">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeTransModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveTrans()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 新增/編輯收支記帳 Modal -->
+<div class="overlay" id="ledgerModalOverlay">
+  <div class="modal">
+    <h3 id="ledgerModalTitle">新增收支記錄</h3>
+    <input type="hidden" id="g_id">
+    <div class="row2">
+      <div class="field">
+        <label>日期</label>
+        <input type="date" id="g_date">
+      </div>
+      <div class="field">
+        <label>類別</label>
+        <select id="g_type" onchange="onLedgerTypeChange()">
+          <option value="income">收入</option>
+          <option value="expense">支出</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>項目</label>
+      <select id="g_category"></select>
+    </div>
+    <div class="field">
+      <label>金額</label>
+      <input type="number" id="g_amount" min="0">
+    </div>
+    <div class="field">
+      <label>經手人</label>
+      <input type="text" id="g_handler" placeholder="業務或會計姓名">
+    </div>
+    <div class="field">
+      <label>備註</label>
+      <input type="text" id="g_note" placeholder="補充說明">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeLedgerModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveLedgerEntry()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 新增/編輯航班資訊 Modal -->
+<div class="overlay" id="flightModalOverlay">
+  <div class="modal">
+    <h3 id="flightModalTitle">新增航班資訊</h3>
+    <input type="hidden" id="fl_id">
+    <div class="row2">
+      <div class="field">
+        <label>方向</label>
+        <select id="fl_direction">
+          <option value="depart">去程(抵達峇裡島)</option>
+          <option value="return">回程(離開峇裡島)</option>
+          <option value="transfer">轉機/其他</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>日期</label>
+        <input type="date" id="fl_date">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>航空公司</label>
+        <input type="text" id="fl_airline" placeholder="例:長榮航空">
+      </div>
+      <div class="field">
+        <label>航班編號</label>
+        <input type="text" id="fl_flightno" placeholder="例:BR255">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>出發機場</label>
+        <input type="text" id="fl_from" placeholder="例:桃園TPE">
+      </div>
+      <div class="field">
+        <label>出發時間</label>
+        <input type="time" id="fl_deptime">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>抵達機場</label>
+        <input type="text" id="fl_to" placeholder="例:登巴薩DPS">
+      </div>
+      <div class="field">
+        <label>抵達時間</label>
+        <input type="time" id="fl_arrtime">
+      </div>
+    </div>
+    <div class="field">
+      <label>備註</label>
+      <input type="text" id="fl_note" placeholder="機票編號、行李件數等">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeFlightModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveFlight()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   峇裡島行程管理系統 — M1+M2+M3+M4(團體/行程/住宿交通/航班 + 收支 + GAS同步)
+   架構慣例:
+   - localStorage 本地快取優先,_gasLoaded 前禁止對外同步(先本機運作,GAS 部署後接上)
+   - 團編號(teamId)為唯一關聯鍵:BALI-YYYYMMDD-XXX
+   - 增量寫入:新增/編輯單筆資料只更新該筆,不整包覆寫
+   - role 由 URL 參數控制:?role=admin(預設,完整權限) / ?role=guide(唯讀+僅可勾選完成)
+   ===================================================================== */
+
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxwp6_mdRxiNtztYZCxLC7h_Zf1tmlCskX4oHmK9Viuz2zrUjtkjjqDVfnrReSUQMSr/exec";
+let _gasLoaded = false; // 尚未成功從雲端載入前恆為 false,本機操作不受影響,寫入仍照常進行
+
+/* ---- 雲端同步:讀取 ---- */
+async function loadFromCloud(){
+  if(!GAS_URL) return;
+  document.getElementById('syncBadge').textContent = '☁ 連線中…';
+  try{
+    const res = await fetch(GAS_URL + '?action=getAll');
+    const data = await res.json();
+    if(!data.ok) throw new Error(data.error || '未知錯誤');
+
+    // 伺服器為主(server-wins):以 Sheets 資料重建本機 DB
+    const newDB = { teams:{}, itinerary:{}, lodging:{}, transport:{}, ledger:{}, flights:{} };
+    (data.teams||[]).forEach(t => newDB.teams[t.teamId] = {
+      id:t.teamId, name:t.name, startDate:t.startDate, endDate:t.endDate,
+      pax:t.pax, status:t.status, sales:t.sales, guide:t.guide, note:t.note,
+    });
+    (data.itinerary||[]).forEach(it => {
+      if(!newDB.itinerary[it.teamId]) newDB.itinerary[it.teamId] = {};
+      if(!newDB.itinerary[it.teamId][it.day]) newDB.itinerary[it.teamId][it.day] = [];
+      newDB.itinerary[it.teamId][it.day].push({ id:it.itemId, time:it.time, type:it.type, name:it.name, place:it.place });
+    });
+    (data.lodging||[]).forEach(l => {
+      if(!newDB.lodging[l.teamId]) newDB.lodging[l.teamId] = [];
+      newDB.lodging[l.teamId].push({
+        id:l.lodgeId, checkIn:l.checkIn, checkOut:l.checkOut, hotel:l.hotel, roomType:l.roomType,
+        roomCount:l.roomCount, pricePerNight:l.pricePerNight, orderNo:l.orderNo, status:l.status,
+      });
+    });
+    (data.transport||[]).forEach(tr => {
+      if(!newDB.transport[tr.teamId]) newDB.transport[tr.teamId] = [];
+      newDB.transport[tr.teamId].push({
+        id:tr.transId, date:tr.date, timeSlot:tr.timeSlot, driver:tr.driver, route:tr.route, cost:tr.cost, note:tr.note,
+      });
+    });
+    (data.ledger||[]).forEach(e => {
+      if(!newDB.ledger[e.teamId]) newDB.ledger[e.teamId] = [];
+      newDB.ledger[e.teamId].push({
+        id:e.entryId, date:e.date, type:e.type, category:e.category, amount:e.amount,
+        handler:e.handler, note:e.note, voided: (e.voided===true || e.voided==='TRUE' || e.voided===1), sourceRef:e.sourceRef,
+      });
+    });
+    (data.flights||[]).forEach(f => {
+      if(!newDB.flights[f.teamId]) newDB.flights[f.teamId] = [];
+      newDB.flights[f.teamId].push({
+        id:f.flightId, direction:f.direction, date:f.date, airline:f.airline, flightNo:f.flightNo,
+        fromAirport:f.fromAirport, departTime:f.departTime, toAirport:f.toAirport, arriveTime:f.arriveTime, note:f.note,
+      });
+    });
+
+    DB = newDB;
+    localStorage.setItem(STORE_KEY, JSON.stringify(DB));
+    _gasLoaded = true;
+    document.getElementById('syncBadge').textContent = '☁ 已同步雲端';
+    renderDashboard();
+  }catch(err){
+    console.error('雲端載入失敗,改用本機資料', err);
+    document.getElementById('syncBadge').textContent = '⚠ 雲端連線失敗(本機資料)';
+  }
+}
+
+/* ---- 雲端同步:寫入(增量,不阻擋本機操作) ---- */
+function pushToCloud(action, data){
+  if(!GAS_URL) return;
+  fetch(GAS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' }, // 避免 CORS 預檢請求
+    body: JSON.stringify({ action, data }),
+  }).catch(err => console.error('雲端同步失敗(已保留在本機,可稍後重試)', action, err));
+}
+
+const ROLE = new URLSearchParams(location.search).get('role') || 'admin';
+document.getElementById('roleBadge').textContent = 'role: ' + ROLE;
+
+const STORE_KEY = 'bali_itinerary_v1';
+let DB = loadDB();
+if(!DB.lodging) DB.lodging = {};
+if(!DB.transport) DB.transport = {};
+if(!DB.ledger) DB.ledger = {};
+if(!DB.flights) DB.flights = {};
+let currentTeamId = null;
+let currentTab = 'itinerary';
+
+function loadDB(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){ console.error('讀取本機資料失敗', e); }
+  return { teams: {}, itinerary: {}, lodging: {}, transport: {}, ledger: {}, flights: {} };
+  // itinerary[teamId] = { "1": [item,...], "2": [...] }
+  // lodging[teamId] = [ {id, checkIn, checkOut, hotel, roomType, roomCount, pricePerNight, orderNo, status} ]
+  // transport[teamId] = [ {id, date, timeSlot, driver, route, cost, note} ]
+  // ledger[teamId] = [ {id, date, type:'income'|'expense', category, amount, handler, note, voided, sourceRef} ]
+  // flights[teamId] = [ {id, direction:'depart'|'return'|'transfer', date, airline, flightNo, fromAirport, departTime, toAirport, arriveTime, note} ]
+  // 收支記帳採「只增不刪」:更正錯誤用 voided 作廢標記,不直接刪除,保留稽核軌跡
+}
+function saveDB(){
+  localStorage.setItem(STORE_KEY, JSON.stringify(DB));
+  // TODO M4: if(_gasLoaded) syncToCloud(...)
+}
+function genTeamId(){
+  const d = new Date();
+  const ymd = d.getFullYear() + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0');
+  const existing = Object.keys(DB.teams).filter(id => id.includes(ymd)).length + 1;
+  return `BALI-${ymd}-${String(existing).padStart(3,'0')}`;
+}
+function genItemId(){ return 'it_' + Date.now() + '_' + Math.floor(Math.random()*1000); }
+
+function dayCount(start, end){
+  const s = new Date(start), e = new Date(end);
+  return Math.max(1, Math.round((e - s) / 86400000) + 1);
+}
+function dateAtOffset(start, offset){
+  const d = new Date(start);
+  d.setDate(d.getDate() + offset);
+  return d.toISOString().slice(0,10);
+}
+const STATUS_LABEL = { planning:'規劃中', confirmed:'已確認', active:'進行中', done:'已結團' };
+const TYPE_LABEL = { sight:'景點', food:'餐飲', transport:'交通', free:'自由活動' };
+
+/* ---------------- 導覽 / 渲染 ---------------- */
+function renderNav(){
+  const nav = document.getElementById('teamNav');
+  const teams = Object.values(DB.teams).sort((a,b)=> (b.startDate||'').localeCompare(a.startDate||''));
+  if(teams.length === 0){
+    nav.innerHTML = `<div style="color:#9A9486;font-size:12px;padding:10px 6px;">尚無團體資料</div>`;
+    return;
+  }
+  nav.innerHTML = teams.map(t => `
+    <div class="nav-item ${t.id===currentTeamId?'active':''}" onclick="openTeam('${t.id}')">
+      <div class="t-name">${escapeHtml(t.name)}</div>
+      <div class="t-meta">${t.id} · ${t.startDate||''}</div>
+      <span class="t-status st-${t.status}">${STATUS_LABEL[t.status]}</span>
+    </div>
+  `).join('');
+}
+
+function renderDashboard(){
+  currentTeamId = null;
+  const main = document.getElementById('main');
+  const teams = Object.values(DB.teams).sort((a,b)=> (b.startDate||'').localeCompare(a.startDate||''));
+  main.innerHTML = `
+    <div class="topbar">
+      <div>
+        <h2>團體總覽</h2>
+        <div class="desc">共 ${teams.length} 團 · 點選卡片查看行程詳情</div>
+      </div>
+    </div>
+    ${teams.length === 0 ? `
+      <div class="empty-state">
+        <div class="icon">🌴</div>
+        <div>還沒有任何團體,點左側「+ 新增團體」開始建立第一團的峇裡島行程</div>
+      </div>
+    ` : `<div id="dashGrid">${teams.map(teamCardHtml).join('')}</div>`}
+  `;
+  renderNav();
+}
+
+function teamCardHtml(t){
+  const days = dayCount(t.startDate, t.endDate);
+  return `
+    <div class="team-card" onclick="openTeam('${t.id}')">
+      <div class="code">${t.id}</div>
+      <h3>${escapeHtml(t.name)}</h3>
+      <div class="rows">
+        <div>📅 ${t.startDate || '未定'} → ${t.endDate || '未定'}(${days} 天)</div>
+        <div>👥 ${t.pax || '-'} 人 · 導遊:${escapeHtml(t.guide||'未指派')}</div>
+        <div>業務:${escapeHtml(t.sales||'-')}</div>
+      </div>
+      <span class="badge b-${t.status}">${STATUS_LABEL[t.status]}</span>
+    </div>
+  `;
+}
+
+function openTeam(teamId){
+  currentTeamId = teamId;
+  currentTab = 'itinerary';
+  renderTeamDetail();
+  renderNav();
+}
+
+function renderTeamDetail(){
+  const t = DB.teams[currentTeamId];
+  if(!t){ renderDashboard(); return; }
+  const main = document.getElementById('main');
+  const days = dayCount(t.startDate, t.endDate);
+  main.innerHTML = `
+    <span class="back-link" onclick="renderDashboard()">← 返回團體總覽</span>
+    <div class="detail-head">
+      <div class="top">
+        <div>
+          <h2>${escapeHtml(t.name)}</h2>
+          <div class="meta-line mono">${t.id}</div>
+          <div class="meta-line" style="margin-top:6px;">
+            📅 ${t.startDate} → ${t.endDate}(共 ${days} 天) · 👥 ${t.pax} 人 · 業務:${escapeHtml(t.sales||'-')} · 導遊:${escapeHtml(t.guide||'-')}
+          </div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          ${ROLE==='admin' ? `<button class="btn btn-ghost" onclick="openTeamModal('${t.id}')">編輯團體資料</button>` : ''}
+        </div>
+      </div>
+    </div>
+    <div class="tabbar">
+      <div class="tab ${currentTab==='itinerary'?'active':''}" onclick="switchTab('itinerary')">行程時間軸</div>
+      <div class="tab ${currentTab==='lodging'?'active':''}" onclick="switchTab('lodging')">住宿交通</div>
+      <div class="tab ${currentTab==='ledger'?'active':''}" onclick="switchTab('ledger')">收支記帳</div>
+    </div>
+    <div id="tabContent"></div>
+  `;
+  if(currentTab==='lodging') renderLodgingTab();
+  else if(currentTab==='ledger') renderLedgerTab();
+  else renderItineraryTab();
+}
+
+function switchTab(tab){
+  currentTab = tab;
+  document.querySelectorAll('.tabbar .tab').forEach(el=>el.classList.remove('active'));
+  const idx = tab==='itinerary' ? 0 : (tab==='lodging' ? 1 : 2);
+  document.querySelectorAll('.tabbar .tab')[idx].classList.add('active');
+  if(tab==='itinerary') renderItineraryTab();
+  else if(tab==='lodging') renderLodgingTab();
+  else if(tab==='ledger') renderLedgerTab();
+}
+
+function renderItineraryTab(){
+  const t = DB.teams[currentTeamId];
+  const days = dayCount(t.startDate, t.endDate);
+  if(!DB.itinerary[t.id]) DB.itinerary[t.id] = {};
+  const container = document.getElementById('tabContent');
+  let html = `<div id="terraceWrap">`;
+  for(let d=1; d<=days; d++){
+    const items = (DB.itinerary[t.id][d] || []).slice().sort((a,b)=> (a.time||'').localeCompare(b.time||''));
+    const dateStr = dateAtOffset(t.startDate, d-1);
+    html += `
+      <div class="day-terrace" style="--depth:${Math.min(d-1,4)}">
+        <div class="day-tablet">
+          <div class="d-num">${d}</div>
+          <div class="d-label">DAY</div>
+        </div>
+        <div class="day-head">
+          <div class="date">${dateStr}</div>
+          ${ROLE==='admin' ? `<button class="add-item-btn" onclick="openItemModal(${d})">+ 新增項目</button>` : ''}
+        </div>
+        ${items.length === 0 ? `<div class="no-items">尚未安排行程</div>` : items.map(it => itemRowHtml(it, d)).join('')}
+      </div>
+    `;
+  }
+  html += `</div>`;
+  container.innerHTML = html;
+}
+
+function itemRowHtml(it, day){
+  return `
+    <div class="item-row">
+      <div class="item-time mono">${it.time || '--:--'}</div>
+      <div class="item-body">
+        <div class="item-name">${escapeHtml(it.name)}</div>
+        ${it.place ? `<div class="item-sub">${escapeHtml(it.place)}</div>` : ''}
+      </div>
+      <span class="item-type type-${it.type}">${TYPE_LABEL[it.type]}</span>
+      ${ROLE==='admin' ? `
+        <div class="item-actions">
+          <button class="icon-btn" onclick="openItemModal(${day}, '${it.id}')">✎</button>
+          <button class="icon-btn" onclick="deleteItem(${day}, '${it.id}')">✕</button>
+        </div>` : ''}
+    </div>
+  `;
+}
+
+/* ---------------- M2: 住宿交通分頁 ---------------- */
+const PAY_LABEL = { unpaid:'已訂未付', deposit:'已付訂', paid:'已付清' };
+const DIR_LABEL = { depart:'去程', return:'回程', transfer:'轉機' };
+
+function nights(checkin, checkout){
+  const s = new Date(checkin), e = new Date(checkout);
+  return Math.max(1, Math.round((e - s) / 86400000));
+}
+
+/* ---- 航班資訊 CRUD ---- */
+function openFlightModal(id){
+  document.getElementById('flightModalOverlay').classList.add('show');
+  if(id){
+    const f = DB.flights[currentTeamId].find(x=>x.id===id);
+    document.getElementById('flightModalTitle').textContent = '編輯航班資訊';
+    document.getElementById('fl_id').value = f.id;
+    document.getElementById('fl_direction').value = f.direction;
+    document.getElementById('fl_date').value = f.date;
+    document.getElementById('fl_airline').value = f.airline||'';
+    document.getElementById('fl_flightno').value = f.flightNo||'';
+    document.getElementById('fl_from').value = f.fromAirport||'';
+    document.getElementById('fl_deptime').value = f.departTime||'';
+    document.getElementById('fl_to').value = f.toAirport||'';
+    document.getElementById('fl_arrtime').value = f.arriveTime||'';
+    document.getElementById('fl_note').value = f.note||'';
+  } else {
+    const t = DB.teams[currentTeamId];
+    document.getElementById('flightModalTitle').textContent = '新增航班資訊';
+    document.getElementById('fl_id').value = '';
+    document.getElementById('fl_direction').value = 'depart';
+    document.getElementById('fl_date').value = t.startDate;
+    document.getElementById('fl_airline').value = '';
+    document.getElementById('fl_flightno').value = '';
+    document.getElementById('fl_from').value = '';
+    document.getElementById('fl_deptime').value = '';
+    document.getElementById('fl_to').value = '';
+    document.getElementById('fl_arrtime').value = '';
+    document.getElementById('fl_note').value = '';
+  }
+}
+function closeFlightModal(){ document.getElementById('flightModalOverlay').classList.remove('show'); }
+
+function saveFlight(){
+  const airline = document.getElementById('fl_airline').value.trim();
+  const flightNo = document.getElementById('fl_flightno').value.trim();
+  if(!airline && !flightNo){ alert('請至少輸入航空公司或航班編號'); return; }
+  const id = document.getElementById('fl_id').value || genItemId();
+  const payload = {
+    id,
+    direction: document.getElementById('fl_direction').value,
+    date: document.getElementById('fl_date').value,
+    airline, flightNo,
+    fromAirport: document.getElementById('fl_from').value.trim(),
+    departTime: document.getElementById('fl_deptime').value,
+    toAirport: document.getElementById('fl_to').value.trim(),
+    arriveTime: document.getElementById('fl_arrtime').value,
+    note: document.getElementById('fl_note').value.trim(),
+  };
+  if(!DB.flights[currentTeamId]) DB.flights[currentTeamId] = [];
+  const arr = DB.flights[currentTeamId];
+  const idx = arr.findIndex(x=>x.id===id);
+  if(idx>=0) arr[idx] = payload; else arr.push(payload);
+  saveDB();
+  pushToCloud('saveFlight', Object.assign({teamId: currentTeamId, flightId: id}, payload));
+  closeFlightModal();
+  renderLodgingTab();
+}
+function deleteFlight(id){
+  if(!confirm('確定刪除此筆航班資訊?')) return;
+  DB.flights[currentTeamId] = DB.flights[currentTeamId].filter(x=>x.id!==id);
+  saveDB();
+  pushToCloud('deleteFlight', {teamId: currentTeamId, flightId: id});
+  renderLodgingTab();
+}
+
+function renderLodgingTab(){
+  const t = DB.teams[currentTeamId];
+  if(!DB.lodging[t.id]) DB.lodging[t.id] = [];
+  if(!DB.transport[t.id]) DB.transport[t.id] = [];
+  if(!DB.flights[t.id]) DB.flights[t.id] = [];
+  const flights = DB.flights[t.id].slice().sort((a,b)=> (a.date||'').localeCompare(b.date||'') || (a.departTime||'').localeCompare(b.departTime||''));
+  const lodges = DB.lodging[t.id].slice().sort((a,b)=> (a.checkIn||'').localeCompare(b.checkIn||''));
+  const transports = DB.transport[t.id].slice().sort((a,b)=> (a.date||'').localeCompare(b.date||'') || (a.timeSlot||'').localeCompare(b.timeSlot||''));
+
+  const container = document.getElementById('tabContent');
+  container.innerHTML = `
+    <div class="lt-section">
+      <div class="lt-head">
+        <h3>航班資訊</h3>
+        ${ROLE==='admin' ? `<button class="add-item-btn" onclick="openFlightModal()">+ 新增航班</button>` : ''}
+      </div>
+      ${flights.length===0 ? `<div class="no-items">尚未登錄航班資訊</div>` : `
+      <table class="lt-table">
+        <thead><tr>
+          <th>方向</th><th>日期</th><th>航空公司/班號</th><th>出發</th><th>抵達</th><th>備註</th><th></th>
+        </tr></thead>
+        <tbody>
+          ${flights.map(f => `
+            <tr>
+              <td><span class="dir-badge dir-${f.direction}">${DIR_LABEL[f.direction]}</span></td>
+              <td class="num">${f.date}</td>
+              <td>${escapeHtml(f.airline)} <span class="num">${escapeHtml(f.flightNo||'')}</span></td>
+              <td class="num">${escapeHtml(f.fromAirport||'-')} ${f.departTime||''}</td>
+              <td class="num">${escapeHtml(f.toAirport||'-')} ${f.arriveTime||''}</td>
+              <td>${escapeHtml(f.note||'-')}</td>
+              <td>${ROLE==='admin' ? `
+                <div class="lt-actions">
+                  <button class="icon-btn" onclick="openFlightModal('${f.id}')">✎</button>
+                  <button class="icon-btn" onclick="deleteFlight('${f.id}')">✕</button>
+                </div>` : ''}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>`}
+    </div>
+
+    <div class="lt-section">
+      <div class="lt-head">
+        <h3>住宿訂房</h3>
+        ${ROLE==='admin' ? `<button class="add-item-btn" onclick="openLodgeModal()">+ 新增訂房</button>` : ''}
+      </div>
+      ${lodges.length===0 ? `<div class="no-items">尚未安排住宿</div>` : `
+      <table class="lt-table">
+        <thead><tr>
+          <th>入住 → 退房</th><th>飯店</th><th>房型/房數</th><th>每晚房價</th><th>總金額</th><th>訂單編號</th><th>狀態</th><th></th>
+        </tr></thead>
+        <tbody>
+          ${lodges.map(l => {
+            const n = nights(l.checkIn, l.checkOut);
+            const total = n * (l.roomCount||1) * (l.pricePerNight||0);
+            return `
+              <tr>
+                <td class="num">${l.checkIn} → ${l.checkOut}<br><span style="color:var(--stone);font-size:11px;">${n}晚</span></td>
+                <td>${escapeHtml(l.hotel)}</td>
+                <td>${escapeHtml(l.roomType||'-')} × ${l.roomCount||1}</td>
+                <td class="num">${(l.pricePerNight||0).toLocaleString()}</td>
+                <td class="num">${total.toLocaleString()}</td>
+                <td class="num">${escapeHtml(l.orderNo||'-')}</td>
+                <td><span class="pay-badge pay-${l.status}">${PAY_LABEL[l.status]}</span></td>
+                <td>${ROLE==='admin' ? `
+                  <div class="lt-actions">
+                    <button class="icon-btn" onclick="openLodgeModal('${l.id}')">✎</button>
+                    <button class="icon-btn" onclick="deleteLodge('${l.id}')">✕</button>
+                  </div>` : ''}</td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>`}
+    </div>
+
+    <div class="lt-section">
+      <div class="lt-head">
+        <h3>包車 / 交通排班</h3>
+        ${ROLE==='admin' ? `<button class="add-item-btn" onclick="openTransModal()">+ 新增包車</button>` : ''}
+      </div>
+      ${transports.length===0 ? `<div class="no-items">尚未安排包車交通</div>` : `
+      <table class="lt-table">
+        <thead><tr>
+          <th>日期</th><th>時段</th><th>司機/車輛</th><th>路線</th><th>費用</th><th>備註</th><th></th>
+        </tr></thead>
+        <tbody>
+          ${transports.map(tr => `
+            <tr>
+              <td class="num">${tr.date}</td>
+              <td class="num">${escapeHtml(tr.timeSlot||'-')}</td>
+              <td>${escapeHtml(tr.driver)}</td>
+              <td>${escapeHtml(tr.route)}</td>
+              <td class="num">${(tr.cost||0).toLocaleString()}</td>
+              <td>${escapeHtml(tr.note||'-')}</td>
+              <td>${ROLE==='admin' ? `
+                <div class="lt-actions">
+                  <button class="icon-btn" onclick="openTransModal('${tr.id}')">✎</button>
+                  <button class="icon-btn" onclick="deleteTrans('${tr.id}')">✕</button>
+                </div>` : ''}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>`}
+    </div>
+  `;
+}
+
+/* ---- 住宿訂房 CRUD ---- */
+function openLodgeModal(id){
+  document.getElementById('lodgeModalOverlay').classList.add('show');
+  if(id){
+    const l = DB.lodging[currentTeamId].find(x=>x.id===id);
+    document.getElementById('lodgeModalTitle').textContent = '編輯住宿訂房';
+    document.getElementById('l_id').value = l.id;
+    document.getElementById('l_checkin').value = l.checkIn;
+    document.getElementById('l_checkout').value = l.checkOut;
+    document.getElementById('l_hotel').value = l.hotel;
+    document.getElementById('l_roomtype').value = l.roomType||'';
+    document.getElementById('l_roomcount').value = l.roomCount||1;
+    document.getElementById('l_pricepernight').value = l.pricePerNight||0;
+    document.getElementById('l_orderno').value = l.orderNo||'';
+    document.getElementById('l_status').value = l.status;
+  } else {
+    const t = DB.teams[currentTeamId];
+    document.getElementById('lodgeModalTitle').textContent = '新增住宿訂房';
+    document.getElementById('l_id').value = '';
+    document.getElementById('l_checkin').value = t.startDate;
+    document.getElementById('l_checkout').value = t.endDate;
+    document.getElementById('l_hotel').value = '';
+    document.getElementById('l_roomtype').value = '';
+    document.getElementById('l_roomcount').value = 1;
+    document.getElementById('l_pricepernight').value = '';
+    document.getElementById('l_orderno').value = '';
+    document.getElementById('l_status').value = 'unpaid';
+  }
+}
+function closeLodgeModal(){ document.getElementById('lodgeModalOverlay').classList.remove('show'); }
+
+function saveLodge(){
+  const hotel = document.getElementById('l_hotel').value.trim();
+  const checkIn = document.getElementById('l_checkin').value;
+  const checkOut = document.getElementById('l_checkout').value;
+  if(!hotel){ alert('請輸入飯店/民宿名稱'); return; }
+  if(checkOut < checkIn){ alert('退房日不可早於入住日'); return; }
+  const id = document.getElementById('l_id').value || genItemId();
+  const payload = {
+    id, checkIn, checkOut, hotel,
+    roomType: document.getElementById('l_roomtype').value.trim(),
+    roomCount: parseInt(document.getElementById('l_roomcount').value) || 1,
+    pricePerNight: parseFloat(document.getElementById('l_pricepernight').value) || 0,
+    orderNo: document.getElementById('l_orderno').value.trim(),
+    status: document.getElementById('l_status').value,
+  };
+  if(!DB.lodging[currentTeamId]) DB.lodging[currentTeamId] = [];
+  const arr = DB.lodging[currentTeamId];
+  const idx = arr.findIndex(x=>x.id===id);
+  if(idx>=0) arr[idx] = payload; else arr.push(payload);
+  saveDB();
+  pushToCloud('saveLodge', Object.assign({teamId: currentTeamId, lodgeId: id}, payload));
+  closeLodgeModal();
+  renderLodgingTab();
+}
+function deleteLodge(id){
+  if(!confirm('確定刪除此筆住宿訂房?')) return;
+  DB.lodging[currentTeamId] = DB.lodging[currentTeamId].filter(x=>x.id!==id);
+  saveDB();
+  pushToCloud('deleteLodge', {teamId: currentTeamId, lodgeId: id});
+  renderLodgingTab();
+}
+
+/* ---- 包車交通 CRUD ---- */
+function openTransModal(id){
+  document.getElementById('transModalOverlay').classList.add('show');
+  if(id){
+    const tr = DB.transport[currentTeamId].find(x=>x.id===id);
+    document.getElementById('transModalTitle').textContent = '編輯包車 / 交通安排';
+    document.getElementById('tr_id').value = tr.id;
+    document.getElementById('tr_date').value = tr.date;
+    document.getElementById('tr_timeslot').value = tr.timeSlot||'';
+    document.getElementById('tr_driver').value = tr.driver;
+    document.getElementById('tr_route').value = tr.route;
+    document.getElementById('tr_cost').value = tr.cost||0;
+    document.getElementById('tr_note').value = tr.note||'';
+  } else {
+    const t = DB.teams[currentTeamId];
+    document.getElementById('transModalTitle').textContent = '新增包車 / 交通安排';
+    document.getElementById('tr_id').value = '';
+    document.getElementById('tr_date').value = t.startDate;
+    document.getElementById('tr_timeslot').value = '';
+    document.getElementById('tr_driver').value = '';
+    document.getElementById('tr_route').value = '';
+    document.getElementById('tr_cost').value = '';
+    document.getElementById('tr_note').value = '';
+  }
+}
+function closeTransModal(){ document.getElementById('transModalOverlay').classList.remove('show'); }
+
+function saveTrans(){
+  const driver = document.getElementById('tr_driver').value.trim();
+  const route = document.getElementById('tr_route').value.trim();
+  if(!driver || !route){ alert('請輸入司機/車輛與路線'); return; }
+  const id = document.getElementById('tr_id').value || genItemId();
+  const payload = {
+    id,
+    date: document.getElementById('tr_date').value,
+    timeSlot: document.getElementById('tr_timeslot').value.trim(),
+    driver, route,
+    cost: parseFloat(document.getElementById('tr_cost').value) || 0,
+    note: document.getElementById('tr_note').value.trim(),
+  };
+  if(!DB.transport[currentTeamId]) DB.transport[currentTeamId] = [];
+  const arr = DB.transport[currentTeamId];
+  const idx = arr.findIndex(x=>x.id===id);
+  if(idx>=0) arr[idx] = payload; else arr.push(payload);
+  saveDB();
+  pushToCloud('saveTrans', Object.assign({teamId: currentTeamId, transId: id}, payload));
+  closeTransModal();
+  renderLodgingTab();
+}
+function deleteTrans(id){
+  if(!confirm('確定刪除此筆包車安排?')) return;
+  DB.transport[currentTeamId] = DB.transport[currentTeamId].filter(x=>x.id!==id);
+  saveDB();
+  pushToCloud('deleteTrans', {teamId: currentTeamId, transId: id});
+  renderLodgingTab();
+}
+
+/* ---------------- M3: 收支記帳分頁 ---------------- */
+const EXPENSE_CATEGORIES = ['飯店','包車','門票','導遊費','餐費','其他'];
+const INCOME_CATEGORIES = ['團費收款','其他收入'];
+
+function onLedgerTypeChange(){
+  const type = document.getElementById('g_type').value;
+  const cats = type==='income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+  document.getElementById('g_category').innerHTML = cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+}
+
+function renderLedgerTab(){
+  const t = DB.teams[currentTeamId];
+  if(!DB.ledger[t.id]) DB.ledger[t.id] = [];
+  const entries = DB.ledger[t.id].slice().sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+
+  let totalIncome = 0, totalExpense = 0;
+  entries.forEach(e=>{
+    if(e.voided) return;
+    if(e.type==='income') totalIncome += e.amount; else totalExpense += e.amount;
+  });
+  const net = totalIncome - totalExpense;
+
+  const container = document.getElementById('tabContent');
+  container.innerHTML = `
+    <div class="ledger-summary">
+      <div class="sum-card sum-income"><div class="label">總收入</div><div class="value">$${totalIncome.toLocaleString()}</div></div>
+      <div class="sum-card sum-expense"><div class="label">總支出</div><div class="value">$${totalExpense.toLocaleString()}</div></div>
+      <div class="sum-card sum-net"><div class="label">淨額</div><div class="value">$${net.toLocaleString()}</div></div>
+    </div>
+    <div class="lt-section">
+      <div class="lt-head">
+        <h3>收支明細</h3>
+        <div style="display:flex; gap:8px;">
+          ${ROLE==='admin' ? `<button class="btn btn-ghost" onclick="importCostsToLedger()">從住宿/包車匯入支出</button>` : ''}
+          ${ROLE==='admin' ? `<button class="add-item-btn" onclick="openLedgerModal()">+ 新增記錄</button>` : ''}
+        </div>
+      </div>
+      ${entries.length===0 ? `<div class="no-items">尚無收支記錄</div>` : `
+      <table class="lt-table">
+        <thead><tr>
+          <th>日期</th><th>類別</th><th>項目</th><th>金額</th><th>經手人</th><th>備註</th><th></th>
+        </tr></thead>
+        <tbody>
+          ${entries.map(e => `
+            <tr class="${e.voided?'row-voided':''}">
+              <td class="num">${e.date}</td>
+              <td><span class="type-tag tag-${e.type}">${e.type==='income'?'收入':'支出'}</span></td>
+              <td>${escapeHtml(e.category)}</td>
+              <td class="num">${e.type==='expense'?'-':''}$${e.amount.toLocaleString()}</td>
+              <td>${escapeHtml(e.handler||'-')}</td>
+              <td>${escapeHtml(e.note||'-')}${e.voided?'<span class="void-badge">已作廢</span>':''}</td>
+              <td>${ROLE==='admin' ? `
+                <div class="lt-actions">
+                  ${e.voided ? '' : `<button class="icon-btn" onclick="voidLedgerEntry('${e.id}')" title="作廢">⊘</button>`}
+                </div>` : ''}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>`}
+    </div>
+  `;
+}
+
+function openLedgerModal(){
+  document.getElementById('ledgerModalOverlay').classList.add('show');
+  document.getElementById('ledgerModalTitle').textContent = '新增收支記錄';
+  document.getElementById('g_id').value = '';
+  document.getElementById('g_date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('g_type').value = 'income';
+  onLedgerTypeChange();
+  document.getElementById('g_amount').value = '';
+  document.getElementById('g_handler').value = '';
+  document.getElementById('g_note').value = '';
+}
+function closeLedgerModal(){ document.getElementById('ledgerModalOverlay').classList.remove('show'); }
+
+function saveLedgerEntry(){
+  const amount = parseFloat(document.getElementById('g_amount').value);
+  if(!amount || amount<=0){ alert('請輸入正確金額'); return; }
+  const payload = {
+    id: genItemId(),
+    date: document.getElementById('g_date').value,
+    type: document.getElementById('g_type').value,
+    category: document.getElementById('g_category').value,
+    amount,
+    handler: document.getElementById('g_handler').value.trim(),
+    note: document.getElementById('g_note').value.trim(),
+    voided: false,
+  };
+  if(!DB.ledger[currentTeamId]) DB.ledger[currentTeamId] = [];
+  DB.ledger[currentTeamId].push(payload); // 只增不刪:一律新增,更正用作廢
+  saveDB();
+  pushToCloud('saveLedger', Object.assign({teamId: currentTeamId, entryId: payload.id}, payload));
+  closeLedgerModal();
+  renderLedgerTab();
+}
+
+function voidLedgerEntry(id){
+  if(!confirm('確定要作廢此筆記錄?作廢後仍會保留於明細中以利稽核。')) return;
+  const e = DB.ledger[currentTeamId].find(x=>x.id===id);
+  if(e) e.voided = true;
+  saveDB();
+  if(e) pushToCloud('voidLedger', Object.assign({teamId: currentTeamId, entryId: e.id}, e));
+  renderLedgerTab();
+}
+
+function importCostsToLedger(){
+  if(!DB.ledger[currentTeamId]) DB.ledger[currentTeamId] = [];
+  const existingRefs = new Set(DB.ledger[currentTeamId].map(e=>e.sourceRef).filter(Boolean));
+  let added = 0;
+
+  (DB.lodging[currentTeamId]||[]).forEach(l=>{
+    const ref = 'lodge_' + l.id;
+    if(existingRefs.has(ref)) return;
+    const n = nights(l.checkIn, l.checkOut);
+    const total = n * (l.roomCount||1) * (l.pricePerNight||0);
+    if(total<=0) return;
+    const entry = {
+      id: genItemId(), date: l.checkIn, type:'expense', category:'飯店',
+      amount: total, handler:'', note:`${l.hotel}(自動匯入,${n}晚）`, voided:false, sourceRef: ref,
+    };
+    DB.ledger[currentTeamId].push(entry);
+    pushToCloud('saveLedger', Object.assign({teamId: currentTeamId, entryId: entry.id}, entry));
+    added++;
+  });
+
+  (DB.transport[currentTeamId]||[]).forEach(tr=>{
+    const ref = 'trans_' + tr.id;
+    if(existingRefs.has(ref)) return;
+    if(!tr.cost || tr.cost<=0) return;
+    const entry = {
+      id: genItemId(), date: tr.date, type:'expense', category:'包車',
+      amount: tr.cost, handler:'', note:`${tr.route}(自動匯入）`, voided:false, sourceRef: ref,
+    };
+    DB.ledger[currentTeamId].push(entry);
+    pushToCloud('saveLedger', Object.assign({teamId: currentTeamId, entryId: entry.id}, entry));
+    added++;
+  });
+
+  saveDB();
+  renderLedgerTab();
+  if(added===0) alert('沒有新的住宿或包車費用可匯入(可能已全部匯入過)');
+  else alert(`已匯入 ${added} 筆支出記錄`);
+}
+
+/* ---------------- 團體 Modal ---------------- */
+function openTeamModal(teamId){
+  document.getElementById('teamModalOverlay').classList.add('show');
+  if(teamId){
+    const t = DB.teams[teamId];
+    document.getElementById('teamModalTitle').textContent = '編輯團體資料';
+    document.getElementById('f_teamId').value = t.id;
+    document.getElementById('f_teamName').value = t.name;
+    document.getElementById('f_startDate').value = t.startDate;
+    document.getElementById('f_endDate').value = t.endDate;
+    document.getElementById('f_pax').value = t.pax;
+    document.getElementById('f_status').value = t.status;
+    document.getElementById('f_sales').value = t.sales || '';
+    document.getElementById('f_guide').value = t.guide || '';
+    document.getElementById('f_note').value = t.note || '';
+  } else {
+    document.getElementById('teamModalTitle').textContent = '新增團體';
+    ['f_teamId','f_teamName','f_sales','f_guide','f_note'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('f_pax').value = 2;
+    document.getElementById('f_status').value = 'planning';
+    const today = new Date().toISOString().slice(0,10);
+    document.getElementById('f_startDate').value = today;
+    document.getElementById('f_endDate').value = today;
+  }
+}
+function closeTeamModal(){ document.getElementById('teamModalOverlay').classList.remove('show'); }
+
+function saveTeam(){
+  const name = document.getElementById('f_teamName').value.trim();
+  if(!name){ alert('請輸入團名 / 客戶名稱'); return; }
+  const startDate = document.getElementById('f_startDate').value;
+  const endDate = document.getElementById('f_endDate').value;
+  if(endDate < startDate){ alert('回程日不可早於出發日'); return; }
+
+  let id = document.getElementById('f_teamId').value;
+  const isNew = !id;
+  if(isNew) id = genTeamId();
+
+  DB.teams[id] = {
+    id, name, startDate, endDate,
+    pax: parseInt(document.getElementById('f_pax').value) || 1,
+    status: document.getElementById('f_status').value,
+    sales: document.getElementById('f_sales').value.trim(),
+    guide: document.getElementById('f_guide').value.trim(),
+    note: document.getElementById('f_note').value.trim(),
+  };
+  saveDB();
+  pushToCloud('saveTeam', Object.assign({teamId:id}, DB.teams[id]));
+  closeTeamModal();
+  if(isNew){ renderDashboard(); openTeam(id); }
+  else if(currentTeamId === id){ renderTeamDetail(); }
+  else { renderDashboard(); }
+}
+
+/* ---------------- 行程項目 Modal ---------------- */
+function openItemModal(day, itemId){
+  document.getElementById('itemModalOverlay').classList.add('show');
+  document.getElementById('i_dayIndex').value = day;
+  if(itemId){
+    const it = (DB.itinerary[currentTeamId][day] || []).find(x => x.id === itemId);
+    document.getElementById('itemModalTitle').textContent = '編輯行程項目';
+    document.getElementById('i_itemId').value = it.id;
+    document.getElementById('i_time').value = it.time || '';
+    document.getElementById('i_type').value = it.type;
+    document.getElementById('i_name').value = it.name;
+    document.getElementById('i_place').value = it.place || '';
+  } else {
+    document.getElementById('itemModalTitle').textContent = '新增行程項目';
+    document.getElementById('i_itemId').value = '';
+    document.getElementById('i_time').value = '';
+    document.getElementById('i_type').value = 'sight';
+    document.getElementById('i_name').value = '';
+    document.getElementById('i_place').value = '';
+  }
+}
+function closeItemModal(){ document.getElementById('itemModalOverlay').classList.remove('show'); }
+
+function saveItem(){
+  const name = document.getElementById('i_name').value.trim();
+  if(!name){ alert('請輸入活動名稱'); return; }
+  const day = document.getElementById('i_dayIndex').value;
+  const itemId = document.getElementById('i_itemId').value;
+  if(!DB.itinerary[currentTeamId]) DB.itinerary[currentTeamId] = {};
+  if(!DB.itinerary[currentTeamId][day]) DB.itinerary[currentTeamId][day] = [];
+
+  const payload = {
+    id: itemId || genItemId(),
+    time: document.getElementById('i_time').value,
+    type: document.getElementById('i_type').value,
+    name, place: document.getElementById('i_place').value.trim(),
+  };
+  const arr = DB.itinerary[currentTeamId][day];
+  const idx = arr.findIndex(x => x.id === payload.id);
+  if(idx >= 0) arr[idx] = payload; else arr.push(payload);
+
+  saveDB();
+  pushToCloud('saveItem', Object.assign({teamId: currentTeamId, day, itemId: payload.id}, payload));
+  closeItemModal();
+  renderItineraryTab();
+}
+function deleteItem(day, itemId){
+  if(!confirm('確定刪除此行程項目?')) return;
+  DB.itinerary[currentTeamId][day] = (DB.itinerary[currentTeamId][day]||[]).filter(x => x.id !== itemId);
+  saveDB();
+  pushToCloud('deleteItem', {teamId: currentTeamId, itemId});
+  renderItineraryTab();
+}
+
+function escapeHtml(s){
+  return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+/* ---------------- 初始化 ---------------- */
+renderDashboard();
+loadFromCloud(); // GAS_URL 未設定時會直接略過,不影響本機模式
+</script>
+</body>
+</html>
