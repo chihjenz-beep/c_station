@@ -381,8 +381,10 @@
     <h3>服藥</h3>
     <div class="toggle-row">
       <div class="toggle med" data-cat="meds" data-key="bp">血壓藥</div>
-      <div class="toggle med" data-cat="meds" data-key="headache">頭痛藥</div>
-      <div class="toggle med" data-cat="meds" data-key="b12">B12</div>
+      <div class="toggle med" data-cat="meds" data-key="b12am">B12 早</div>
+      <div class="toggle med" data-cat="meds" data-key="b12pm">B12 晚</div>
+      <div class="toggle med" data-cat="meds" data-key="ergo">ERGO</div>
+      <div class="toggle med" data-cat="meds" data-key="ibu">伊普芬</div>
     </div>
   </div>
 
@@ -452,14 +454,14 @@
 
   function getRecord(key){
     if(!data[key]){
-      data[key] = { meds:{bp:false,headache:false,b12:false}, exercise:{walk:false,run:false,resistance:false}, weight:null, sbp:null, dbp:null };
+      data[key] = { meds:{bp:false,b12am:false,b12pm:false,ergo:false,ibu:false}, exercise:{walk:false,run:false,resistance:false}, weight:null, sbp:null, dbp:null };
     }
     return data[key];
   }
 
   function recordIsEmpty(rec){
     if(!rec) return true;
-    var anyMed = rec.meds.bp || rec.meds.headache || rec.meds.b12;
+    var anyMed = rec.meds.bp || rec.meds.b12am || rec.meds.b12pm || rec.meds.ergo || rec.meds.ibu;
     var anyEx = rec.exercise.walk || rec.exercise.run || rec.exercise.resistance;
     return !anyMed && !anyEx && !rec.weight && !rec.sbp && !rec.dbp;
   }
@@ -504,8 +506,10 @@
       dots.className = "dots";
       if(rec){
         if(rec.meds.bp) dots.appendChild(makeDot("med"));
-        if(rec.meds.headache) dots.appendChild(makeDot("med"));
-        if(rec.meds.b12) dots.appendChild(makeDot("med"));
+        if(rec.meds.b12am) dots.appendChild(makeDot("med"));
+        if(rec.meds.b12pm) dots.appendChild(makeDot("med"));
+        if(rec.meds.ergo) dots.appendChild(makeDot("med"));
+        if(rec.meds.ibu) dots.appendChild(makeDot("med"));
         if(rec.exercise.walk) dots.appendChild(makeDot("ex"));
         if(rec.exercise.run) dots.appendChild(makeDot("ex"));
         if(rec.exercise.resistance) dots.appendChild(makeDot("ex"));
@@ -664,20 +668,23 @@
           var key = normalizeDateKey(row[0]);
           if(!key) continue;
 
+          function ck(v){ return v === "✓" || v === "v" || v === "V" || v === 1; }
           var rec = {
             meds:{
-              bp: row[2] === "✓" || row[2] === "v" || row[2] === "V" || row[2] === 1,
-              headache: row[3] === "✓" || row[3] === "v" || row[3] === "V" || row[3] === 1,
-              b12: row[4] === "✓" || row[4] === "v" || row[4] === "V" || row[4] === 1
+              bp:  ck(row[2]),
+              b12am: ck(row[3]),
+              b12pm: ck(row[4]),
+              ergo:  ck(row[5]),
+              ibu:   ck(row[6])
             },
             exercise:{
-              walk: row[5] === "✓" || row[5] === "v" || row[5] === "V" || row[5] === 1,
-              run: row[6] === "✓" || row[6] === "v" || row[6] === "V" || row[6] === 1,
-              resistance: row[7] === "✓" || row[7] === "v" || row[7] === "V" || row[7] === 1
+              walk:       ck(row[7]),
+              run:        ck(row[8]),
+              resistance: ck(row[9])
             },
-            weight: (row[8] !== undefined && row[8] !== "") ? parseFloat(row[8]) : null,
-            sbp: (row[9] !== undefined && row[9] !== "") ? parseFloat(row[9]) : null,
-            dbp: (row[10] !== undefined && row[10] !== "") ? parseFloat(row[10]) : null
+            weight: (row[10] !== undefined && row[10] !== "") ? parseFloat(row[10]) : null,
+            sbp:    (row[11] !== undefined && row[11] !== "") ? parseFloat(row[11]) : null,
+            dbp:    (row[12] !== undefined && row[12] !== "") ? parseFloat(row[12]) : null
           };
           if(recordIsEmpty(rec)) continue;
           data[key] = rec;
@@ -724,7 +731,7 @@
       alert("目前沒有任何紀錄可匯出。");
       return;
     }
-    var rows = [["日期","星期","血壓藥","頭痛藥","B12","散步","跑步","阻力訓練","體重(kg)","收縮壓","舒張壓"]];
+    var rows = [["日期","星期","血壓藥","B12(早)","B12(晚)","ERGO","伊普芬","散步","跑步","阻力訓練","體重(kg)","收縮壓","舒張壓"]];
     keys.forEach(function(key){
       var rec = data[key];
       var parts = key.split("-").map(Number);
@@ -732,11 +739,13 @@
       rows.push([
         key,
         weekdayName(dateObj),
-        rec.meds.bp ? "✓" : "",
-        rec.meds.headache ? "✓" : "",
-        rec.meds.b12 ? "✓" : "",
-        rec.exercise.walk ? "✓" : "",
-        rec.exercise.run ? "✓" : "",
+        rec.meds.bp    ? "✓" : "",
+        rec.meds.b12am ? "✓" : "",
+        rec.meds.b12pm ? "✓" : "",
+        rec.meds.ergo  ? "✓" : "",
+        rec.meds.ibu   ? "✓" : "",
+        rec.exercise.walk       ? "✓" : "",
+        rec.exercise.run        ? "✓" : "",
         rec.exercise.resistance ? "✓" : "",
         rec.weight || "",
         rec.sbp || "",
@@ -744,7 +753,7 @@
       ]);
     });
     var ws = XLSX.utils.aoa_to_sheet(rows);
-    ws["!cols"] = [{wch:11},{wch:6},{wch:8},{wch:8},{wch:6},{wch:6},{wch:6},{wch:10},{wch:9},{wch:8},{wch:8}];
+    ws["!cols"] = [{wch:11},{wch:6},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8},{wch:6},{wch:6},{wch:10},{wch:9},{wch:8},{wch:8}];
     var wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "服藥運動紀錄");
     var now = new Date();
