@@ -2031,9 +2031,17 @@ function renderSheet() {
   balCard.classList.toggle('negative', endBalance < 0);
 
   // ── Footer text ──
+  // Count photos for this month
+  const photoCount = entries.filter(e => e.type==='expense' && e.photo).length;
   document.getElementById('sheetFooter').innerHTML =
     `<span>${m}月支出金額 <strong>${fmt(totalExpense)}</strong> 元，結餘 <strong class="${endBalance < 0 ? 'td-balance neg' : ''}">${fmt(endBalance)}</strong> 元</span>
-     <span>製表：林智仁　｜　平安診所岱江里C據點</span>`;
+     <span style="display:flex;align-items:center;gap:12px">
+       <button class="btn btn-outline" onclick="openPhotoGallery()"
+         style="padding:5px 14px;font-size:13px">
+         🖼 顯示照片${photoCount > 0 ? ` (${photoCount})` : ''}
+       </button>
+       <span>製表：林智仁　｜　平安診所岱江里C據點</span>
+     </span>`;
 }
 
 function fmt(n) {
@@ -2390,6 +2398,82 @@ function closePhotoModal() {
 }
 
 // Export with photos: generate HTML report
+function openPhotoGallery() {
+  if (!currentKey) return;
+  const [y, m] = currentKey.split('-');
+  const sheet = db[currentKey];
+  const entries = [...(Array.isArray(sheet.entries) ? sheet.entries : [])]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .filter(e => e.type === 'expense');
+
+  const withPhoto    = entries.filter(e => e.photo);
+  const withoutPhoto = entries.filter(e => !e.photo);
+
+  document.getElementById('galleryTitle').textContent =
+    `${y}年${m}月 佐證照片　共 ${withPhoto.length} 張`;
+
+  let html = '';
+
+  if (withPhoto.length === 0) {
+    html = '<p style="color:#aaa;text-align:center;padding:32px">本月尚無佐證照片</p>';
+  } else {
+    withPhoto.forEach(e => {
+      const d = e.date ? new Date(e.date + 'T00:00:00') : null;
+      const ds = d ? `${d.getMonth()+1}月${d.getDate()}日` : '';
+      html += `
+        <div style="border:1px solid #e0d8c8;border-radius:10px;padding:16px;margin-bottom:16px;break-inside:avoid">
+          <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px">
+            <span style="font-weight:600;font-size:15px">${ds}　${e.desc}</span>
+            <span style="font-size:12px;color:#888">${e.voucher||''}</span>
+            <span style="margin-left:auto;font-size:13px;color:#c0392b;font-weight:600">${fmt(e.amt)} 元</span>
+          </div>
+          ${e.note ? `<div style="font-size:12px;color:#888;margin-bottom:8px">${e.note}</div>` : ''}
+          <img src="${e.photo}"
+            onclick="viewPhotoUrl('${e.photo}')"
+            style="max-width:100%;max-height:320px;border-radius:6px;border:1px solid #eee;cursor:zoom-in;display:block">
+        </div>`;
+    });
+  }
+
+  // Entries without photo
+  if (withoutPhoto.length > 0) {
+    html += `<div style="margin-top:20px;padding-top:16px;border-top:1px solid #eee">
+      <div style="font-size:12px;color:#aaa;margin-bottom:10px">尚未上傳照片的支出（共 ${withoutPhoto.length} 筆）</div>`;
+    withoutPhoto.forEach(e => {
+      const d = e.date ? new Date(e.date + 'T00:00:00') : null;
+      const ds = d ? `${d.getMonth()+1}月${d.getDate()}日` : '';
+      html += `
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f5f5f5">
+          <span style="font-size:13px;color:#666;min-width:60px">${ds}</span>
+          <span style="font-size:13px;flex:1">${e.desc}</span>
+          <span style="font-size:13px;color:#c0392b">${fmt(e.amt)} 元</span>
+          <label style="cursor:pointer;font-size:11px;color:#0d7377;padding:3px 8px;border:1px solid #0d7377;border-radius:4px;white-space:nowrap">
+            📷 上傳<input type="file" accept="image/*" style="display:none" onchange="uploadPhotoFromGallery(event,${e.id})">
+          </label>
+        </div>`;
+    });
+    html += '</div>';
+  }
+
+  document.getElementById('galleryBody').innerHTML = html;
+  document.getElementById('galleryModal').classList.add('open');
+}
+
+function closeGallery() {
+  document.getElementById('galleryModal').classList.remove('open');
+}
+
+function viewPhotoUrl(src) {
+  document.getElementById('photoModalImg').src = src;
+  document.getElementById('photoModal').classList.add('open');
+}
+
+async function uploadPhotoFromGallery(event, entryId) {
+  await uploadPhoto(event, entryId);
+  // Refresh gallery
+  openPhotoGallery();
+}
+
 function exportWithPhotos() {
   if (!currentKey) return;
   const sheet = db[currentKey];
@@ -2494,6 +2578,19 @@ fbDb.ref(FB_PATH).once('value')
 <div class="photo-modal-bg" id="photoModal" onclick="closePhotoModal()">
   <span class="close-btn" onclick="closePhotoModal()">✕</span>
   <img id="photoModalImg" src="" alt="佐證照片">
+</div>
+
+<!-- Photo gallery modal -->
+<div class="photo-modal-bg" id="galleryModal" style="align-items:flex-start;overflow-y:auto;padding:20px 0">
+  <div style="background:white;border-radius:12px;width:min(860px,96vw);margin:auto;padding:28px;position:relative">
+    <button onclick="closeGallery()" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:#666">✕</button>
+    <div id="galleryTitle" style="font-family:'Noto Serif TC',serif;font-size:18px;font-weight:700;color:#1F4E79;margin-bottom:4px;padding-bottom:12px;border-bottom:2px solid #c9a84c"></div>
+    <div id="galleryBody" style="margin-top:18px"></div>
+    <div style="margin-top:20px;display:flex;justify-content:flex-end;gap:10px">
+      <button class="btn btn-outline" onclick="exportWithPhotos()">📥 匯出 HTML</button>
+      <button class="btn btn-outline" onclick="closeGallery()">關閉</button>
+    </div>
+  </div>
 </div>
 </body>
 </html>
