@@ -1984,8 +1984,14 @@ function renderSheet() {
       <td class="td-note">${e.note || ''}</td>
       <td class="td-photo">
         ${e.photo
-          ? `<img src="${e.photo}" onclick="viewPhoto('${e.id}')" title="點擊放大"
-              style="height:36px;width:48px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid #ddd">`
+          ? `<div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+               <img src="${e.photo}" onclick="viewPhoto('${e.id}')" title="點擊放大"
+                 style="height:36px;width:48px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid #ddd">
+               <label style="cursor:pointer;font-size:10px;color:#0d7377;padding:1px 5px;border:1px solid #0d7377;border-radius:3px;white-space:nowrap" title="重新上傳">
+                 ↺ 換圖<input type="file" accept="image/*" style="display:none"
+                   onchange="uploadPhoto(event,${e.id})">
+               </label>
+             </div>`
           : (e.type==='expense'
               ? `<label style="cursor:pointer;font-size:11px;color:#888;padding:3px 6px;border:1px dashed #ccc;border-radius:4px">
                   📷<input type="file" accept="image/*" style="display:none"
@@ -2428,9 +2434,14 @@ function openPhotoGallery() {
             <span style="margin-left:auto;font-size:13px;color:#c0392b;font-weight:600">${fmt(e.amt)} 元</span>
           </div>
           ${e.note ? `<div style="font-size:12px;color:#888;margin-bottom:8px">${e.note}</div>` : ''}
-          <img src="${e.photo}"
-            onclick="viewPhotoUrl('${e.photo}')"
-            style="max-width:100%;max-height:320px;border-radius:6px;border:1px solid #eee;cursor:zoom-in;display:block">
+          <div style="position:relative;display:inline-block;width:100%">
+            <img src="${e.photo}"
+              onclick="viewPhotoUrl('${e.photo}')"
+              style="max-width:100%;max-height:320px;border-radius:6px;border:1px solid #eee;cursor:zoom-in;display:block">
+            <label style="position:absolute;bottom:8px;right:8px;cursor:pointer;background:rgba(0,0,0,.55);color:white;font-size:11px;padding:4px 10px;border-radius:4px">
+              ↺ 換圖<input type="file" accept="image/*" style="display:none" onchange="uploadPhotoFromGallery(event,${e.id})">
+            </label>
+          </div>
         </div>`;
     });
   }
