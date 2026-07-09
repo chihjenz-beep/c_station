@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>平安診所岱江里C據點｜收支明細系統</title>
+<title>平安診所岱江里C據點｜收支明細系統（附照片）</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
 
@@ -244,6 +244,19 @@ textarea { resize: vertical; min-height: 60px; }
   .main-area { padding: 12px; }
 }
 
+.td-photo { text-align:center; width:60px; vertical-align:middle; }
+.photo-modal-bg {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,.85); z-index:300;
+  align-items:center; justify-content:center;
+}
+.photo-modal-bg.open { display:flex; }
+.photo-modal-bg img { max-width:90vw; max-height:90vh; border-radius:8px; }
+.photo-modal-bg .close-btn {
+  position:absolute; top:16px; right:20px;
+  color:white; font-size:28px; cursor:pointer; line-height:1;
+}
+
 @media print {
   .sidebar, .toolbar, .td-actions, th:last-child, .site-header { display: none !important; }
   .main-area { padding: 0; }
@@ -313,6 +326,7 @@ textarea { resize: vertical; min-height: 60px; }
       <button class="btn btn-primary" onclick="openCarry()">設定期初結餘</button>
       <button class="btn btn-outline" onclick="window.print()">🖨 列印</button>
       <button class="btn btn-outline" onclick="exportCSV()">📥 匯出 CSV</button>
+      <button class="btn btn-outline" onclick="exportWithPhotos()">🖼 匯出佐證照片</button>
       <label class="btn btn-outline" style="cursor:pointer">📂 匯入 CSV<input type="file" accept=".csv" style="display:none" onchange="importCSV(event)"></label>
     </div>
 
@@ -331,6 +345,7 @@ textarea { resize: vertical; min-height: 60px; }
             <th>支出金額</th>
             <th>結餘</th>
             <th>備註</th>
+            <th>佐證照片</th>
             <th class="no-print">操作</th>
           </tr>
         </thead>
@@ -446,7 +461,7 @@ textarea { resize: vertical; min-height: 60px; }
 
 <script>
 // ── Storage ──────────────────────────────────────────────────────────────
-const KEY = 'pingAn_ledger_v9';
+const KEY = 'pingAn_photo_v1';
 
 // localStorage wrapper - falls back to memory if blocked (e.g. file://)
 const _memStore = {};
@@ -467,7 +482,7 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const fbDb = firebase.database();
-const FB_PATH = 'daijiangli/ledger';
+const FB_PATH = 'daijiangli/ledger_photo';
 let fbReady = false;
 let fbSyncTimer = null;
 
@@ -1967,6 +1982,17 @@ function renderSheet() {
       ${incomeCell}
       <td class="td-amt td-balance ${runBal < 0 ? 'neg' : ''}">${fmt(runBal)}</td>
       <td class="td-note">${e.note || ''}</td>
+      <td class="td-photo">
+        ${e.photo
+          ? `<img src="${e.photo}" onclick="viewPhoto('${e.id}')" title="點擊放大"
+              style="height:36px;width:48px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid #ddd">`
+          : (e.type==='expense'
+              ? `<label style="cursor:pointer;font-size:11px;color:#888;padding:3px 6px;border:1px dashed #ccc;border-radius:4px">
+                  📷<input type="file" accept="image/*" style="display:none"
+                    onchange="uploadPhoto(event,${e.id})"></label>`
+              : '')
+        }
+      </td>
       <td class="td-actions">
         <button class="icon-btn" onclick="openEdit(${e.id})" title="編輯">✎</button>
         <button class="icon-btn" onclick="deleteEntry(${e.id})" title="刪除" style="color:#c0392b">✕</button>
@@ -2307,6 +2333,102 @@ function importCSV(event) {
   event.target.value = ''; // reset input
 }
 
+// ── Photo functions ─────────────────────────────────────────────────────────
+
+// Compress image to base64 (max 800px, quality 0.7)
+function compressImage(file, maxPx, quality) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > maxPx || h > maxPx) {
+          if (w > h) { h = Math.round(h * maxPx / w); w = maxPx; }
+          else       { w = Math.round(w * maxPx / h); h = maxPx; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = ev.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadPhoto(event, entryId) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) { alert('照片不能超過 10MB'); return; }
+
+  try {
+    const b64 = await compressImage(file, 800, 0.72);
+    const entry = db[currentKey].entries.find(e => e.id === entryId);
+    if (!entry) return;
+    entry.photo = b64;
+    save();
+    renderSheet();
+  } catch(e) {
+    alert('照片上傳失敗：' + e.message);
+  }
+}
+
+function viewPhoto(entryId) {
+  const entry = db[currentKey].entries.find(e => e.id == entryId);
+  if (!entry || !entry.photo) return;
+  document.getElementById('photoModalImg').src = entry.photo;
+  document.getElementById('photoModal').classList.add('open');
+}
+
+function closePhotoModal() {
+  document.getElementById('photoModal').classList.remove('open');
+  document.getElementById('photoModalImg').src = '';
+}
+
+// Export with photos: generate HTML report
+function exportWithPhotos() {
+  if (!currentKey) return;
+  const sheet = db[currentKey];
+  const [y, m] = currentKey.split('-');
+  const entries = [...(Array.isArray(sheet.entries) ? sheet.entries : [])]
+    .sort((a,b) => a.date.localeCompare(b.date));
+  const hasPhotos = entries.filter(e => e.type==='expense' && e.photo);
+
+  let rows = '';
+  hasPhotos.forEach(e => {
+    const d = e.date ? new Date(e.date+'T00:00:00') : null;
+    const ds = d ? `${d.getMonth()+1}月${d.getDate()}日` : '';
+    rows += `<div style="border:1px solid #ddd;border-radius:8px;padding:12px;margin-bottom:16px;break-inside:avoid">
+      <div style="font-weight:600;margin-bottom:6px">${ds}　${e.desc}</div>
+      <div style="font-size:13px;color:#555;margin-bottom:8px">
+        憑證：${e.voucher||'—'}　憑證金額：${e.voucherAmt||0}元　支出金額：${e.amt||0}元
+        ${e.note ? `　備註：${e.note}` : ''}
+      </div>
+      <img src="${e.photo}" style="max-width:100%;max-height:300px;border-radius:6px;border:1px solid #eee">
+    </div>`;
+  });
+
+  const reportHtml = `<!DOCTYPE html><html lang="zh-TW"><head><meta charset="UTF-8">
+<title>平安診所岱江里C據點 ${y}年${m}月 佐證照片</title>
+<style>body{font-family:'Noto Sans TC',sans-serif;max-width:800px;margin:0 auto;padding:24px}
+h1{font-size:20px;margin-bottom:4px}h2{font-size:14px;color:#666;margin-bottom:20px;font-weight:normal}
+@media print{body{padding:0}}</style></head><body>
+<h1>平安診所岱江里C據點</h1>
+<h2>${y}年${m}月 材料文具佐證照片　製表：林智仁</h2>
+${rows || '<p style="color:#aaa">本月無佐證照片</p>'}
+</body></html>`;
+
+  const blob = new Blob([reportHtml], {type:'text/html;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `岱江里C據點_${y}年${m}月_佐證照片.html`;
+  a.click();
+}
+
 // ── Start ──────────────────────────────────────────────────────────────────
 // Compare local vs cloud; never silently discard local data that has more entries
 function countEntries(d) {
@@ -2368,5 +2490,10 @@ fbDb.ref(FB_PATH).once('value')
     init();
   });
 </script>
+<!-- Photo lightbox -->
+<div class="photo-modal-bg" id="photoModal" onclick="closePhotoModal()">
+  <span class="close-btn" onclick="closePhotoModal()">✕</span>
+  <img id="photoModalImg" src="" alt="佐證照片">
+</div>
 </body>
 </html>
