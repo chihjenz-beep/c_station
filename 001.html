@@ -265,6 +265,13 @@ textarea { resize: vertical; min-height: 60px; }
   .modal-bg { display: none !important; }
   body { background: white; }
   .summary-card { box-shadow: none; border: 1px solid #ccc; }
+  /* 合計與頁尾不在中間斷頁 */
+  tfoot tr { break-inside: avoid; page-break-inside: avoid; break-before: avoid; }
+  .sheet-footer { break-inside: avoid; page-break-inside: avoid; }
+  /* 隱藏摘要卡 */
+  .summary-bar { display: none !important; }
+  /* tfoot 跟隨內容，不重複出現在每頁 */
+  tfoot { display: table-row-group; }
 }
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -352,7 +359,7 @@ textarea { resize: vertical; min-height: 60px; }
         <tbody id="ledgerBody">
           <tr class="empty-row"><td colspan="11">請先從左側選擇或新增月份</td></tr>
         </tbody>
-        <tfoot id="ledgerFoot"></tfoot>
+        <tfoot id="ledgerFoot" style="break-before:avoid;page-break-before:avoid"></tfoot>
       </table>
     </div>
 
