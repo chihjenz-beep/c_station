@@ -326,7 +326,7 @@ textarea { resize: vertical; min-height: 60px; }
       <button class="btn btn-primary" onclick="openCarry()">設定期初結餘</button>
       <button class="btn btn-outline" onclick="window.print()">🖨 列印</button>
       <button class="btn btn-outline" onclick="exportCSV()">📥 匯出 CSV</button>
-      <button class="btn btn-outline" onclick="exportWithPhotos()">🖼 匯出佐證照片</button>
+      <button class="btn btn-outline" onclick="exportWithPhotos()">🖼 匯出照片</button>
       <label class="btn btn-outline" style="cursor:pointer">📂 匯入 CSV<input type="file" accept=".csv" style="display:none" onchange="importCSV(event)"></label>
     </div>
 
@@ -345,7 +345,7 @@ textarea { resize: vertical; min-height: 60px; }
             <th>支出金額</th>
             <th>結餘</th>
             <th>備註</th>
-            <th>佐證照片</th>
+            <th>照片</th>
             <th class="no-print">操作</th>
           </tr>
         </thead>
@@ -2410,12 +2410,12 @@ function openPhotoGallery() {
   const withoutPhoto = entries.filter(e => !e.photo);
 
   document.getElementById('galleryTitle').textContent =
-    `${y}年${m}月 佐證照片　共 ${withPhoto.length} 張`;
+    `${y}年${m}月 照片　共 ${withPhoto.length} 張`;
 
   let html = '';
 
   if (withPhoto.length === 0) {
-    html = '<p style="color:#aaa;text-align:center;padding:32px">本月尚無佐證照片</p>';
+    html = '<p style="color:#aaa;text-align:center;padding:32px">本月尚無照片</p>';
   } else {
     withPhoto.forEach(e => {
       const d = e.date ? new Date(e.date + 'T00:00:00') : null;
@@ -2497,19 +2497,19 @@ function exportWithPhotos() {
   });
 
   const reportHtml = `<!DOCTYPE html><html lang="zh-TW"><head><meta charset="UTF-8">
-<title>平安診所岱江里C據點 ${y}年${m}月 佐證照片</title>
+<title>平安診所岱江里C據點 ${y}年${m}月 照片</title>
 <style>body{font-family:'Noto Sans TC',sans-serif;max-width:800px;margin:0 auto;padding:24px}
 h1{font-size:20px;margin-bottom:4px}h2{font-size:14px;color:#666;margin-bottom:20px;font-weight:normal}
 @media print{body{padding:0}}</style></head><body>
 <h1>平安診所岱江里C據點</h1>
-<h2>${y}年${m}月 材料文具佐證照片　製表：林智仁</h2>
-${rows || '<p style="color:#aaa">本月無佐證照片</p>'}
+<h2>${y}年${m}月 材料文具照片　製表：林智仁</h2>
+${rows || '<p style="color:#aaa">本月無照片</p>'}
 </body></html>`;
 
   const blob = new Blob([reportHtml], {type:'text/html;charset=utf-8'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `岱江里C據點_${y}年${m}月_佐證照片.html`;
+  a.download = `岱江里C據點_${y}年${m}月_照片.html`;
   a.click();
 }
 
@@ -2577,7 +2577,7 @@ fbDb.ref(FB_PATH).once('value')
 <!-- Photo lightbox -->
 <div class="photo-modal-bg" id="photoModal" onclick="closePhotoModal()">
   <span class="close-btn" onclick="closePhotoModal()">✕</span>
-  <img id="photoModalImg" src="" alt="佐證照片">
+  <img id="photoModalImg" src="" alt="照片">
 </div>
 
 <!-- Photo gallery modal -->
