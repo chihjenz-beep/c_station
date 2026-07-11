@@ -311,21 +311,24 @@
     position:sticky;left:0;top:0;z-index:4;min-width:84px;
   }
   .matrix-cell{
-    min-width:48px;height:44px;cursor:pointer;font-size:13.5px;line-height:1.25;
-    padding:3px 4px;vertical-align:middle;position:relative;
+    min-width:48px;min-height:44px;height:auto;cursor:pointer;font-size:13.5px;line-height:1.2;
+    padding:0;vertical-align:top;position:relative;
   }
   .matrix-cell:hover{filter:brightness(0.93);}
   .matrix-cell.conflict-cell{box-shadow:inset 0 0 0 2px var(--danger);}
-  .matrix-cell.multi-site{
-    background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.35) 0 4px, transparent 4px 8px);
-  }
   .matrix-cell.multi-site::after{
-    content:"◆"; position:absolute; top:1px; right:3px; font-size:10px; color:#fff; opacity:.9;
+    content:"◆"; position:absolute; top:1px; right:3px; font-size:10px; color:#fff; opacity:.9; z-index:1;
   }
+  .mc-cell-inner{display:flex;flex-direction:column;height:100%;width:100%;}
+  .mc-seg{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    color:#fff;padding:3px 4px;
+  }
+  .mc-seg:not(:last-child){border-bottom:1px solid rgba(255,255,255,0.5);}
   .matrix-cell .mc-site{font-weight:700;display:block;}
   .matrix-cell .mc-time{display:block;opacity:.85;font-size:11.5px;}
   .matrix-cell.matrix-leave-cell{background:#e8e2d5;}
-  .matrix-cell .mc-leave{font-weight:700;display:block;color:var(--text-soft);text-align:center;}
+  .matrix-cell .mc-leave{font-weight:700;display:block;color:var(--text-soft);text-align:center;padding:3px 4px;}
   .matrix-legend{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;font-size:13.5px;}
   .matrix-legend-chip{padding:3px 9px;border-radius:10px;color:#fff;font-weight:600;}
   .bulk-rule-count{
@@ -1842,14 +1845,17 @@ function buildMatrixTableHtml(year, month, onCellClick){
         }
         return `<td class="matrix-cell" ${clickAttr}></td>`;
       }
-      const cellContent = entries.map(e=>
-        `<span class="mc-site">${siteLabelPlain(e.site)}</span><span class="mc-time">${e.start.slice(0,5)}</span>`
-      ).join('');
-      const bgColor = matrixColorMap[entries[0].site] || '#999';
-      // 同一格內若涵蓋多個不同地點，加上條紋樣式標記，提醒使用者點擊查看詳情
+      const cellContent = `<div class="mc-cell-inner">` + entries.map(e=>{
+        const segColor = matrixColorMap[e.site] || '#999';
+        return `<div class="mc-seg" style="background:${segColor};">
+          <span class="mc-site">${siteLabelPlain(e.site)}</span><span class="mc-time">${e.start.slice(0,5)}</span>
+        </div>`;
+      }).join('') + `</div>`;
+      // 同一格內若涵蓋多個不同地點，每個地點各自用自己的顏色顯示（不再整格套用單一顏色），
+      // 並加上◆記號提醒使用者這天有跨地點排班，點擊可查看/編輯詳情
       const distinctSites = new Set(entries.map(e=>e.site));
       const multiSiteClass = distinctSites.size > 1 ? 'multi-site' : '';
-      return `<td class="matrix-cell ${hasConflict?'conflict-cell':''} ${multiSiteClass}" style="background:${bgColor};color:#fff;" ${clickAttr}>${cellContent}</td>`;
+      return `<td class="matrix-cell ${hasConflict?'conflict-cell':''} ${multiSiteClass}" ${clickAttr}>${cellContent}</td>`;
     }).join('');
     return `<tr><th>${s.name}</th>${rowCells}</tr>`;
   }).join('') + '</tbody>';
