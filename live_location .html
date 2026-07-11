@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>即時位置分享</title>
+<link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjoi5Y2z5pmC5L2N572u5YiG5LqrIiwic2hvcnRfbmFtZSI6IuS9jee9ruWIhuS6qyIsInN0YXJ0X3VybCI6Ii4vIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiIzBmMTcyYSIsInRoZW1lX2NvbG9yIjoiIzBmMTcyYSJ9">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 480px; margin: 0 auto; padding: 20px; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  .sub { font-size: 13px; color: #94a3b8; margin-bottom: 20px; }
+
+  .card {
+    background: #1e293b;
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 14px;
+    border: 1px solid #334155;
+  }
+
+  input[type=text] {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #334155;
+    background: #0f172a;
+    color: #e2e8f0;
+    font-size: 15px;
+    margin-bottom: 10px;
+  }
+
+  button {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 8px;
+  }
+  .btn-start { background: #16a34a; color: white; }
+  .btn-stop { background: #dc2626; color: white; }
+  .btn-copy { background: #334155; color: #e2e8f0; }
+  button:disabled { opacity: 0.5; }
+
+  .status-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #64748b; flex-shrink: 0; }
+  .dot.live { background: #16a34a; box-shadow: 0 0 0 0 rgba(22,163,74,0.7); animation: pulse 1.6s infinite; }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(22,163,74,0.6); }
+    70% { box-shadow: 0 0 0 8px rgba(22,163,74,0); }
+    100% { box-shadow: 0 0 0 0 rgba(22,163,74,0); }
+  }
+  .status-text { font-size: 14px; }
+  .meta { font-size: 12px; color: #94a3b8; line-height: 1.6; }
+  .warn { font-size: 12px; color: #fbbf24; background: #422006; border-radius: 8px; padding: 10px; margin-top: 10px; }
+  .link-box { display: flex; gap: 8px; }
+  .link-box input { flex: 1; margin-bottom: 0; font-size: 13px; }
+
+  #map { width: 100%; height: 60vh; border-radius: 14px; border: 1px solid #334155; }
+  .fallback-list { font-size: 14px; }
+  .fallback-list div { padding: 10px 0; border-bottom: 1px solid #334155; }
+</style>
+</head>
+<body>
+<div class="wrap" id="app">載入中...</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+/* =========================================================
+   設定區:請填入你自己的 Firebase 專案設定
+   (Firebase Console → 專案設定 → 一般 → 你的應用程式 → SDK 設定)
+   ========================================================= */
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "YOUR_PROJECT",
+};
+
+/* =========================================================
+   以下為程式邏輯,一般不需修改
+   ========================================================= */
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+const params = new URLSearchParams(location.search);
+const viewId = params.get('view');   // 有這個參數 = 檢視端
+const app = document.getElementById('app');
+
+if (viewId) {
+  renderViewer(viewId);
+} else {
+  renderDriver();
+}
+
+/* ---------------- 司機端(發送位置) ---------------- */
+function renderDriver() {
+  let driverId = localStorage.getItem('ll_driverId') || '';
+  let watchHandle = null;
+  let wakeLock = null;
+  let active = false;
+  let lastUpdateTime = null;
+
+  app.innerHTML = `
+    <h1>📍 即時位置分享</h1>
+    <div class="sub">分享中,對方可透過連結即時看到你的位置</div>
+
+    <div class="card">
+      <div style="font-size:13px;color:#94a3b8;margin-bottom:6px;">你的代號(例如姓名或車號,分享連結會用到)</div>
+      <input type="text" id="driverIdInput" placeholder="例如 BEW0903 或 林智仁" value="${driverId}">
+      <button class="btn-start" id="startBtn">開始分享位置</button>
+      <button class="btn-stop" id="stopBtn" style="display:none;">停止分享</button>
+    </div>
+
+    <div class="card" id="statusCard" style="display:none;">
+      <div class="status-row">
+        <div class="dot" id="dot"></div>
+        <div class="status-text" id="statusText">尚未開始</div>
+      </div>
+      <div class="meta" id="metaText"></div>
+      <div class="warn" id="wakeWarn" style="display:none;">
+        ⚠️ 螢幕鎖上或切到其他 App 後,手機瀏覽器會暫停定位回報。開車時請將手機架好、螢幕保持開啟(可調暗)。
+      </div>
+    </div>
+
+    <div class="card" id="shareCard" style="display:none;">
+      <div style="font-size:13px;color:#94a3b8;margin-bottom:6px;">分享這個連結給對方(可查看即時位置)</div>
+      <div class="link-box">
+        <input type="text" id="shareLink" readonly>
+        <button class="btn-copy" style="width:auto;padding:12px 16px;" id="copyBtn">複製</button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('startBtn').onclick = start;
+  document.getElementById('stopBtn').onclick = stop;
+  document.getElementById('copyBtn').onclick = () => {
+    const el = document.getElementById('shareLink');
+    el.select();
+    document.execCommand('copy');
+    document.getElementById('copyBtn').textContent = '已複製';
+    setTimeout(() => document.getElementById('copyBtn').textContent = '複製', 1500);
+  };
+
+  // 離開頁面前自動標記離線
+  window.addEventListener('beforeunload', () => {
+    if (active && driverId) {
+      db.ref('liveLocation/' + driverId + '/active').set(false);
+    }
+  });
+
+  async function start() {
+    driverId = document.getElementById('driverIdInput').value.trim();
+    if (!driverId) { alert('請輸入代號'); return; }
+    localStorage.setItem('ll_driverId', driverId);
+
+    if (!('geolocation' in navigator)) {
+      alert('此瀏覽器不支援定位功能');
+      return;
+    }
+
+    active = true;
+    document.getElementById('startBtn').style.display = 'none';
+    document.getElementById('stopBtn').style.display = 'block';
+    document.getElementById('statusCard').style.display = 'block';
+    document.getElementById('shareCard').style.display = 'block';
+    document.getElementById('wakeWarn').style.display = 'block';
+
+    const link = location.origin + location.pathname + '?view=' + encodeURIComponent(driverId);
+    document.getElementById('shareLink').value = link;
+
+    db.ref('liveLocation/' + driverId + '/active').set(true);
+    db.ref('liveLocation/' + driverId + '/startedAt').set(Date.now());
+
+    // 嘗試取得 Wake Lock,防止螢幕休眠
+    tryWakeLock();
+    document.addEventListener('visibilitychange', async () => {
+      if (active && document.visibilityState === 'visible') tryWakeLock();
+    });
+
+    watchHandle = navigator.geolocation.watchPosition(onPosition, onPosError, {
+      enableHighAccuracy: true,
+      maximumAge: 3000,
+      timeout: 15000
+    });
+
+    setStatus(true, '定位中...');
+  }
+
+  function stop() {
+    active = false;
+    if (watchHandle !== null) navigator.geolocation.clearWatch(watchHandle);
+    if (wakeLock) { wakeLock.release().catch(()=>{}); wakeLock = null; }
+    if (driverId) db.ref('liveLocation/' + driverId + '/active').set(false);
+
+    document.getElementById('startBtn').style.display = 'block';
+    document.getElementById('stopBtn').style.display = 'none';
+    setStatus(false, '已停止分享');
+  }
+
+  function onPosition(pos) {
+    lastUpdateTime = Date.now();
+    const { latitude, longitude, speed, heading, accuracy } = pos.coords;
+    db.ref('liveLocation/' + driverId).update({
+      lat: latitude,
+      lng: longitude,
+      speed: speed || 0,
+      heading: heading || null,
+      accuracy: accuracy,
+      timestamp: lastUpdateTime,
+      active: true
+    });
+    setStatus(true, '分享中');
+    document.getElementById('metaText').innerHTML =
+      `座標:${latitude.toFixed(5)}, ${longitude.toFixed(5)}<br>` +
+      `精確度:約 ${Math.round(accuracy)} 公尺<br>` +
+      `最後更新:${new Date(lastUpdateTime).toLocaleTimeString('zh-TW')}`;
+  }
+
+  function onPosError(err) {
+    setStatus(false, '定位失敗:' + err.message);
+  }
+
+  async function tryWakeLock() {
+    try {
+      if ('wakeLock' in navigator) {
+        wakeLock = await navigator.wakeLock.request('screen');
+      }
+    } catch (e) {
+      // 靜默失敗,不影響主功能
+    }
+  }
+
+  function setStatus(live, text) {
+    document.getElementById('dot').className = 'dot' + (live ? ' live' : '');
+    document.getElementById('statusText').textContent = text;
+  }
+}
+
+/* ---------------- 檢視端(查看位置,Leaflet + OpenStreetMap,免金鑰) ---------------- */
+function renderViewer(driverId) {
+  app.innerHTML = `
+    <h1>📍 位置追蹤:${escapeHtml(driverId)}</h1>
+    <div class="sub" id="viewerSub">連線中...</div>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div id="map"></div>
+    </div>
+    <div class="card">
+      <div class="meta" id="metaText">等待位置資料...</div>
+      <div style="margin-top:10px;">
+        <a href="#" id="gmapLink" target="_blank" style="color:#60a5fa;font-size:13px;display:none;">在 Google 地圖開啟這個座標 →</a>
+      </div>
+    </div>
+  `;
+
+  const map = L.map('map', { zoomControl: true }).setView([23.4600, 120.2800], 14); // 預設嘉義布袋一帶,收到資料後會自動移動
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  const carIcon = L.divIcon({
+    html: '<div style="font-size:26px;transform:translate(-50%,-100%);">🚗</div>',
+    className: '', iconSize: [0, 0]
+  });
+  let marker = null;
+  let hasFitOnce = false;
+
+  db.ref('liveLocation/' + driverId).on('value', (snap) => {
+    const d = snap.val();
+    if (!d || !d.lat) {
+      document.getElementById('viewerSub').textContent = '目前沒有位置資料';
+      return;
+    }
+    const ageSec = (Date.now() - d.timestamp) / 1000;
+    const isStale = ageSec > 60 || d.active === false;
+
+    document.getElementById('viewerSub').textContent = isStale
+      ? `⚪ 未在分享中(最後更新:${Math.round(ageSec)} 秒前)`
+      : `🟢 即時位置更新中`;
+
+    const pos = [d.lat, d.lng];
+    if (!marker) {
+      marker = L.marker(pos, { icon: carIcon }).addTo(map);
+    } else {
+      marker.setLatLng(pos);
+    }
+    if (!hasFitOnce) {
+      map.setView(pos, 16);
+      hasFitOnce = true;
+    } else if (!isStale) {
+      map.panTo(pos);
+    }
+
+    document.getElementById('metaText').innerHTML =
+      `速度:${d.speed ? Math.round(d.speed * 3.6) + ' km/h' : '—'}　` +
+      `精確度:約 ${d.accuracy ? Math.round(d.accuracy) : '—'} 公尺<br>` +
+      `最後更新:${new Date(d.timestamp).toLocaleTimeString('zh-TW')}(${Math.round(ageSec)} 秒前)`;
+
+    const gmapLink = document.getElementById('gmapLink');
+    gmapLink.href = `https://www.google.com/maps?q=${d.lat},${d.lng}`;
+    gmapLink.style.display = 'inline';
+  });
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+}
+</script>
+</body>
+</html>
