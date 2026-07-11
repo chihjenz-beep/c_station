@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>即時位置分享</title>
 <link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjoi5Y2z5pmC5L2N572u5YiG5LqrIiwic2hvcnRfbmFtZSI6IuS9jee9ruWIhuS6qyIsInN0YXJ0X3VybCI6Ii4vIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiIzBmMTcyYSIsInRoZW1lX2NvbG9yIjoiIzBmMTcyYSJ9">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -76,6 +77,7 @@
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
 /* =========================================================
@@ -88,10 +90,6 @@ const firebaseConfig = {
   databaseURL: "https://YOUR_PROJECT-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "YOUR_PROJECT",
 };
-
-/* 若之後要在地圖上顯示(而非僅列表),可填入 Google Maps API Key。
-   不填也能運作,會自動退回「文字座標 + 開啟地圖連結」的陽春模式。 */
-const GOOGLE_MAPS_API_KEY = ""; // 例如 "AIzaSy...."
 
 /* =========================================================
    以下為程式邏輯,一般不需修改
@@ -253,35 +251,72 @@ function renderDriver() {
   }
 }
 
-/* ---------------- 檢視端(查看位置) ---------------- */
+/* ---------------- 檢視端(查看位置,Leaflet + OpenStreetMap,免金鑰) ---------------- */
 function renderViewer(driverId) {
   app.innerHTML = `
     <h1>📍 位置追蹤:${escapeHtml(driverId)}</h1>
     <div class="sub" id="viewerSub">連線中...</div>
-    <div class="card" id="mapCard" style="display:none;padding:0;overflow:hidden;">
+    <div class="card" style="padding:0;overflow:hidden;">
       <div id="map"></div>
     </div>
-    <div class="card" id="fallbackCard" style="display:none;">
-      <div class="fallback-list" id="fallbackList"></div>
+    <div class="card">
+      <div class="meta" id="metaText">等待位置資料...</div>
+      <div style="margin-top:10px;">
+        <a href="#" id="gmapLink" target="_blank" style="color:#60a5fa;font-size:13px;display:none;">在 Google 地圖開啟這個座標 →</a>
+      </div>
     </div>
+    <div class="warn" id="debugBox" style="display:none;"></div>
   `;
 
-  let map = null, marker = null;
-  const hasMapsKey = !!(typeof GOOGLE_MAPS_API_KEY === 'string' && GOOGLE_MAPS_API_KEY.length > 5);
-
-  if (hasMapsKey) {
-    const script = document.createElement('script');
-    script.src = 'https://maps.googleapis.com/maps/api/js?key=' + GOOGLE_MAPS_API_KEY + '&callback=initGMap';
-    window.initGMap = () => { document.getElementById('mapCard').style.display = 'block'; };
-    document.head.appendChild(script);
-  } else {
-    document.getElementById('fallbackCard').style.display = 'block';
+  function showDebug(msg) {
+    const box = document.getElementById('debugBox');
+    box.style.display = 'block';
+    box.innerHTML = msg;
   }
 
+  let map;
+  try {
+    if (typeof L === 'undefined') throw new Error('Leaflet 程式庫載入失敗(可能是網路擋住了 unpkg.com)');
+    map = L.map('map', { zoomControl: true }).setView([23.4600, 120.2800], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+  } catch (e) {
+    showDebug('⚠️ 地圖初始化失敗:' + e.message);
+    return;
+  }
+
+  const carIcon = L.divIcon({
+    html: '<div style="font-size:26px;transform:translate(-50%,-100%);">🚗</div>',
+    className: '', iconSize: [0, 0]
+  });
+  let marker = null;
+  let hasFitOnce = false;
+
+  // 偵測 Firebase 連線狀態,若一直連不上通常是 firebaseConfig 沒填對
+  let connectTimeout = setTimeout(() => {
+    showDebug(
+      '⚠️ 超過 8 秒尚未從 Firebase 收到任何回應,請檢查:<br>' +
+      '1) 檔案頂端 <code>firebaseConfig</code> 是否已填入你真實的專案設定(不是 YOUR_API_KEY 佔位字)<br>' +
+      '2) <code>databaseURL</code> 是否跟你 Firebase 專案的 Realtime Database 網址完全一致(含地區代碼)<br>' +
+      '3) 該資料庫的安全性規則是否允許讀取(測試階段可先開放讀寫)'
+    );
+  }, 8000);
+
+  db.ref('.info/connected').on('value', (snap) => {
+    if (snap.val() === true) {
+      clearTimeout(connectTimeout);
+    }
+  }, (err) => {
+    showDebug('⚠️ Firebase 連線錯誤:' + err.message);
+  });
+
   db.ref('liveLocation/' + driverId).on('value', (snap) => {
+    clearTimeout(connectTimeout);
     const d = snap.val();
     if (!d || !d.lat) {
-      document.getElementById('viewerSub').textContent = '目前沒有位置資料';
+      document.getElementById('viewerSub').textContent = '目前沒有位置資料(代號「' + driverId + '」尚未開始分享,或代號打錯)';
       return;
     }
     const ageSec = (Date.now() - d.timestamp) / 1000;
@@ -291,27 +326,29 @@ function renderViewer(driverId) {
       ? `⚪ 未在分享中(最後更新:${Math.round(ageSec)} 秒前)`
       : `🟢 即時位置更新中`;
 
-    if (hasMapsKey && window.google) {
-      const pos = { lat: d.lat, lng: d.lng };
-      if (!map) {
-        map = new google.maps.Map(document.getElementById('map'), { center: pos, zoom: 16 });
-        marker = new google.maps.Marker({ position: pos, map, title: driverId });
-      } else {
-        map.panTo(pos);
-        marker.setPosition(pos);
-      }
+    const pos = [d.lat, d.lng];
+    if (!marker) {
+      marker = L.marker(pos, { icon: carIcon }).addTo(map);
     } else {
-      document.getElementById('fallbackList').innerHTML = `
-        <div>緯度:${d.lat.toFixed(5)}</div>
-        <div>經度:${d.lng.toFixed(5)}</div>
-        <div>速度:${d.speed ? Math.round(d.speed * 3.6) + ' km/h' : '—'}</div>
-        <div>最後更新:${new Date(d.timestamp).toLocaleTimeString('zh-TW')}(${Math.round(ageSec)} 秒前)</div>
-        <div style="margin-top:10px;">
-          <a href="https://www.google.com/maps?q=${d.lat},${d.lng}" target="_blank"
-             style="color:#60a5fa;">在 Google 地圖開啟座標 →</a>
-        </div>
-      `;
+      marker.setLatLng(pos);
     }
+    if (!hasFitOnce) {
+      map.setView(pos, 16);
+      hasFitOnce = true;
+    } else if (!isStale) {
+      map.panTo(pos);
+    }
+
+    document.getElementById('metaText').innerHTML =
+      `速度:${d.speed ? Math.round(d.speed * 3.6) + ' km/h' : '—'}　` +
+      `精確度:約 ${d.accuracy ? Math.round(d.accuracy) : '—'} 公尺<br>` +
+      `最後更新:${new Date(d.timestamp).toLocaleTimeString('zh-TW')}(${Math.round(ageSec)} 秒前)`;
+
+    const gmapLink = document.getElementById('gmapLink');
+    gmapLink.href = `https://www.google.com/maps?q=${d.lat},${d.lng}`;
+    gmapLink.style.display = 'inline';
+  }, (err) => {
+    showDebug('⚠️ 讀取位置資料失敗:' + err.message + '<br>通常是 Firebase 安全性規則擋住了讀取權限。');
   });
 
   function escapeHtml(s) {
