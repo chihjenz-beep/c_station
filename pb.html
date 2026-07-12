@@ -2041,6 +2041,7 @@ function addLeaveEntry(){
   if(typeof renderConflictOverview==='function') renderConflictOverview();
 }
 function deleteLeaveEntry(idx){
+  if(!IS_ADMIN){ alert('⚠️ 一般員工僅能新增請假登記，無法修改或刪除已登記的紀錄。如需取消/更正，請洽管理者協助處理。'); return; }
   if(isDateLeaveLocked(modalDate, 'cancel')){ alert(leaveLockMessage('cancel')); return; }
   if(!leaves[modalDate]) return;
   leaves[modalDate].splice(idx,1);
@@ -2911,9 +2912,14 @@ function renderLeaveOverview(){
   }
   container.innerHTML = rows.map(r=>{
     const locked = isDateLeaveLocked(r.dateStr, 'cancel');
-    const delBtn = locked
-      ? `<span style="font-size:11px;color:var(--warn);font-weight:600;">🔒 已鎖定</span>`
-      : `<button class="row-del" onclick="deleteLeaveFromOverview('${r.dateStr}',${r.idx})">✕ 刪除</button>`;
+    let delBtn;
+    if(!IS_ADMIN){
+      delBtn = `<span style="font-size:11px;color:var(--warn);font-weight:600;" title="一般員工無法刪除，請洽管理者">🔒 僅管理者可刪除</span>`;
+    } else if(locked){
+      delBtn = `<span style="font-size:11px;color:var(--warn);font-weight:600;">🔒 已鎖定</span>`;
+    } else {
+      delBtn = `<button class="row-del" onclick="deleteLeaveFromOverview('${r.dateStr}',${r.idx})">✕ 刪除</button>`;
+    }
     return `
     <div class="leave-overview-row">
       <span class="lo-date">${r.dateStr}</span>
@@ -2924,6 +2930,7 @@ function renderLeaveOverview(){
   `;}).join('');
 }
 function deleteLeaveFromOverview(dateStr, idx){
+  if(!IS_ADMIN){ alert('⚠️ 一般員工僅能新增請假登記，無法修改或刪除已登記的紀錄。如需取消/更正，請洽管理者協助處理。'); return; }
   if(isDateLeaveLocked(dateStr, 'cancel')){ alert(leaveLockMessage('cancel')); return; }
   if(!leaves[dateStr]) return;
   leaves[dateStr].splice(idx,1);
@@ -3629,6 +3636,7 @@ async function addAttendanceRecord(){
   alert(`已為 ${getStaffName(staffId)} 登記 ${dateStr} 的支援紀錄${photoUrls.length>0?`（含${photoUrls.length}張照片）`:''}`);
 }
 function deleteAttendanceRecord(id){
+  if(!IS_ADMIN){ alert('⚠️ 一般員工僅能新增支援填報紀錄，無法修改或刪除已填報的紀錄。如需更正，請洽管理者協助處理。'); return; }
   if(!confirm('確定刪除此筆支援紀錄？')) return;
   attendanceRecords = attendanceRecords.filter(r=>r.id!==id);
   saveStore(STORE_KEYS.attendance, attendanceRecords);
@@ -3666,6 +3674,9 @@ function renderAttendanceOverview(){
     const photosHtml = (r.photos && r.photos.length>0)
       ? r.photos.map(url=>`<a href="${url}" target="_blank" class="m9-photo-link"><img src="${url}" loading="lazy"></a>`).join('')
       : '<span style="color:var(--text-soft);font-size:11px;">無</span>';
+    const delCell = IS_ADMIN
+      ? `<button class="row-del" onclick="deleteAttendanceRecord('${r.id}')">✕ 刪除</button>`
+      : `<span style="font-size:11px;color:var(--warn);font-weight:600;" title="一般員工無法刪除，請洽管理者">🔒 僅管理者可刪除</span>`;
     html += `<tr>
       <td>${getStaffName(r.staffId)}</td>
       <td>${r.date}</td>
@@ -3674,7 +3685,7 @@ function renderAttendanceOverview(){
       <td>${r.note || '（支援）'}</td>
       <td class="num">${hours}</td>
       <td>${photosHtml}</td>
-      <td><button class="row-del" onclick="deleteAttendanceRecord('${r.id}')">✕ 刪除</button></td>
+      <td>${delCell}</td>
     </tr>`;
   });
   html += '</tbody></table>';
