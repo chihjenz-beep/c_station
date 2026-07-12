@@ -849,7 +849,7 @@
   </div>
 
   <div class="panel" id="panel-m7">
-    <div class="card">
+    <div class="card" id="m7PublishCard">
       <h2>📢 班表發布管理 <span class="badge gold">管理者操作</span></h2>
       <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
         以「月」為單位發布，發布後該月才會出現在下方員工查詢區；未發布的月份員工查詢不到。
@@ -1041,6 +1041,10 @@ function applyRoleVisibility(){
   const syncBtn = document.getElementById('syncBtn');
   if(loginBtn) loginBtn.remove();
   if(syncBtn) syncBtn.remove();
+  // M7內的「班表發布管理」是管理者專用功能，員工模式直接從DOM移除（不是CSS隱藏），
+  // 避免員工檢視網頁原始碼/開發者工具就能看到發布操作區與相關按鈕
+  const m7PublishCard = document.getElementById('m7PublishCard');
+  if(m7PublishCard) m7PublishCard.remove();
 }
 applyRoleVisibility();
 
@@ -3008,6 +3012,7 @@ function renderConflictOverview(){
 // ===========================================================
 function renderPublishedMonthList(){
   const container = document.getElementById('publishedMonthList');
+  if(!container) return; // 員工模式下「班表發布管理」卡片已從DOM移除，此函式不需要執行
   if(publishedMonths.length===0){
     container.innerHTML = '<div class="report-empty">尚無已發布的月份</div>';
     return;
