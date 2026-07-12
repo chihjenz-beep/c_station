@@ -91,7 +91,6 @@
   footer code{
     background:var(--gold-light);color:var(--brown-dark);padding:1px 5px;border-radius:4px;font-size:10.5px;
   }
-  #devHint{flex:1;text-align:center;}
   button{font-family:inherit;}
   .btn{
     background:var(--brown);color:#fff;border:none;border-radius:8px;
@@ -1009,7 +1008,6 @@
 
 <footer>
   <span id="dataStatus">資料：本機儲存</span>
-  <span id="devHint" style="display:none;">開發者請用網址加 <code>?role=admin</code> 開啟完整版</span>
   <span id="verInfo">v0.1 殼框架</span>
 </footer>
 
@@ -1043,9 +1041,6 @@ function applyRoleVisibility(){
   const syncBtn = document.getElementById('syncBtn');
   if(loginBtn) loginBtn.remove();
   if(syncBtn) syncBtn.remove();
-  // 顯示開發者提示，告知如何切換到完整版（幹部模式不需要看到此提示）
-  const devHint = document.getElementById('devHint');
-  if(devHint) devHint.style.display = '';
 }
 applyRoleVisibility();
 
