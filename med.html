@@ -330,6 +330,35 @@
     color:var(--ink-soft);
     padding:0 18px 14px;
   }
+  .water-row{
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    padding:4px 0 8px;
+  }
+  .water-cup{
+    width:44px;height:52px;
+    border:2px solid var(--line);
+    border-radius:4px 4px 8px 8px;
+    background:#fff;
+    display:flex;align-items:center;justify-content:center;
+    font-size:1.3rem;
+    cursor:pointer;
+    transition:all .12s;
+    user-select:none;
+    position:relative;
+    flex-direction:column;
+  }
+  .water-cup.filled{
+    background:#DAEEF8;
+    border-color:#5BA4C0;
+  }
+  .water-cup .cup-num{
+    font-size:.6rem;
+    color:var(--ink-soft);
+    margin-top:2px;
+    font-weight:600;
+  }
   :focus-visible{outline:2px solid var(--teal);outline-offset:2px;}
   @media (prefers-reduced-motion: reduce){
     *{transition:none !important;}
@@ -360,6 +389,7 @@
     <span><i class="dot ex"></i>運動</span>
     <span><i class="dot bp-ok"></i>血壓正常</span>
     <span><i class="dot bp-warn"></i>血壓偏高</span>
+    <span>💧喝水杯</span>
     <button class="today-btn" id="todayBtn" style="margin-left:auto;">回到今天</button>
   </div>
 
@@ -398,22 +428,48 @@
   </div>
 
   <div class="section">
-    <h3>體重 / 血壓</h3>
+    <h3>體重</h3>
     <div class="vitals-row">
       <div class="field">
         <label for="weightInput">體重 (kg)</label>
         <input type="number" inputmode="decimal" step="0.1" id="weightInput" placeholder="--">
       </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>血壓（上午）</h3>
+    <div class="vitals-row">
       <div class="field">
-        <label for="sbpInput">收縮壓</label>
-        <input type="number" inputmode="numeric" id="sbpInput" placeholder="--">
+        <label for="amSbpInput">收縮壓</label>
+        <input type="number" inputmode="numeric" id="amSbpInput" placeholder="--">
       </div>
       <div class="field">
-        <label for="dbpInput">舒張壓</label>
-        <input type="number" inputmode="numeric" id="dbpInput" placeholder="--">
+        <label for="amDbpInput">舒張壓</label>
+        <input type="number" inputmode="numeric" id="amDbpInput" placeholder="--">
       </div>
     </div>
-    <div class="bp-hint" id="bpHint"></div>
+    <div class="bp-hint" id="bpHintAm"></div>
+  </div>
+
+  <div class="section">
+    <h3>血壓（晚上）</h3>
+    <div class="vitals-row">
+      <div class="field">
+        <label for="pmSbpInput">收縮壓</label>
+        <input type="number" inputmode="numeric" id="pmSbpInput" placeholder="--">
+      </div>
+      <div class="field">
+        <label for="pmDbpInput">舒張壓</label>
+        <input type="number" inputmode="numeric" id="pmDbpInput" placeholder="--">
+      </div>
+    </div>
+    <div class="bp-hint" id="bpHintPm"></div>
+  </div>
+
+  <div class="section">
+    <h3>喝水</h3>
+    <div class="water-row" id="waterRow"></div>
   </div>
 
   <div class="sheet-footer">
@@ -454,7 +510,7 @@
 
   function getRecord(key){
     if(!data[key]){
-      data[key] = { meds:{bp:false,b12am:false,b12pm:false,ergo:false,ibu:false}, exercise:{walk:false,run:false,resistance:false}, weight:null, sbp:null, dbp:null };
+      data[key] = { meds:{bp:false,b12am:false,b12pm:false,ergo:false,ibu:false}, exercise:{walk:false,run:false,resistance:false}, weight:null, amSbp:null, amDbp:null, pmSbp:null, pmDbp:null, water:0 };
     }
     return data[key];
   }
@@ -463,7 +519,7 @@
     if(!rec) return true;
     var anyMed = rec.meds.bp || rec.meds.b12am || rec.meds.b12pm || rec.meds.ergo || rec.meds.ibu;
     var anyEx = rec.exercise.walk || rec.exercise.run || rec.exercise.resistance;
-    return !anyMed && !anyEx && !rec.weight && !rec.sbp && !rec.dbp;
+    return !anyMed && !anyEx && !rec.weight && !rec.amSbp && !rec.amDbp && !rec.pmSbp && !rec.pmDbp && !rec.water;
   }
 
   function bpLevel(sbp, dbp){
@@ -471,6 +527,13 @@
     if(sbp >= 140 || dbp >= 90) return "high";
     if(sbp >= 130 || dbp >= 85) return "elevated";
     return "normal";
+  }
+  function updateBpHintEl(hintEl, sbp, dbp){
+    var level = bpLevel(sbp, dbp);
+    if(!level){ hintEl.textContent = ""; hintEl.className = "bp-hint"; return; }
+    if(level === "high"){ hintEl.textContent = "偏高（收縮壓≥140 或 舒張壓≥90），請留意。"; hintEl.className = "bp-hint warn"; }
+    else if(level === "elevated"){ hintEl.textContent = "略偏高，建議持續觀察。"; hintEl.className = "bp-hint warn"; }
+    else { hintEl.textContent = "在一般範圍內。"; hintEl.className = "bp-hint"; }
   }
 
   function renderCalendar(){
@@ -516,21 +579,34 @@
       }
       cell.appendChild(dots);
 
-      if(rec && (rec.sbp || rec.dbp)){
-        var level = bpLevel(rec.sbp, rec.dbp);
+      function makeBpChip(sbp, dbp){
+        if(!sbp && !dbp) return null;
+        var level = bpLevel(sbp, dbp);
         var chip = document.createElement("div");
         chip.className = "bp-chip";
-        chip.textContent = (rec.sbp||"-") + "/" + (rec.dbp||"-");
+        chip.textContent = (sbp||"-") + "/" + (dbp||"-");
         if(level === "high"){ chip.style.background = "var(--alert-soft)"; chip.style.color = "var(--alert)"; }
         else if(level === "elevated"){ chip.style.background = "var(--amber-soft)"; chip.style.color = "var(--amber)"; }
         else { chip.style.background = "var(--good-soft)"; chip.style.color = "var(--good)"; }
-        cell.appendChild(chip);
+        return chip;
+      }
+      if(rec){
+        var chipAm = makeBpChip(rec.amSbp, rec.amDbp);
+        if(chipAm) cell.appendChild(chipAm);
+        var chipPm = makeBpChip(rec.pmSbp, rec.pmDbp);
+        if(chipPm) cell.appendChild(chipPm);
       }
       if(rec && rec.weight){
         var wt = document.createElement("div");
         wt.className = "wt";
         wt.textContent = rec.weight + "kg";
         cell.appendChild(wt);
+      }
+      if(rec && rec.water){
+        var wdiv = document.createElement("div");
+        wdiv.className = "wt";
+        wdiv.textContent = "💧×" + rec.water;
+        cell.appendChild(wdiv);
       }
 
       cell.addEventListener("click", function(){ openSheet(this.getAttribute("data-key")); });
@@ -556,9 +632,13 @@
       t.classList.toggle("active", !!rec[cat][k]);
     });
     weightInput.value = rec.weight || "";
-    sbpInput.value = rec.sbp || "";
-    dbpInput.value = rec.dbp || "";
-    updateBpHint(rec.sbp, rec.dbp);
+    document.getElementById("amSbpInput").value = rec.amSbp || "";
+    document.getElementById("amDbpInput").value = rec.amDbp || "";
+    document.getElementById("pmSbpInput").value = rec.pmSbp || "";
+    document.getElementById("pmDbpInput").value = rec.pmDbp || "";
+    updateBpHintEl(document.getElementById("bpHintAm"), rec.amSbp, rec.amDbp);
+    updateBpHintEl(document.getElementById("bpHintPm"), rec.pmSbp, rec.pmDbp);
+    renderWaterCups(rec.water || 0);
 
     overlay.classList.add("show");
     sheet.classList.add("show");
@@ -575,20 +655,7 @@
     selectedDateStr = null;
   }
 
-  function updateBpHint(sbp, dbp){
-    var level = bpLevel(sbp, dbp);
-    if(!level){ bpHint.textContent = ""; bpHint.className = "bp-hint"; return; }
-    if(level === "high"){
-      bpHint.textContent = "血壓偏高（收縮壓≥140 或 舒張壓≥90），建議留意並追蹤。";
-      bpHint.className = "bp-hint warn";
-    } else if(level === "elevated"){
-      bpHint.textContent = "血壓略偏高，建議持續觀察。";
-      bpHint.className = "bp-hint warn";
-    } else {
-      bpHint.textContent = "血壓在一般範圍內。";
-      bpHint.className = "bp-hint";
-    }
-  }
+
 
   document.querySelectorAll(".toggle").forEach(function(t){
     t.addEventListener("click", function(){
@@ -601,21 +668,43 @@
     });
   });
 
-  function bindNumber(input, field){
+  function bindNumber(input, field, hintId, sbpField, dbpField){
     input.addEventListener("input", function(){
       if(!selectedDateStr) return;
       var rec = getRecord(selectedDateStr);
       var v = this.value === "" ? null : parseFloat(this.value);
       rec[field] = v;
       save();
-      if(field === "sbp" || field === "dbp"){
-        updateBpHint(rec.sbp, rec.dbp);
+      if(hintId){
+        updateBpHintEl(document.getElementById(hintId), rec[sbpField], rec[dbpField]);
       }
     });
   }
   bindNumber(weightInput, "weight");
-  bindNumber(sbpInput, "sbp");
-  bindNumber(dbpInput, "dbp");
+  bindNumber(document.getElementById("amSbpInput"), "amSbp", "bpHintAm", "amSbp", "amDbp");
+  bindNumber(document.getElementById("amDbpInput"), "amDbp", "bpHintAm", "amSbp", "amDbp");
+  bindNumber(document.getElementById("pmSbpInput"), "pmSbp", "bpHintPm", "pmSbp", "pmDbp");
+  bindNumber(document.getElementById("pmDbpInput"), "pmDbp", "bpHintPm", "pmSbp", "pmDbp");
+
+  function renderWaterCups(count){
+    var row = document.getElementById("waterRow");
+    row.innerHTML = "";
+    for(var i=1;i<=5;i++){
+      (function(idx){
+        var cup = document.createElement("div");
+        cup.className = "water-cup" + (idx <= count ? " filled" : "");
+        cup.innerHTML = (idx <= count ? "💧" : "🫙") + '<div class="cup-num">' + idx + '</div>';
+        cup.addEventListener("click", function(){
+          if(!selectedDateStr) return;
+          var rec = getRecord(selectedDateStr);
+          rec.water = (rec.water === idx) ? idx - 1 : idx;
+          save();
+          renderWaterCups(rec.water);
+        });
+        row.appendChild(cup);
+      })(i);
+    }
+  }
 
   document.getElementById("closeBtn").addEventListener("click", closeSheet);
   overlay.addEventListener("click", closeSheet);
@@ -669,9 +758,10 @@
           if(!key) continue;
 
           function ck(v){ return v === "✓" || v === "v" || v === "V" || v === 1; }
+          function n(v){ return (v !== undefined && v !== "") ? parseFloat(v) : null; }
           var rec = {
             meds:{
-              bp:  ck(row[2]),
+              bp:    ck(row[2]),
               b12am: ck(row[3]),
               b12pm: ck(row[4]),
               ergo:  ck(row[5]),
@@ -682,9 +772,12 @@
               run:        ck(row[8]),
               resistance: ck(row[9])
             },
-            weight: (row[10] !== undefined && row[10] !== "") ? parseFloat(row[10]) : null,
-            sbp:    (row[11] !== undefined && row[11] !== "") ? parseFloat(row[11]) : null,
-            dbp:    (row[12] !== undefined && row[12] !== "") ? parseFloat(row[12]) : null
+            weight: n(row[10]),
+            amSbp:  n(row[11]),
+            amDbp:  n(row[12]),
+            pmSbp:  n(row[13]),
+            pmDbp:  n(row[14]),
+            water:  (row[15] !== undefined && row[15] !== "") ? parseInt(row[15]) : 0
           };
           if(recordIsEmpty(rec)) continue;
           data[key] = rec;
@@ -731,7 +824,7 @@
       alert("目前沒有任何紀錄可匯出。");
       return;
     }
-    var rows = [["日期","星期","血壓藥","B12(早)","B12(晚)","ERGO","伊普芬","散步","跑步","阻力訓練","體重(kg)","收縮壓","舒張壓"]];
+    var rows = [["日期","星期","血壓藥","B12(早)","B12(晚)","ERGO","伊普芬","散步","跑步","阻力訓練","體重(kg)","上午收縮壓","上午舒張壓","晚上收縮壓","晚上舒張壓","喝水(杯)"]];
     keys.forEach(function(key){
       var rec = data[key];
       var parts = key.split("-").map(Number);
@@ -748,12 +841,15 @@
         rec.exercise.run        ? "✓" : "",
         rec.exercise.resistance ? "✓" : "",
         rec.weight || "",
-        rec.sbp || "",
-        rec.dbp || ""
+        rec.amSbp || "",
+        rec.amDbp || "",
+        rec.pmSbp || "",
+        rec.pmDbp || "",
+        rec.water  || ""
       ]);
     });
     var ws = XLSX.utils.aoa_to_sheet(rows);
-    ws["!cols"] = [{wch:11},{wch:6},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8},{wch:6},{wch:6},{wch:10},{wch:9},{wch:8},{wch:8}];
+    ws["!cols"] = [{wch:11},{wch:6},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8},{wch:6},{wch:6},{wch:10},{wch:9},{wch:10},{wch:10},{wch:10},{wch:10},{wch:8}];
     var wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "服藥運動紀錄");
     var now = new Date();
