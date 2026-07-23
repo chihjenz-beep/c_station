@@ -148,6 +148,12 @@
   .tag-chip .x{cursor:pointer;font-weight:700;opacity:.6;}
   .tag-chip .x:hover{opacity:1;}
   .add-tag-select{font-size:11px;padding:3px 6px;border-radius:14px;}
+  .weekday-toggle{
+    display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;
+    border-radius:50%;font-size:12px;font-weight:700;cursor:pointer;user-select:none;
+    background:#EFE9DB;color:var(--text-soft);border:1px solid var(--border);
+  }
+  .weekday-toggle.active{background:var(--brown);color:#fff;border-color:var(--brown);}
 
   .teacher-card{
     border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;background:#fffefb;
@@ -292,7 +298,7 @@
     overflow:auto;max-height:70vh;border:1px solid var(--border);border-radius:8px;
     position:relative;
   }
-  .matrix-table{border-collapse:separate;border-spacing:0;font-size:15px;white-space:nowrap;}
+  .matrix-table{border-collapse:separate;border-spacing:0;font-size:12px;white-space:nowrap;}
   .matrix-table th, .matrix-table td{
     border-right:1px solid var(--border);border-bottom:1px solid var(--border);
     padding:6px 8px;text-align:center;background:var(--paper);
@@ -310,13 +316,13 @@
     position:sticky;left:0;top:0;z-index:4;min-width:84px;
   }
   .matrix-cell{
-    min-width:48px;min-height:44px;height:auto;cursor:pointer;font-size:13.5px;line-height:1.2;
+    min-width:48px;min-height:44px;height:auto;cursor:pointer;font-size:10.8px;line-height:1.2;
     padding:0;vertical-align:top;position:relative;
   }
   .matrix-cell:hover{filter:brightness(0.93);}
   .matrix-cell.conflict-cell{box-shadow:inset 0 0 0 2px var(--danger);}
   .matrix-cell.multi-site::after{
-    content:"◆"; position:absolute; top:1px; right:3px; font-size:10px; color:#fff; opacity:.9; z-index:1;
+    content:"◆"; position:absolute; top:1px; right:3px; font-size:8px; color:#fff; opacity:.9; z-index:1;
   }
   .mc-cell-inner{display:flex;flex-direction:column;height:100%;width:100%;}
   .mc-seg{
@@ -325,10 +331,10 @@
   }
   .mc-seg:not(:last-child){border-bottom:1px solid rgba(255,255,255,0.5);}
   .matrix-cell .mc-site{font-weight:700;display:block;}
-  .matrix-cell .mc-time{display:block;opacity:.85;font-size:11.5px;}
+  .matrix-cell .mc-time{display:block;opacity:.85;font-size:9.2px;}
   .matrix-cell.matrix-leave-cell{background:#e8e2d5;}
   .matrix-cell .mc-leave{font-weight:700;display:block;color:var(--text-soft);text-align:center;padding:3px 4px;}
-  .matrix-legend{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;font-size:13.5px;}
+  .matrix-legend{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;font-size:10.8px;}
   .matrix-legend-chip{padding:3px 9px;border-radius:10px;color:#fff;font-weight:600;}
   .bulk-rule-count{
     font-size:12px;color:var(--brown);background:var(--gold-light);border-radius:8px;
@@ -474,6 +480,15 @@
       <div style="margin-top:10px;display:flex;gap:8px;">
         <input type="text" id="newStaffName" placeholder="新增員工姓名" style="flex:1;">
         <button class="btn" onclick="addStaff()">＋ 新增員工</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🏥 診所上班日設定</h2>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">設定診所固定的每週上班日，供M5衝突偵測模組稽核「當天完全沒有安排人力」使用</div>
+      <div class="site-role-row" style="margin-top:0;">
+        <span class="role-label">上班日</span>
+        <div class="tag-list" id="clinicWeekdayList"></div>
       </div>
     </div>
 
@@ -829,7 +844,9 @@
       <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
         掃描所有已有排班資料的日期，列出：
         <span class="badge danger">衝突①</span> 同人同時段跨地點重疊　
-        <span class="badge danger">衝突②</span> 已登記請假/排休卻被排班<br>
+        <span class="badge danger">衝突②</span> 已登記請假/排休卻被排班　
+        <span class="badge" style="background:var(--warn);color:#fff;">提醒③</span> 據點當天完全沒有安排人力<br>
+        （提醒③已排除國定假日，以及各據點/診所在「M1 員工管理」設定的營運星期，例如北華村僅設定週二、診所固定休週三與週日；可到M1調整）<br>
         點擊任一筆可直接跳轉到當日排班彈窗處理。
       </div>
       <div id="conflictSummary" style="margin-bottom:10px;"></div>
@@ -1057,7 +1074,8 @@ const STORE_KEYS = {
   sites: 'sched_sites',
   externalTeachers: 'sched_externalTeachers',
   publishedMonths: 'sched_publishedMonths',
-  attendance: 'sched_attendance'
+  attendance: 'sched_attendance',
+  clinicOperatingWeekdays: 'sched_clinicOperatingWeekdays'
 };
 
 function loadStore(key, fallback){
@@ -1082,7 +1100,11 @@ const SYNC_MAP = {
   },
   sched_sites: {
     saveAction: 'saveSchedSites',
-    buildPayload: () => ({ sites: sites.map(s=>({ id:s.id, name:s.name, mainStaffIds:s.mainStaffIds, reliefStaffIds:s.reliefStaffIds })) }),
+    buildPayload: () => ({ sites: sites.map(s=>({ id:s.id, name:s.name, mainStaffIds:s.mainStaffIds, reliefStaffIds:s.reliefStaffIds, operatingWeekdays:s.operatingWeekdays })) }),
+  },
+  sched_clinicOperatingWeekdays: {
+    saveAction: 'saveSchedClinicHours',
+    buildPayload: () => ({ operatingWeekdays: clinicOperatingWeekdays }),
   },
   sched_externalTeachers: {
     saveAction: 'saveSchedTeachers',
@@ -1209,7 +1231,19 @@ async function pullAllFromGAS(){
   setSyncStatusUI();
   const tasks = [
     { getAction:'getSchedStaff',     apply: r => { if(r.staff && r.staff.length){ staff = r.staff; saveLocalOnly(STORE_KEYS.staff, staff); } } },
-    { getAction:'getSchedSites',     apply: r => { if(r.sites && r.sites.length){ sites = r.sites; saveLocalOnly(STORE_KEYS.sites, sites); } } },
+    { getAction:'getSchedSites',     apply: r => {
+        if(r.sites && r.sites.length){
+          sites = r.sites;
+          // 舊版後端尚未同步operatingWeekdays欄位時，拉回來的資料可能沒有這個欄位，
+          // 此處重新補上預設值，避免拉取覆蓋掉本機原本補過的預設(尤其北華村的例外設定)
+          sites.forEach(site=>{
+            if(!site.operatingWeekdays || !site.operatingWeekdays.length){
+              site.operatingWeekdays = site.name==='北華村' ? [2] : [1,2,3,4,5];
+            }
+          });
+          saveLocalOnly(STORE_KEYS.sites, sites);
+        }
+      } },
     { getAction:'getSchedTeachers',  apply: r => { if(r.teachers){ externalTeachers = r.teachers; saveLocalOnly(STORE_KEYS.externalTeachers, externalTeachers); } } },
     { getAction:'getSchedTemplates', apply: r => { if(r.templates && r.templates.length){ shiftTemplates = r.templates; saveLocalOnly(STORE_KEYS.shiftTemplates, shiftTemplates); } } },
     { getAction:'getSchedSchedule',  apply: r => {
@@ -1236,6 +1270,7 @@ async function pullAllFromGAS(){
       } },
     { getAction:'getSchedPublished',  apply: r => { if(r.publishedMonths){ publishedMonths = r.publishedMonths; saveLocalOnly(STORE_KEYS.publishedMonths, publishedMonths); } } },
     { getAction:'getSchedAttendance', apply: r => { if(r.attendance){ attendanceRecords = r.attendance; saveLocalOnly(STORE_KEYS.attendance, attendanceRecords); } } },
+    { getAction:'getSchedClinicHours', apply: r => { if(r.operatingWeekdays && r.operatingWeekdays.length){ clinicOperatingWeekdays = r.operatingWeekdays; saveLocalOnly(STORE_KEYS.clinicOperatingWeekdays, clinicOperatingWeekdays); } } },
   ];
   try{
     let failCount = 0;
@@ -1310,7 +1345,8 @@ function buildDefaultSites(){
     id: uid('site'),
     name: name,
     mainStaffIds: [],
-    reliefStaffIds: []
+    reliefStaffIds: [],
+    operatingWeekdays: name==='北華村' ? [2] : [1,2,3,4,5]
   }));
 }
 
@@ -1375,6 +1411,16 @@ function renderM4LockBanner(){
   banner.innerHTML = `<div class="lock-banner">🔒 目前鎖定月份：<strong>${lockedMonths.join('、')}</strong>（本月一律鎖定；下個月自21號起鎖定）的請假登記與取消/刪除皆已鎖定。若需臨時請假，請洽主管協調班表。</div>`;
 }
 let sites    = loadStore(STORE_KEYS.sites, null) || buildDefaultSites();
+// 資料相容性處理：舊資料的據點物件沒有 operatingWeekdays 欄位，補上預設值
+// （0=日,1=一,2=二,3=三,4=四,5=五,6=六）；北華村原本是寫死在程式碼裡的例外(僅週二上課)，
+// 這裡做一次性遷移改成可在M1介面編輯的資料，之後修改直接透過UI即可，不用再改程式碼
+sites.forEach(site=>{
+  if(!site.operatingWeekdays){
+    site.operatingWeekdays = site.name==='北華村' ? [2] : [1,2,3,4,5];
+  }
+});
+// 診所固定上班日設定（預設週一、二、四、五、六，固定休週三、週日）；可在M1「🏥 診所上班日設定」卡片調整
+let clinicOperatingWeekdays = loadStore(STORE_KEYS.clinicOperatingWeekdays, null) || [1,2,4,5,6];
 let externalTeachers = loadStore(STORE_KEYS.externalTeachers, []); // [{id, name, type:'internal'|'external', staffId|null, contact, assignments:[{siteId, categories:[]}]}]
 let publishedMonths = loadStore(STORE_KEYS.publishedMonths, []); // ['2026-06', '2026-07', ...] 已發布的月份清單(YYYY-MM)
 let attendanceRecords = loadStore(STORE_KEYS.attendance, []); // [{id, staffId, date, site:'clinic'|siteId|'other', otherLabel, start, end, note}]
@@ -1471,11 +1517,21 @@ function addStaff(){
 // ===========================================================
 function renderSites(){
   const container = document.getElementById('siteList');
+  const WEEKDAY_LABELS = ['日','一','二','三','四','五','六'];
   container.innerHTML = sites.map(site=>`
     <div class="site-card">
       <div class="site-head">
         <span class="site-name">📍 ${site.name}</span>
         <button class="row-del" onclick="deleteSite('${site.id}')">✕ 刪除據點</button>
+      </div>
+      <div class="site-role-row">
+        <span class="role-label">上班日</span>
+        <div class="tag-list">
+          ${WEEKDAY_LABELS.map((label, dow)=>{
+            const active = (site.operatingWeekdays||[]).includes(dow);
+            return `<span class="weekday-toggle ${active?'active':''}" onclick="toggleSiteOperatingDay('${site.id}',${dow})">${label}</span>`;
+          }).join('')}
+        </div>
       </div>
       <div class="site-role-row">
         <span class="role-label">主責人員</span>
@@ -1499,6 +1555,38 @@ function renderSites(){
       </div>
     </div>
   `).join('');
+}
+function toggleSiteOperatingDay(siteId, dow){
+  const site = sites.find(x=>x.id===siteId);
+  if(!site) return;
+  if(!site.operatingWeekdays) site.operatingWeekdays = [1,2,3,4,5];
+  if(site.operatingWeekdays.includes(dow)){
+    site.operatingWeekdays = site.operatingWeekdays.filter(d=>d!==dow);
+  } else {
+    site.operatingWeekdays.push(dow);
+  }
+  saveStore(STORE_KEYS.sites, sites);
+  renderSites();
+  if(typeof renderConflictOverview==='function') renderConflictOverview();
+}
+function renderClinicWeekdays(){
+  const container = document.getElementById('clinicWeekdayList');
+  if(!container) return;
+  const WEEKDAY_LABELS = ['日','一','二','三','四','五','六'];
+  container.innerHTML = WEEKDAY_LABELS.map((label, dow)=>{
+    const active = clinicOperatingWeekdays.includes(dow);
+    return `<span class="weekday-toggle ${active?'active':''}" onclick="toggleClinicOperatingDay(${dow})">${label}</span>`;
+  }).join('');
+}
+function toggleClinicOperatingDay(dow){
+  if(clinicOperatingWeekdays.includes(dow)){
+    clinicOperatingWeekdays = clinicOperatingWeekdays.filter(d=>d!==dow);
+  } else {
+    clinicOperatingWeekdays.push(dow);
+  }
+  saveStore(STORE_KEYS.clinicOperatingWeekdays, clinicOperatingWeekdays);
+  renderClinicWeekdays();
+  if(typeof renderConflictOverview==='function') renderConflictOverview();
 }
 function addSiteRole(siteId, role, staffId){
   if(!staffId) return;
@@ -1531,7 +1619,7 @@ function addSite(){
   const inp = document.getElementById('newSiteName');
   const name = inp.value.trim();
   if(!name){ alert('請輸入據點名稱'); return; }
-  sites.push({ id: uid('site'), name, mainStaffIds:[], reliefStaffIds:[] });
+  sites.push({ id: uid('site'), name, mainStaffIds:[], reliefStaffIds:[], operatingWeekdays:[1,2,3,4,5] });
   saveStore(STORE_KEYS.sites, sites);
   inp.value='';
   renderSites();
@@ -2969,29 +3057,90 @@ function scanAllConflicts(){
   });
   return results;
 }
+// ===========================================================
+// 據點營運日規則 + 國定假日名單（用於M5「據點漏排」檢核，避免把
+// 「本來就沒開課」的日子誤判成漏排）
+// 據點與診所的營運星期改為在M1模組介面設定（site.operatingWeekdays／
+// clinicOperatingWeekdays），不再寫死於程式碼中；這裡只保留一個
+// 保底預設值，供尚未設定過的舊資料使用。
+// ===========================================================
+const DEFAULT_SITE_OPERATING_WEEKDAYS = [1,2,3,4,5]; // 保底預設：週一至週五
+function getSiteOperatingWeekdays(site){
+  return (site.operatingWeekdays && site.operatingWeekdays.length) ? site.operatingWeekdays : DEFAULT_SITE_OPERATING_WEEKDAYS;
+}
+// 中華民國115年（2026年）國定假日／連假名單（依行政院人事行政總處公布之办公日曆表）
+// ⚠️ 此名單需每年手動更新：政府通常於當年6月底前公布次年度行事曆，屆時請更新此陣列
+const NATIONAL_HOLIDAYS_2026 = [
+  '2026-01-01', // 元旦
+  '2026-02-14','2026-02-15','2026-02-16','2026-02-17','2026-02-18','2026-02-19','2026-02-20','2026-02-21','2026-02-22', // 春節連假（含小年夜補假、除夕、初一~初三）
+  '2026-02-28', // 和平紀念日
+  '2026-04-04', // 兒童節
+  '2026-04-05', // 清明節
+  '2026-05-01', // 勞動節
+  '2026-06-19', // 端午節
+  '2026-09-25', // 中秋節
+  '2026-09-28', // 教師節
+  '2026-10-09', // 國慶日補假（10/10適逢週六）
+  '2026-10-10', // 國慶日
+  '2026-10-25', // 台灣光復節
+  '2026-10-26', // 台灣光復節補假（10/25適逢週日）
+  '2026-12-25', // 行憲紀念日
+];
+function isNationalHoliday(dateStr){
+  return NATIONAL_HOLIDAYS_2026.includes(dateStr);
+}
+// 檢核據點（含診所）某天是否完全沒有安排人力：以「有排班紀錄的日期」視為系統有在運作的一天，
+// 逐一檢查診所與每個據點當天是否至少有一筆排班；完全沒有的話視為漏排（提醒管理者確認是否為
+// 該據點/診所當天原本就沒開，或是單純漏排忘記排班）。
+// 會先排除：①國定假日（一律停課，不檢查任何據點/診所）②當天本來就不營運的星期
+// （常規據點週六日不檢查；北華村除了週二以外都不檢查；診所週三、週日不檢查）
+function scanSiteCoverageGaps(){
+  const gaps = [];
+  const activeDates = Object.keys(schedule).filter(d=>(schedule[d]||[]).length>0).sort();
+  activeDates.forEach(dateStr=>{
+    if(isNationalHoliday(dateStr)) return; // 國定假日一律停課，不檢查
+    const dow = new Date(dateStr+'T00:00:00').getDay();
+    const assignedSites = new Set((schedule[dateStr]||[]).map(e=>e.site));
+    // 診所
+    if(clinicOperatingWeekdays.includes(dow) && !assignedSites.has('clinic')){
+      gaps.push({ dateStr, siteId: 'clinic' });
+    }
+    // 各社區據點
+    sites.forEach(site=>{
+      const operatingWeekdays = getSiteOperatingWeekdays(site);
+      if(!operatingWeekdays.includes(dow)) return; // 該據點今天本來就不上課，不檢查
+      if(!assignedSites.has(site.id)){
+        gaps.push({ dateStr, siteId: site.id });
+      }
+    });
+  });
+  return gaps;
+}
 function renderConflictOverview(){
   const conflicts = scanAllConflicts();
+  const gaps = scanSiteCoverageGaps();
   const summaryEl = document.getElementById('conflictSummary');
   const listEl = document.getElementById('conflictList');
 
   const overlapCount = conflicts.filter(c=>c.reasons.includes('overlap')).length;
   const leaveCount = conflicts.filter(c=>c.reasons.includes('leave')).length;
-  const dateCount = new Set(conflicts.map(c=>c.dateStr)).size;
+  const dateCount = new Set([...conflicts.map(c=>c.dateStr), ...gaps.map(g=>g.dateStr)]).size;
 
   summaryEl.innerHTML = `
     <div class="conflict-stat-row">
       <div class="conflict-stat-card"><div class="num">${conflicts.length}</div><div class="lbl">總衝突筆數</div></div>
       <div class="conflict-stat-card"><div class="num">${overlapCount}</div><div class="lbl">跨地點重疊</div></div>
       <div class="conflict-stat-card"><div class="num">${leaveCount}</div><div class="lbl">與請假衝突</div></div>
+      <div class="conflict-stat-card"><div class="num">${gaps.length}</div><div class="lbl">據點未安排人力</div></div>
       <div class="conflict-stat-card"><div class="num">${dateCount}</div><div class="lbl">受影響日期</div></div>
     </div>
   `;
 
-  if(conflicts.length===0){
-    listEl.innerHTML = '<div class="no-conflict-box">✅ 目前沒有偵測到任何排班衝突</div>';
+  if(conflicts.length===0 && gaps.length===0){
+    listEl.innerHTML = '<div class="no-conflict-box">✅ 目前沒有偵測到任何排班衝突或據點漏排</div>';
     return;
   }
-  listEl.innerHTML = conflicts.map(c=>{
+  const conflictItemsHtml = conflicts.map(c=>{
     const reasonLabels = c.reasons.map(r=>r==='overlap'?'跨地點重疊':'與請假衝突').join('、');
     return `
       <div class="conflict-item" onclick="jumpToScheduleDate('${c.dateStr}')">
@@ -3005,6 +3154,16 @@ function renderConflictOverview(){
       </div>
     `;
   }).join('');
+  const gapItemsHtml = gaps.map(g=>`
+    <div class="conflict-item" onclick="jumpToScheduleDate('${g.dateStr}')">
+      <div class="ci-date">📅 ${g.dateStr}</div>
+      <div class="ci-detail">
+        <span class="site-badge station">${siteLabel(g.siteId)}</span>
+        <span class="ci-reason" style="color:var(--warn);">⚠ 當天完全沒有安排人力</span>
+      </div>
+    </div>
+  `).join('');
+  listEl.innerHTML = conflictItemsHtml + gapItemsHtml;
 }
 
 // ===========================================================
@@ -3697,6 +3856,7 @@ function renderAllAfterSync(){
   if(IS_ADMIN){
     renderStaffTable();
     renderSites();
+    renderClinicWeekdays();
     populateTeacherStaffSelect();
     toggleTeacherInput();
     renderTeachers();
