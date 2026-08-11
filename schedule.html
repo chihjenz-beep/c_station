@@ -1,0 +1,4203 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>平安長照醫療體系排班系統</title>
+<!-- PWA：可加到手機主畫面、獨立視窗開啟、離線時仍可打開App殼 -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#6b4f3b">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="平安排班">
+<style>
+  :root{
+    --bg:#f5f0e6;
+    --paper:#fffdf8;
+    --brown-dark:#3a2e22;
+    --brown:#6b4f3b;
+    --brown-light:#a98c6c;
+    --gold:#c9a35a;
+    --gold-light:#e8d8b0;
+    --clinic:#2e6096;
+    --clinic-bg:#e3edf7;
+    --station:#3a7d4f;
+    --station-bg:#e3f2e8;
+    --danger:#b3392c;
+    --danger-bg:#fbe6e3;
+    --warn:#c98a2e;
+    --warn-bg:#fbf0dc;
+    --text:#2c241c;
+    --text-soft:#6b5e4f;
+    --border:#ddd0b8;
+    --radius:10px;
+    --shadow:0 2px 8px rgba(58,46,34,0.12);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+    background:var(--bg);color:var(--text);
+  }
+  header{
+    background:linear-gradient(135deg,var(--brown-dark),var(--brown));
+    color:var(--gold-light);
+    padding:14px 18px;
+    display:flex;align-items:center;justify-content:space-between;
+    box-shadow:var(--shadow);
+    position:sticky;top:0;z-index:50;
+  }
+  header h1{margin:0;font-size:17px;font-weight:700;letter-spacing:.5px;}
+  header .sub{font-size:11px;color:var(--gold-light);opacity:.8;margin-top:2px;}
+  header .actions{display:flex;gap:8px;}
+  .icon-btn{
+    background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.25);
+    color:var(--gold-light);border-radius:8px;padding:6px 10px;font-size:12px;
+    cursor:pointer;
+  }
+  nav.tabs{
+    display:flex;overflow-x:auto;background:var(--paper);
+    border-bottom:2px solid var(--border);
+    position:sticky;top:60px;z-index:40;
+    -webkit-overflow-scrolling:touch;
+  }
+  nav.tabs::-webkit-scrollbar{height:3px;}
+  .tab-btn{
+    flex:0 0 auto;padding:11px 16px;font-size:13px;font-weight:600;
+    color:var(--text-soft);background:none;border:none;cursor:pointer;
+    border-bottom:3px solid transparent;white-space:nowrap;
+  }
+  .tab-btn.active{color:var(--brown-dark);border-bottom-color:var(--gold);}
+  main{padding:14px;max-width:1600px;margin:0 auto;padding-bottom:60px;}
+  .panel{display:none;}
+  .panel.active{display:block;animation:fade .2s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+  .card{
+    background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);
+    padding:16px;margin-bottom:14px;box-shadow:var(--shadow);
+  }
+  .card h2{margin:0 0 12px;font-size:15px;color:var(--brown-dark);display:flex;align-items:center;gap:8px;}
+  .badge{
+    display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;
+    background:var(--gold-light);color:var(--brown-dark);
+  }
+  .badge.clinic{background:var(--clinic-bg);color:var(--clinic);}
+  .badge.station{background:var(--station-bg);color:var(--station);}
+  .badge.danger{background:var(--danger-bg);color:var(--danger);}
+  .wip{
+    text-align:center;padding:50px 20px;color:var(--text-soft);
+  }
+  .wip .icon{font-size:36px;margin-bottom:10px;opacity:.5;}
+  .wip .title{font-size:14px;font-weight:700;color:var(--brown);margin-bottom:4px;}
+  .wip .desc{font-size:12px;line-height:1.7;}
+  footer{
+    position:fixed;bottom:0;left:0;right:0;background:var(--paper);
+    border-top:1px solid var(--border);padding:8px 14px;font-size:11px;
+    color:var(--text-soft);display:flex;justify-content:space-between;gap:10px;
+  }
+  footer code{
+    background:var(--gold-light);color:var(--brown-dark);padding:1px 5px;border-radius:4px;font-size:10.5px;
+  }
+  button{font-family:inherit;}
+  .btn{
+    background:var(--brown);color:#fff;border:none;border-radius:8px;
+    padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;
+  }
+  .btn.outline{background:none;border:1px solid var(--brown-light);color:var(--brown);}
+  .btn.gold{background:var(--gold);color:var(--brown-dark);}
+
+  /* ===== M1 styles ===== */
+  input[type="text"], select{
+    border:1px solid var(--border);border-radius:8px;padding:8px 10px;
+    font-size:13px;font-family:inherit;background:var(--paper);color:var(--text);
+  }
+  .data-table{width:100%;border-collapse:collapse;font-size:13px;}
+  .data-table th{
+    text-align:left;padding:8px 10px;background:var(--gold-light);color:var(--brown-dark);
+    font-size:12px;border-bottom:2px solid var(--border);white-space:nowrap;
+  }
+  .data-table td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  .data-table tr:hover td{background:#faf6ea;}
+  .pill-select{
+    display:flex;gap:4px;flex-wrap:wrap;
+  }
+  .pill{
+    font-size:11px;padding:3px 9px;border-radius:20px;border:1px solid var(--border);
+    background:#fff;cursor:pointer;color:var(--text-soft);user-select:none;
+  }
+  .pill.active.clinic{background:var(--clinic-bg);color:var(--clinic);border-color:var(--clinic);}
+  .pill.active.station{background:var(--station-bg);color:var(--station);border-color:var(--station);}
+  .pill.active.both{background:var(--gold-light);color:var(--brown-dark);border-color:var(--gold);}
+  .row-del{
+    background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px;padding:2px 6px;
+  }
+  .toggle-active{
+    font-size:11px;padding:3px 9px;border-radius:20px;cursor:pointer;border:1px solid var(--border);
+  }
+  .toggle-active.on{background:var(--station-bg);color:var(--station);border-color:var(--station);}
+  .toggle-active.off{background:var(--danger-bg);color:var(--danger);border-color:var(--danger);}
+
+  .site-card{
+    border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;background:#fffefb;
+  }
+  .site-card .site-head{
+    display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;
+  }
+  .site-card .site-name{font-weight:700;color:var(--brown-dark);font-size:14px;}
+  .site-role-row{display:flex;gap:8px;align-items:flex-start;margin-top:6px;font-size:12px;}
+  .site-role-row .role-label{flex:0 0 70px;color:var(--text-soft);padding-top:4px;}
+  .tag-list{display:flex;flex-wrap:wrap;gap:5px;flex:1;}
+  .tag-chip{
+    display:flex;align-items:center;gap:4px;background:var(--gold-light);color:var(--brown-dark);
+    font-size:11px;padding:3px 8px;border-radius:14px;
+  }
+  .tag-chip.relief{background:var(--station-bg);color:var(--station);}
+  .tag-chip .x{cursor:pointer;font-weight:700;opacity:.6;}
+  .tag-chip .x:hover{opacity:1;}
+  .add-tag-select{font-size:11px;padding:3px 6px;border-radius:14px;}
+  .weekday-toggle{
+    display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;
+    border-radius:50%;font-size:12px;font-weight:700;cursor:pointer;user-select:none;
+    background:#EFE9DB;color:var(--text-soft);border:1px solid var(--border);
+  }
+  .weekday-toggle.active{background:var(--brown);color:#fff;border-color:var(--brown);}
+
+  .teacher-card{
+    border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;background:#fffefb;
+  }
+  .teacher-card .t-head{display:flex;align-items:center;justify-content:space-between;}
+  .teacher-card .t-name{font-weight:700;color:var(--brown-dark);font-size:13px;}
+  .teacher-card .t-type{font-size:10px;padding:2px 7px;border-radius:10px;margin-left:6px;}
+  .teacher-card .t-type.internal{background:var(--clinic-bg);color:var(--clinic);}
+  .teacher-card .t-type.external{background:var(--warn-bg);color:var(--warn);}
+  .teacher-assign-row{display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap;font-size:12px;}
+  .cat-chip{
+    font-size:10px;padding:2px 8px;border-radius:10px;background:var(--gold-light);color:var(--brown-dark);
+    cursor:pointer;border:1px solid transparent;
+  }
+  .cat-chip.active{background:var(--brown);color:#fff;}
+  .teacher-add-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  .assign-block{margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);}
+  .assign-line{display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:5px;flex-wrap:wrap;}
+  .assign-line .site-tag{font-weight:600;color:var(--brown);min-width:60px;}
+
+  /* ===== M2 styles ===== */
+  .tpl-card{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:6px;background:#fffefb;
+  }
+  .tpl-card .tpl-info{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .tpl-card .tpl-name{font-weight:700;color:var(--brown-dark);font-size:13px;min-width:70px;}
+  .tpl-card .tpl-time{font-size:12px;color:var(--text-soft);}
+  .tpl-card input[type="time"]{font-size:12px;padding:5px 6px;width:90px;}
+  input[type="time"]{
+    border:1px solid var(--border);border-radius:8px;padding:8px 10px;
+    font-size:13px;font-family:inherit;background:var(--paper);color:var(--text);
+  }
+  .quick-btn{
+    background:var(--gold-light);color:var(--brown-dark);border:1px solid var(--gold);
+    border-radius:20px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;
+  }
+  .quick-btn:hover{background:var(--gold);}
+
+  /* ===== M3 styles ===== */
+  .cal-grid{
+    display:grid;grid-template-columns:repeat(7,1fr);gap:4px;
+  }
+  .cal-weekday{
+    text-align:center;font-size:11px;font-weight:700;color:var(--brown);padding:4px 0;
+  }
+  .cal-cell{
+    background:#fffefb;border:1px solid var(--border);border-radius:6px;
+    min-height:74px;padding:4px;cursor:pointer;position:relative;
+    display:flex;flex-direction:column;gap:2px;
+  }
+  .cal-cell:hover{background:#fbf6ea;}
+  .cal-cell.other-month{opacity:.35;}
+  .cal-cell.today{border-color:var(--gold);border-width:2px;}
+  .cal-cell .cal-daynum{font-size:11px;font-weight:700;color:var(--text-soft);}
+  .cal-cell.has-conflict{box-shadow:inset 0 0 0 2px var(--danger);}
+  .entry-tag{
+    font-size:9.5px;padding:1px 5px;border-radius:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    background:var(--clinic-bg);color:var(--clinic);
+  }
+  .entry-tag.station{background:var(--station-bg);color:var(--station);}
+  .entry-tag.conflict{background:var(--danger-bg);color:var(--danger);font-weight:700;}
+  .entry-more{font-size:9px;color:var(--text-soft);padding-left:4px;}
+
+  .cal-grid.week-mode{grid-template-columns:repeat(7,1fr);}
+  .cal-grid.week-mode .cal-cell{min-height:160px;}
+
+  .modal-overlay{
+    display:none;position:fixed;inset:0;background:rgba(44,36,28,0.5);z-index:100;
+    align-items:flex-end;justify-content:center;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal-box{
+    background:var(--paper);width:100%;max-width:480px;border-radius:16px 16px 0 0;
+    max-height:85vh;display:flex;flex-direction:column;box-shadow:0 -4px 20px rgba(0,0,0,0.2);
+  }
+  .modal-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 16px;border-bottom:1px solid var(--border);font-weight:700;color:var(--brown-dark);
+  }
+  .modal-close{background:none;border:none;font-size:18px;color:var(--text-soft);cursor:pointer;}
+  .modal-body{padding:14px 16px;overflow-y:auto;}
+  .entry-row{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    padding:8px 10px;border-radius:8px;margin-bottom:6px;background:#fffefb;border:1px solid var(--border);
+    font-size:12px;
+  }
+  .entry-row.conflict{border-color:var(--danger);background:var(--danger-bg);}
+  .entry-row .entry-main{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .entry-row .site-badge{
+    font-size:10px;padding:2px 7px;border-radius:10px;background:var(--clinic-bg);color:var(--clinic);
+  }
+  .entry-row .site-badge.station{background:var(--station-bg);color:var(--station);}
+  .modal-add-form{
+    border-top:1px dashed var(--border);margin-top:10px;padding-top:10px;
+  }
+  .form-line{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .form-line label{flex:0 0 44px;font-size:12px;color:var(--text-soft);}
+  .form-line select{flex:1;}
+  .quick-btn-row{display:flex;gap:4px;flex-wrap:wrap;flex:1;}
+  .quick-btn-row .qbtn{
+    font-size:11px;padding:5px 9px;border-radius:14px;background:var(--gold-light);color:var(--brown-dark);
+    border:1px solid var(--gold);cursor:pointer;
+  }
+
+  /* ===== 批量排班 styles ===== */
+  .bulk-staff-checklist{
+    flex:1;display:flex;flex-wrap:wrap;gap:5px;max-height:140px;overflow-y:auto;
+    padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--paper);
+  }
+  .bulk-staff-chip{
+    font-size:11px;padding:4px 10px;border-radius:14px;border:1px solid var(--border);
+    background:#fff;color:var(--text-soft);cursor:pointer;user-select:none;
+  }
+  .bulk-staff-chip.selected{background:var(--gold);color:var(--brown-dark);border-color:var(--gold);font-weight:600;}
+  .target-site-row{
+    display:flex;align-items:center;gap:8px;padding:6px 8px;margin-bottom:4px;
+    background:var(--paper);border:1px solid var(--border);border-radius:8px;font-size:12px;
+  }
+  .target-site-row .tsr-name{flex:0 0 60px;font-weight:600;color:var(--brown-dark);}
+  .target-site-row select{flex:1;font-size:12px;padding:5px 8px;}
+  .m9-photo-preview{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+  .m9-photo-thumb{position:relative;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--border);}
+  .m9-photo-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .m9-photo-thumb .m9-photo-remove{
+    position:absolute;top:1px;right:1px;background:rgba(0,0,0,0.6);color:#fff;border:none;
+    border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;line-height:1;
+  }
+  .m9-photo-link{
+    display:inline-block;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--border);
+    margin:0 6px 6px 0;
+  }
+  .m9-photo-link img{width:100%;height:100%;object-fit:cover;display:block;}
+  .bulk-report-box{
+    border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;
+  }
+  .bulk-report-box.success{background:var(--station-bg);border-color:var(--station);}
+  .bulk-report-box .skip-line{color:var(--warn);margin-top:6px;}
+
+  /* ===== M3 矩陣總覽表 styles ===== */
+  .matrix-scroll{
+    overflow:auto;max-height:70vh;border:1px solid var(--border);border-radius:8px;
+    position:relative;
+  }
+  .matrix-table{border-collapse:separate;border-spacing:0;font-size:12px;white-space:nowrap;}
+  .matrix-table th, .matrix-table td{
+    border-right:1px solid var(--border);border-bottom:1px solid var(--border);
+    padding:6px 8px;text-align:center;background:var(--paper);
+  }
+  .matrix-table thead th{
+    position:sticky;top:0;z-index:3;background:var(--gold-light);color:var(--brown-dark);
+    font-weight:700;min-width:46px;
+  }
+  .matrix-table thead th.weekend-col{background:#ecd9b8;}
+  .matrix-table tbody th{
+    position:sticky;left:0;z-index:2;background:var(--gold-light);color:var(--brown-dark);
+    text-align:left;font-weight:700;min-width:84px;max-width:84px;overflow:hidden;text-overflow:ellipsis;
+  }
+  .matrix-table thead th:first-child{
+    position:sticky;left:0;top:0;z-index:4;min-width:84px;
+  }
+  .matrix-cell{
+    min-width:48px;min-height:44px;height:auto;cursor:pointer;font-size:10.8px;line-height:1.2;
+    padding:0;vertical-align:top;position:relative;
+  }
+  .matrix-cell:hover{filter:brightness(0.93);}
+  .matrix-cell.conflict-cell{box-shadow:inset 0 0 0 2px var(--danger);}
+  .matrix-cell.multi-site::after{
+    content:"◆"; position:absolute; top:1px; right:3px; font-size:8px; color:#fff; opacity:.9; z-index:1;
+  }
+  .mc-cell-inner{display:flex;flex-direction:column;height:100%;width:100%;}
+  .mc-seg{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    color:#fff;padding:3px 4px;
+  }
+  .mc-seg:not(:last-child){border-bottom:1px solid rgba(255,255,255,0.5);}
+  .matrix-cell .mc-site{font-weight:700;display:block;}
+  .matrix-cell.matrix-leave-cell{background:#e8e2d5;}
+  .matrix-cell .mc-leave{font-weight:700;display:block;color:var(--text-soft);text-align:center;padding:3px 4px;}
+  .matrix-legend{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;font-size:10.8px;}
+  .matrix-legend-chip{padding:3px 9px;border-radius:10px;color:#fff;font-weight:600;}
+  .bulk-rule-count{
+    font-size:12px;color:var(--brown);background:var(--gold-light);border-radius:8px;
+    padding:8px 12px;margin-top:8px;display:none;
+  }
+  .bulk-rule-count.has-rules{display:block;}
+  .bulk-rule-item{display:flex;align-items:center;justify-content:space-between;padding:2px 0;}
+  .bulk-rule-item .x{color:var(--danger);cursor:pointer;font-weight:700;}
+
+  /* ===== M4 styles ===== */
+  .leave-form{border-top:none;margin-top:0;padding-top:0;}
+  .qbtn.leave-type{background:var(--warn-bg);color:var(--warn);border-color:var(--warn);}
+  .qbtn.leave-type.selected{background:var(--warn);color:#fff;}
+  .leave-row{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    padding:7px 10px;border-radius:8px;margin-bottom:6px;background:var(--warn-bg);border:1px solid var(--warn);
+    font-size:12px;
+  }
+  .leave-row .leave-type-badge{
+    font-size:10px;padding:2px 8px;border-radius:10px;background:var(--warn);color:#fff;font-weight:700;
+  }
+  .leave-overview-row{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;
+    padding:8px 10px;border-radius:8px;margin-bottom:6px;background:#fffefb;border:1px solid var(--border);
+    font-size:13px;
+  }
+  .leave-overview-row .lo-date{font-weight:700;color:var(--brown-dark);min-width:90px;}
+  .form-block-disabled{opacity:.45;pointer-events:none;}
+
+  /* ===== M5 styles ===== */
+  .conflict-stat-row{display:flex;gap:10px;flex-wrap:wrap;}
+  .conflict-stat-card{
+    flex:1;min-width:110px;background:var(--danger-bg);border:1px solid var(--danger);
+    border-radius:8px;padding:10px 12px;text-align:center;
+  }
+  .conflict-stat-card .num{font-size:22px;font-weight:700;color:var(--danger);}
+  .conflict-stat-card .lbl{font-size:11px;color:var(--text-soft);margin-top:2px;}
+  .conflict-item{
+    border:1px solid var(--danger);background:var(--danger-bg);border-radius:8px;
+    padding:10px 12px;margin-bottom:8px;cursor:pointer;font-size:13px;
+  }
+  .conflict-item:hover{background:#f7d9d3;}
+  .conflict-item .ci-date{font-weight:700;color:var(--brown-dark);margin-bottom:4px;}
+  .conflict-item .ci-detail{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--text);}
+  .conflict-item .ci-reason{font-size:11px;color:var(--danger);font-weight:700;}
+  .no-conflict-box{
+    text-align:center;padding:30px 20px;color:var(--station);background:var(--station-bg);
+    border-radius:10px;font-size:13px;font-weight:600;
+  }
+
+  /* ===== M7 styles ===== */
+  input[type="month"], input[type="date"]{
+    border:1px solid var(--border);border-radius:8px;padding:8px 10px;
+    font-size:13px;font-family:inherit;background:var(--paper);color:var(--text);
+  }
+  .published-month-chip{
+    display:inline-flex;align-items:center;gap:8px;background:var(--station-bg);color:var(--station);
+    border:1px solid var(--station);border-radius:20px;padding:6px 14px;margin:4px 6px 4px 0;font-size:13px;font-weight:600;
+  }
+  .published-month-chip .unpub-x{cursor:pointer;color:var(--danger);font-weight:700;}
+  .query-cal-grid{
+    display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:8px;
+  }
+  .query-cal-cell{
+    background:#fffefb;border:1px solid var(--border);border-radius:6px;
+    min-height:90px;padding:4px;font-size:10px;
+  }
+  .query-cal-cell .qc-daynum{font-size:11px;font-weight:700;color:var(--text-soft);margin-bottom:2px;}
+  .query-list-row{
+    display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;margin-bottom:6px;
+    background:#fffefb;border:1px solid var(--border);font-size:13px;flex-wrap:wrap;
+  }
+  .query-list-row .ql-date{font-weight:700;color:var(--brown-dark);min-width:90px;}
+  .locked-month-box{
+    text-align:center;padding:40px 20px;color:var(--warn);background:var(--warn-bg);
+    border-radius:10px;font-size:13px;font-weight:600;
+  }
+  .lock-banner{
+    background:var(--warn-bg);border:1px solid var(--warn);border-radius:8px;
+    padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--warn);font-weight:600;
+  }
+
+  /* ===== M8 styles ===== */
+  .report-table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;}
+  .report-table th{
+    text-align:left;padding:8px 10px;background:var(--gold-light);color:var(--brown-dark);
+    font-size:12px;border-bottom:2px solid var(--border);white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;
+  }
+  .report-table th:first-child, .report-table td:first-child{width:30%;}
+  .attendance-table th:first-child, .attendance-table td:first-child{width:11%;}
+  .attendance-table th:nth-child(2), .attendance-table td:nth-child(2){width:12%;}
+  .attendance-table th:nth-child(3), .attendance-table td:nth-child(3){width:14%;}
+  .attendance-table th:nth-child(4), .attendance-table td:nth-child(4){width:14%;}
+  .attendance-table th:nth-child(5), .attendance-table td:nth-child(5){width:18%;}
+  .attendance-table th:nth-child(6), .attendance-table td:nth-child(6){width:8%;}
+  .attendance-table th:nth-child(7), .attendance-table td:nth-child(7){width:13%;}
+  .attendance-table th:nth-child(8), .attendance-table td:nth-child(8){width:10%;}
+  .report-table td{padding:7px 10px;border-bottom:1px solid var(--border);overflow:hidden;text-overflow:ellipsis;}
+  .report-table tr:hover td{background:#faf6ea;}
+  .report-table td.num{text-align:right;font-weight:600;}
+  .report-table th.num-head{text-align:right;}
+  .report-empty{text-align:center;color:var(--text-soft);font-size:12px;padding:16px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>📅 平安長照醫療體系排班系統</h1>
+    <div class="sub">平安家園多元關懷協會 ｜ 診所｜ C據點</div>
+  </div>
+  <div class="actions">
+    <button class="icon-btn" id="syncBtn">同步</button>
+    <button class="icon-btn" id="loginBtn">登入</button>
+  </div>
+</header>
+
+<nav class="tabs" id="tabBar">
+  <button class="tab-btn active" data-panel="m1">M1 員工管理</button>
+  <button class="tab-btn" data-panel="m2">M2 班別設定</button>
+  <button class="tab-btn" data-panel="m3">M3 月曆排班</button>
+  <button class="tab-btn" data-panel="m4">M4 請假排休</button>
+  <button class="tab-btn" data-panel="m5">M5 衝突偵測</button>
+  <button class="tab-btn" data-panel="m6">M6 自動建議</button>
+  <button class="tab-btn" data-panel="m7">M7 發布查詢</button>
+  <button class="tab-btn" data-panel="m8">M8 報表</button>
+  <button class="tab-btn" data-panel="m9">M9 支援填報</button>
+</nav>
+
+<main>
+  <div class="panel active" id="panel-m1">
+    <div class="card">
+      <h2>👥 員工清單 <span class="badge gold">22位（自 checkin.html 匯入）</span></h2>
+      <div style="overflow-x:auto;">
+        <table class="data-table" id="staffTable">
+          <thead>
+            <tr><th>姓名</th><th>可排地點</th><th>狀態</th><th></th></tr>
+          </thead>
+          <tbody id="staffTbody"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;">
+        <input type="text" id="newStaffName" placeholder="新增員工姓名" style="flex:1;">
+        <button class="btn" onclick="addStaff()">＋ 新增員工</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🏥 診所上班日設定</h2>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">設定診所固定的每週上班日，供M5衝突偵測模組稽核「當天完全沒有安排人力」使用</div>
+      <div class="site-role-row" style="margin-top:0;">
+        <span class="role-label">上班日</span>
+        <div class="tag-list" id="clinicWeekdayList"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🏘️ 據點指派 <span class="badge station">16個據點</span></h2>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">每個據點可指派多位主責人員與多位延緩老師（皆從22位員工中選取）</div>
+      <div id="siteList"></div>
+      <div style="margin-top:10px;display:flex;gap:8px;">
+        <input type="text" id="newSiteName" placeholder="新增據點名稱" style="flex:1;">
+        <button class="btn" onclick="addSite()">＋ 新增據點</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🎓 外師管理 <span class="badge">潔牙／佛教／精準／延緩／樂齡／用藥</span></h2>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">外師可選自22位員工（內部），或新增外部講師；每位外師可指派到多個據點並標註授課類別</div>
+      <div id="teacherList"></div>
+      <div class="teacher-add-row">
+        <select id="newTeacherType" onchange="toggleTeacherInput()">
+          <option value="internal">內部（從員工選）</option>
+          <option value="external">外部講師</option>
+        </select>
+        <select id="newTeacherStaffSel" style="flex:1;"></select>
+        <input type="text" id="newTeacherName" placeholder="外部講師姓名" style="flex:1;display:none;">
+        <input type="text" id="newTeacherContact" placeholder="聯絡方式（選填）" style="flex:1;display:none;">
+        <button class="btn" onclick="addTeacher()">＋ 新增外師</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-m2">
+    <div class="card">
+      <h2>🕐 快速時段按鈕 <span class="badge gold">彈性排班</span></h2>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
+        時段不綁地點 —— 排班時（M3）再選人員與地點（診所或任一據點）。<br>
+        同一人同一天可分別建立上午診所＋下午據點等跨地點組合。按鈕只是快速套用起點，套用後仍可手動調整時間。
+      </div>
+      <div id="shiftTplList"></div>
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <input type="text" id="newTplName" placeholder="按鈕名稱（如：18點起）" style="flex:1;min-width:120px;">
+        <input type="time" id="newTplStart" value="08:00">
+        <span style="color:var(--text-soft);">至</span>
+        <input type="time" id="newTplEnd" value="12:00">
+        <button class="btn" onclick="addShiftTemplate()">＋ 新增按鈕</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🧪 套用測試 <span class="badge">預覽</span></h2>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">點按鈕測試套用效果，正式排班介面在 M3 會用同樣的邏輯</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;" id="tplPreviewBtns"></div>
+      <div style="display:flex;gap:8px;align-items:center;font-size:13px;">
+        <span style="color:var(--text-soft);">目前時段：</span>
+        <input type="time" id="previewStart" value="08:00">
+        <span>至</span>
+        <input type="time" id="previewEnd" value="16:30">
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-m3">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+        <h2 style="margin:0;">🗓️ 月曆排班</h2>
+        <div style="display:flex;gap:6px;">
+          <button class="btn gold" onclick="openBulkScheduleModal()">⚡ 批量排班</button>
+          <button class="btn gold" onclick="openCopyScheduleModal()">📋 複製排班</button>
+          <button class="btn outline" id="viewModeMonthBtn" onclick="setCalView('month')">月</button>
+          <button class="btn outline" id="viewModeWeekBtn" onclick="setCalView('week')">週</button>
+          <button class="btn outline" id="viewModeMatrixBtn" onclick="setCalView('matrix')">矩陣總覽</button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <button class="btn outline" onclick="navCal(-1)">‹ 上一個</button>
+        <div id="calTitle" style="font-weight:700;color:var(--brown-dark);font-size:15px;"></div>
+        <button class="btn outline" onclick="navCal(1)">下一個 ›</button>
+      </div>
+      <div id="calLegendNormal" style="display:flex;gap:10px;font-size:11px;color:var(--text-soft);margin-bottom:8px;flex-wrap:wrap;">
+        <span><span class="badge clinic">■</span> 診所</span>
+        <span><span class="badge station">■</span> 據點</span>
+        <span><span class="badge danger">■</span> 衝突</span>
+      </div>
+      <div id="calGrid" class="cal-grid"></div>
+      <div id="matrixContainer" style="display:none;"></div>
+    </div>
+
+    <div class="card">
+      <h2>🎓 外師課程排定</h2>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
+        管理課程項目（例如口腔保健講座、佛學生命教育），並將課程安插到指定據點與日期
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+        <input type="text" id="newCourseItemName" placeholder="新增課程項目名稱" style="flex:1;min-width:160px;">
+        <button class="btn" onclick="addCourseItem()">＋ 新增課程項目</button>
+      </div>
+      <div id="courseItemList" class="tag-list" style="margin-bottom:14px;"></div>
+
+      <div style="border-top:1px solid var(--border);padding-top:12px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+          <input type="date" id="courseSessionDate" style="flex:1;min-width:140px;">
+          <select id="courseSessionSite" style="flex:1;min-width:120px;"></select>
+          <select id="courseSessionItem" style="flex:1;min-width:120px;"></select>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+          <select id="courseSessionTeacher" style="flex:1;min-width:120px;"></select>
+          <input type="time" id="courseSessionStart" value="09:00" style="flex:1;min-width:100px;">
+          <input type="time" id="courseSessionEnd" value="10:00" style="flex:1;min-width:100px;">
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+          <input type="text" id="courseSessionNote" placeholder="備註（選填）" style="flex:1;min-width:120px;">
+          <button class="btn gold" onclick="addCourseSession()">＋ 安插課程</button>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 8px;border-top:1px solid var(--border);padding-top:12px;">
+        <span style="font-size:12px;color:var(--text-soft);">課程排定清單</span>
+        <input type="month" id="courseListMonthPicker" onchange="renderCourseSessionList()">
+      </div>
+      <div id="courseSessionList"></div>
+    </div>
+  </div>
+
+  <!-- 排班彈出面板 -->
+  <div class="modal-overlay" id="schedModalOverlay" onclick="closeSchedModal(event)">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <div class="modal-head">
+        <span id="modalDateTitle">2026-01-01</span>
+        <button class="modal-close" onclick="closeSchedModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="modalLeaveList"></div>
+        <div class="modal-add-form leave-form">
+          <div class="form-line">
+            <label>請假</label>
+            <select id="leaveStaffSel" style="flex:1;"></select>
+          </div>
+          <div class="form-line">
+            <label></label>
+            <div class="quick-btn-row" id="leaveTypeBtns"></div>
+          </div>
+          <button class="btn outline" style="width:100%;margin-top:4px;" onclick="addLeaveEntry()">🏖️ 登記請假/排休</button>
+        </div>
+
+        <div id="modalEntryList" style="margin-top:14px;"></div>
+        <div class="modal-add-form" id="schedAddForm">
+          <div class="form-line">
+            <label>人員</label>
+            <select id="formStaffSel" onchange="updateScheduleFormAvailability()"></select>
+          </div>
+          <div class="form-line">
+            <label>地點</label>
+            <select id="formSiteSel">
+              <option value="clinic">🏥 診所</option>
+            </select>
+          </div>
+          <div class="form-line">
+            <label>時段</label>
+            <div class="quick-btn-row" id="formQuickBtns"></div>
+          </div>
+          <div class="form-line">
+            <label></label>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="time" id="formStart" value="08:00">
+              <span>至</span>
+              <input type="time" id="formEnd" value="16:30">
+            </div>
+          </div>
+          <div id="formBlockNotice" style="display:none;font-size:11px;color:var(--danger);margin-bottom:6px;"></div>
+          <button class="btn gold" style="width:100%;margin-top:6px;" id="addScheduleBtn" onclick="addScheduleEntry()">＋ 新增排班</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 批量排班彈出面板 -->
+  <div class="modal-overlay" id="bulkScheduleOverlay" onclick="closeBulkScheduleModal(event)">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <div class="modal-head">
+        <span>⚡ 批量排班</span>
+        <button class="modal-close" onclick="closeBulkScheduleModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex;gap:6px;margin-bottom:12px;">
+          <button class="btn gold" id="bulkModeApplyBtn" onclick="setBulkMode('apply')" style="flex:1;">⚡ 批量套用</button>
+          <button class="btn outline" id="bulkModeCancelBtn" onclick="setBulkMode('cancel')" style="flex:1;">🗑️ 批量取消</button>
+        </div>
+
+        <div class="desc" id="bulkModeDesc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
+          選人員＋地點＋日期範圍 → 選時段後點「設定」（可重複設定多個時段，例如上午、下午各設一次）→ 全部設定完後點「套用」一次性排入月曆。
+        </div>
+        <div class="form-line">
+          <label>人員</label>
+          <div id="bulkStaffChecklist" class="bulk-staff-checklist"></div>
+        </div>
+        <div class="form-line">
+          <label>地點</label>
+          <div id="bulkSiteChecklist" class="bulk-staff-checklist"></div>
+        </div>
+        <div class="form-line">
+          <label>日期</label>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="date" id="bulkStartDate">
+            <span>至</span>
+            <input type="date" id="bulkEndDate">
+          </div>
+        </div>
+        <div class="form-line" id="bulkExcludeWeekendRow">
+          <label></label>
+          <label style="display:flex;align-items:center;gap:6px;flex:0 0 auto;font-size:12px;color:var(--text);">
+            <input type="checkbox" id="bulkExcludeWeekend" checked style="width:auto;">
+            排除週六、週日
+          </label>
+        </div>
+
+        <div id="bulkApplySection">
+          <div class="form-line" style="border-top:1px dashed var(--border);padding-top:10px;margin-top:4px;">
+            <label>時段</label>
+            <div class="quick-btn-row" id="bulkQuickBtns"></div>
+          </div>
+          <div class="form-line">
+            <label></label>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="time" id="bulkStart" value="08:00">
+              <span>至</span>
+              <input type="time" id="bulkEnd" value="16:30">
+              <button class="btn outline" onclick="addBulkRule()">＋ 設定</button>
+            </div>
+          </div>
+          <div id="bulkRuleCount" class="bulk-rule-count"></div>
+          <button class="btn gold" style="width:100%;margin-top:10px;" onclick="runBulkSchedule()">⚡ 套用批量排班</button>
+        </div>
+
+        <div id="bulkCancelSection" style="display:none;">
+          <button class="btn" style="width:100%;margin-top:10px;background:var(--danger);" onclick="runBulkCancel()">🗑️ 批量取消這些排班</button>
+        </div>
+
+        <div id="bulkResultReport" style="margin-top:12px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 複製排班彈出面板 -->
+  <div class="modal-overlay" id="copyScheduleOverlay" onclick="closeCopyScheduleModal(event)">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <div class="modal-head">
+        <span>📋 複製排班</span>
+        <button class="modal-close" onclick="closeCopyScheduleModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;">
+          <button class="btn gold" id="copyModeMonthBtn" onclick="setCopyMode('month')" style="flex:1;min-width:100px;">📅 複製月份班表</button>
+          <button class="btn outline" id="copyModeFullBtn" onclick="setCopyMode('full')" style="flex:1;min-width:100px;">📆 整月複製(全員)</button>
+          <button class="btn outline" id="copyModePersonBtn" onclick="setCopyMode('person')" style="flex:1;min-width:100px;">👥 複製給其他人</button>
+          <button class="btn outline" id="copyModeClearBtn" onclick="setCopyMode('clear')" style="flex:1;min-width:100px;">🗑️ 清空整月</button>
+        </div>
+
+        <div class="desc" id="copyModeDesc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
+          選一位人員，把他某個月份的班表完整複製到另一個月份（適合固定排班的據點人員）。若目標月份已有班表，會拒絕複製。
+        </div>
+
+        <div id="copyMonthSection">
+          <div class="form-line">
+            <label>人員</label>
+            <div id="copyMonthStaffChecklist" class="bulk-staff-checklist"></div>
+          </div>
+          <div class="form-line">
+            <label>來源</label>
+            <input type="month" id="copySourceMonth">
+          </div>
+          <div class="form-line">
+            <label>目標</label>
+            <input type="month" id="copyTargetMonth">
+          </div>
+          <button class="btn gold" style="width:100%;margin-top:6px;" onclick="runCopyMonth()">📅 複製月份班表</button>
+        </div>
+
+        <div id="copyFullMonthSection" style="display:none;">
+          <div class="form-line">
+            <label>來源</label>
+            <input type="month" id="copyFullSourceMonth">
+          </div>
+          <div class="form-line">
+            <label>目標</label>
+            <input type="month" id="copyFullTargetMonth">
+          </div>
+          <div class="desc" style="font-size:11px;color:var(--text-soft);margin:-2px 0 8px;">
+            會依「星期幾＋第幾次出現」對齊複製（例如來源月的第2個星期一→目標月的第2個星期一），避免因兩個月1號星期幾不同，
+            造成平日班表錯位到週末的問題。完整保留每天每個人的地點/時段/自訂時間。若來源某天在目標月份中沒有對應的星期次數
+            （例如來源有第5個星期一，目標月只有4個），該天會自動略過。不含請假紀錄，只複製排班。
+          </div>
+          <button class="btn gold" style="width:100%;margin-top:6px;" onclick="runCopyFullMonth()">📆 整月複製給全員</button>
+        </div>
+
+        <div id="copyPersonSection" style="display:none;">
+          <div class="form-line">
+            <label>來源</label>
+            <div id="copySourceStaffChecklist" class="bulk-staff-checklist"></div>
+          </div>
+          <div class="form-line">
+            <label>月份</label>
+            <input type="month" id="copyPersonMonth">
+          </div>
+          <div class="desc" style="font-size:11px;color:var(--text-soft);margin:-4px 0 8px;">
+            勾選目標人員後，可分別為每個人指定要套用的地點（例如A在X據點，給B選Y、給C選Z，互不相同）；預設「維持原地點」會照抄來源人員的地點。
+          </div>
+          <div class="form-line">
+            <label>目標</label>
+            <div id="copyTargetStaffChecklist" class="bulk-staff-checklist"></div>
+          </div>
+          <div id="copyTargetSiteList" style="margin-top:8px;"></div>
+          <button class="btn gold" style="width:100%;margin-top:6px;" onclick="runCopyToPersons()">👥 複製給選定人員</button>
+        </div>
+
+        <div id="copyClearSection" style="display:none;">
+          <div style="display:flex;gap:6px;margin-bottom:12px;">
+            <button class="btn gold" id="clearModePersonBtn" onclick="setClearMode('person')" style="flex:1;">👤 指定人員</button>
+            <button class="btn outline" id="clearModeAllBtn" onclick="setClearMode('all')" style="flex:1;">🏢 全公司清空</button>
+          </div>
+          <div class="form-line" id="clearStaffRow">
+            <label>人員</label>
+            <select id="clearMonthStaffSel" style="flex:1;"></select>
+          </div>
+          <div class="form-line">
+            <label>月份</label>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="month" id="clearMonthStart">
+              <span>至</span>
+              <input type="month" id="clearMonthEnd">
+            </div>
+          </div>
+          <div id="clearAllWarning" style="display:none;font-size:11px;color:var(--danger);margin-bottom:6px;">
+            ⚠ 將清空「全公司」此範圍內所有月份、所有人員、所有地點的排班，請務必確認月份範圍正確。
+          </div>
+          <button class="btn" style="width:100%;margin-top:6px;background:var(--danger);" onclick="runClearMonth()">🗑️ 清空整月排班</button>
+        </div>
+
+        <div id="copyResultReport" style="margin-top:12px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-m4">
+    <div class="card">
+      <h2>🏖️ 請假排休登記 <span class="badge gold">請假/排休/特休/公假/事假/病假</span></h2>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
+        所有人都可以為任何人登記請假（內部信任，不需驗證身份），登記後全體皆可查詢。每月21號起鎖定「下個月」的請假登記。
+      </div>
+      <div id="m4LockBanner" style="display:none;"></div>
+      <div class="form-line">
+        <label>人員</label>
+        <select id="m4LeaveStaffSel" style="flex:1;" onchange="updateM4ScheduleHint()"></select>
+      </div>
+      <div class="form-line">
+        <label>日期</label>
+        <input type="date" id="m4LeaveDate" onchange="updateM4ScheduleHint()">
+      </div>
+      <div class="form-line">
+        <label></label>
+        <div class="quick-btn-row" id="m4LeaveTypeBtns"></div>
+      </div>
+      <div id="m4LeaveScheduleHint" style="display:none;font-size:11px;color:var(--warn);margin-bottom:6px;"></div>
+      <button class="btn gold" style="width:100%;" onclick="addLeaveEntryM4()">🏖️ 登記請假/排休</button>
+    </div>
+
+    <div class="card">
+      <h2>📋 請假排休總覽</h2>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
+        可查詢所有人的請假紀錄，方便互相協調班表。
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+        <select id="leaveFilterStaff" onchange="renderLeaveOverview()" style="flex:1;min-width:120px;">
+          <option value="">全部人員</option>
+        </select>
+        <select id="leaveFilterType" onchange="renderLeaveOverview()">
+          <option value="">全部類型</option>
+        </select>
+      </div>
+      <div id="leaveOverviewList"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-m5">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px;">
+        <h2 style="margin:0;">⚠️ 衝突偵測總覽</h2>
+        <button class="btn outline" onclick="renderConflictOverview()">🔄 重新掃描</button>
+      </div>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
+        掃描所有已有排班或課程資料的日期（員工排班與M3外師課程排定皆列入人力涵蓋判斷），列出：
+        <span class="badge danger">衝突①</span> 同人同時段跨地點重疊　
+        <span class="badge danger">衝突②</span> 已登記請假/排休卻被排班　
+        <span class="badge" style="background:var(--warn);color:#fff;">提醒③</span> 據點當天完全沒有安排人力　
+        <span class="badge" style="background:var(--warn);color:#fff;">提醒④</span> 據點當天只排了上午或下午（另一半空著）<br>
+        （提醒③④已排除國定假日，以及各據點/診所在「M1 員工管理」設定的營運星期，例如北華村僅設定週二、診所固定休週三與週日；可到M1調整。提醒④以中午12:00為上午/下午分界）<br>
+        點擊任一筆可直接跳轉到當日排班彈窗處理。
+      </div>
+      <div id="conflictSummary" style="margin-bottom:10px;"></div>
+      <div id="conflictList"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-m6">
+    <div class="card">
+      <h2>M6 自動排班建議 <span class="badge">WIP</span></h2>
+      <div class="wip">
+        <div class="icon">🤖</div>
+        <div class="title">自動建議草稿</div>
+        <div class="desc">依可排地點與上月班表輪替建議，避免連續同班過久<br>產出草稿後可人工逐筆調整再確認套用</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-m7">
+    <div class="card" id="m7PublishCard">
+      <h2>📢 班表發布管理 <span class="badge gold">管理者操作</span></h2>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
+        以「月」為單位發布，發布後該月才會出現在下方員工查詢區；未發布的月份員工查詢不到。
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
+        <input type="month" id="publishMonthPicker">
+        <button class="btn gold" id="publishBtn" onclick="togglePublishMonth()">發布此月</button>
+        <span id="publishStatusHint" style="font-size:12px;color:var(--text-soft);"></span>
+      </div>
+      <div id="publishedMonthList"></div>
+    </div>
+
+    <div class="card">
+      <h2>🔍 員工查詢 <span class="badge">全體班表</span></h2>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
+        只能查詢已發布的月份；顯示全體人員的班表。
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
+        <input type="month" id="queryMonthPicker">
+        <button class="btn outline" onclick="runEmployeeQuery()">查詢</button>
+        <div style="display:flex;gap:6px;margin-left:auto;">
+          <button class="btn outline" id="queryViewCalBtn" onclick="setQueryView('calendar')">矩陣檢視</button>
+          <button class="btn outline" id="queryViewListBtn" onclick="setQueryView('list')">列表檢視</button>
+          <button class="btn gold" id="queryDownloadBtn" onclick="downloadMatrixImage()" style="display:none;">⬇ 下載圖片</button>
+        </div>
+      </div>
+      <div id="queryResultArea"></div>
+    </div>
+  </div>
+
+  <!-- M7矩陣表點格子的詳情彈窗（唯讀） -->
+  <div class="modal-overlay" id="queryDayDetailOverlay" onclick="closeQueryDayDetail(event)">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <div class="modal-head">
+        <span id="queryDayDetailTitle">2026-01-01</span>
+        <button class="modal-close" onclick="closeQueryDayDetail()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="queryDayDetailBody"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-m8">
+    <div class="card">
+      <h2>📊 報表統計</h2>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
+        統計範圍涵蓋所有已排的班（不論是否已發布）。可選擇任意日期區間，支援跨月。
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <label style="font-size:12px;color:var(--text-soft);">起始日</label>
+        <input type="date" id="reportStartDate">
+        <label style="font-size:12px;color:var(--text-soft);">結束日</label>
+        <input type="date" id="reportEndDate">
+        <button class="btn gold" onclick="runReport()">產生報表</button>
+        <button class="btn outline" onclick="exportReportCSV()" style="margin-left:auto;">⬇ 匯出CSV</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>👤 每人總班數（診所／據點細分）</h2>
+      <div id="reportByStaffTable"></div>
+    </div>
+
+    <div class="card">
+      <h2>⏱️ 每人總工時 <span class="badge">排班工時</span></h2>
+      <div id="reportHoursTable"></div>
+    </div>
+
+    <div class="card">
+      <h2>🚗 加班明細 <span class="badge">M9支援紀錄</span></h2>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
+        統計區間內的M9支援填報紀錄（與排班無關的額外出勤），逐筆列出。
+      </div>
+      <div id="reportOvertimeTable"></div>
+    </div>
+
+    <div class="card">
+      <h2>📐 彙整總工時 <span class="badge gold">排班＋加班</span></h2>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
+        每人「排班工時」＋「M9加班工時」的合計，作為實際投入工時的完整參考。
+      </div>
+      <div id="reportCombinedTable"></div>
+    </div>
+
+    <div class="card">
+      <h2>🏘️ 每據點人力分布</h2>
+      <div id="reportBySiteTable"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-m9">
+    <div class="card">
+      <h2>📝 支援填報登記 <span class="badge gold">支援/加班/跨地點實際出勤</span></h2>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
+        記錄實際出勤的時段與地點，不與M3排班比對。所有人都可以為任何人填報（內部信任，不需驗證身份）。跨地點請分別填寫多筆。
+      </div>
+      <div class="form-line">
+        <label>人員</label>
+        <select id="m9StaffSel" style="flex:1;"></select>
+      </div>
+      <div class="form-line">
+        <label>日期</label>
+        <input type="date" id="m9Date">
+      </div>
+      <div class="form-line">
+        <label>地點</label>
+        <select id="m9SiteSel" style="flex:1;" onchange="toggleM9OtherInput()">
+          <option value="clinic">🏥 診所</option>
+        </select>
+      </div>
+      <div class="form-line" id="m9OtherRow" style="display:none;">
+        <label></label>
+        <input type="text" id="m9OtherLabel" placeholder="請輸入地點名稱（如：嘉義公務出差）" style="flex:1;">
+      </div>
+      <div class="form-line">
+        <label>時段</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="time" id="m9Start" value="08:00">
+          <span>至</span>
+          <input type="time" id="m9End" value="17:00">
+        </div>
+      </div>
+      <div class="form-line">
+        <label>備註</label>
+        <input type="text" id="m9Note" placeholder="選填，如：支援代班、公務出差" style="flex:1;">
+      </div>
+      <div class="form-line">
+        <label>照片</label>
+        <div style="flex:1;">
+          <input type="file" id="m9PhotoInput" accept="image/*" multiple onchange="handleM9PhotoSelect(event)">
+          <div id="m9PhotoPreview" class="m9-photo-preview"></div>
+          <div id="m9PhotoUploadStatus" style="font-size:11px;color:var(--text-soft);margin-top:4px;"></div>
+        </div>
+      </div>
+      <button class="btn gold" style="width:100%;margin-top:6px;" onclick="addAttendanceRecord()">📝 登記支援紀錄</button>
+    </div>
+
+    <div class="card">
+      <h2>📋 支援總覽</h2>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
+        可依人員/日期區間篩選，顯示總工時；可直接刪除錯誤紀錄。
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+        <select id="m9FilterStaff" onchange="renderAttendanceOverview()" style="flex:1;min-width:120px;">
+          <option value="">全部人員</option>
+        </select>
+        <input type="date" id="m9FilterStart" onchange="renderAttendanceOverview()">
+        <input type="date" id="m9FilterEnd" onchange="renderAttendanceOverview()">
+      </div>
+      <div id="m9TotalHoursBox" class="bulk-report-box success" style="margin-bottom:10px;"></div>
+      <div id="attendanceOverviewList"></div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <span id="dataStatus">資料：本機儲存</span>
+  <span id="verInfo">v0.1 殼框架</span>
+</footer>
+
+<script>
+// ===== 角色判斷（URL參數方式，無需登入） =====
+// ?role=admin → 幹部，完整權限，可見全部8模組
+// 無參數或其他值 → 員工模式，僅可見 M4（請假登記）與 M7（班表查詢）
+const urlParams = new URLSearchParams(window.location.search);
+const IS_ADMIN = urlParams.get('role') === 'admin';
+const EMPLOYEE_VISIBLE_PANELS = ['m4', 'm7', 'm9'];
+
+function applyRoleVisibility(){
+  if(IS_ADMIN) return; // 幹部模式：保留全部頁籤與按鈕，不做任何隱藏
+  // 員工模式：只留 M4＋M7，其餘頁籤從畫面移除（不是CSS隱藏，是直接從DOM拿掉，避免被找到或誤點）
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    if(!EMPLOYEE_VISIBLE_PANELS.includes(btn.dataset.panel)) btn.remove();
+  });
+  document.querySelectorAll('.panel').forEach(panel=>{
+    const panelKey = panel.id.replace('panel-','');
+    if(!EMPLOYEE_VISIBLE_PANELS.includes(panelKey)) panel.remove();
+  });
+  // 預設顯示 M4（請假登記較常用），移除其他頁籤原本的active狀態避免衝突
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  const m4Tab = document.querySelector('.tab-btn[data-panel="m4"]');
+  const m4Panel = document.getElementById('panel-m4');
+  if(m4Tab) m4Tab.classList.add('active');
+  if(m4Panel) m4Panel.classList.add('active');
+  // 員工模式不需要登入/同步按鈕（同步仍會在背景自動執行，只是不需要手動按鈕）
+  const loginBtn = document.getElementById('loginBtn');
+  const syncBtn = document.getElementById('syncBtn');
+  if(loginBtn) loginBtn.remove();
+  if(syncBtn) syncBtn.remove();
+  // M7內的「班表發布管理」是管理者專用功能，員工模式直接從DOM移除（不是CSS隱藏），
+  // 避免員工檢視網頁原始碼/開發者工具就能看到發布操作區與相關按鈕
+  const m7PublishCard = document.getElementById('m7PublishCard');
+  if(m7PublishCard) m7PublishCard.remove();
+}
+applyRoleVisibility();
+
+// ===== 資料結構初始化 =====
+const STORE_KEYS = {
+  staff: 'sched_staff',
+  shiftTemplates: 'sched_shiftTemplates',
+  schedule: 'sched_schedule',
+  leaves: 'sched_leaves',
+  sites: 'sched_sites',
+  externalTeachers: 'sched_externalTeachers',
+  publishedMonths: 'sched_publishedMonths',
+  attendance: 'sched_attendance',
+  clinicOperatingWeekdays: 'sched_clinicOperatingWeekdays',
+  courseItems: 'sched_courseItems',
+  courseSchedule: 'sched_courseSchedule'
+};
+
+function loadStore(key, fallback){
+  try{
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  }catch(e){ return fallback; }
+}
+
+// ===== GAS 同步設定 =====
+// 本系統使用獨立的 Google Sheet 與 Apps Script 專案，與 checkin.html 完全脫鉤。
+// 請依 schedule_gas_standalone.gs 的說明建立新Sheet＋新GAS專案＋部署後，
+// 將下方網址換成你的新部署網址（部署後從「網頁應用程式」網址複製）。
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxeyAUusSyo93asitKQBB4ZNzwkFf_km49F-Wdrm4lYtwa5RvgEiyVn1KX0FwASLcKz/exec';
+const SYNC_ENABLED = true; // 若GAS_URL尚未填入正確網址，同步會失敗但系統仍可用本機模式運作；確認部署完成後請保持此值為 true
+
+// localStorage key → 對應的 GAS save action 與資料整形函式
+const SYNC_MAP = {
+  sched_staff: {
+    saveAction: 'saveSchedStaff',
+    buildPayload: () => ({ staff: staff.map(s=>({ id:s.id, name:s.name, sites:s.sites, active:s.active })) }),
+  },
+  sched_sites: {
+    saveAction: 'saveSchedSites',
+    buildPayload: () => ({ sites: sites.map(s=>({ id:s.id, name:s.name, mainStaffIds:s.mainStaffIds, reliefStaffIds:s.reliefStaffIds, operatingWeekdays:s.operatingWeekdays })) }),
+  },
+  sched_clinicOperatingWeekdays: {
+    saveAction: 'saveSchedClinicHours',
+    buildPayload: () => ({ operatingWeekdays: clinicOperatingWeekdays }),
+  },
+  sched_courseItems: {
+    saveAction: 'saveSchedCourseItems',
+    buildPayload: () => ({ courseItems: courseItems }),
+  },
+  sched_courseSchedule: {
+    saveAction: 'saveSchedCourseSchedule',
+    buildPayload: () => {
+      const entries = [];
+      Object.keys(courseSchedule).forEach(date=>{
+        (courseSchedule[date]||[]).forEach(c=>{
+          entries.push({ id:c.id, date, siteId:c.siteId, courseItemId:c.courseItemId, teacherId:c.teacherId||'', start:c.start, end:c.end, note:c.note||'' });
+        });
+      });
+      return { entries };
+    },
+  },
+  sched_externalTeachers: {
+    saveAction: 'saveSchedTeachers',
+    buildPayload: () => ({ teachers: externalTeachers }),
+  },
+  sched_shiftTemplates: {
+    saveAction: 'saveSchedTemplates',
+    buildPayload: () => ({ templates: shiftTemplates }),
+  },
+  sched_schedule: {
+    saveAction: 'saveSchedSchedule',
+    buildPayload: () => {
+      const entries = [];
+      Object.keys(schedule).forEach(date=>{
+        (schedule[date]||[]).forEach(e=>{
+          entries.push({ date, staffId:e.staffId, site:e.site, start:e.start, end:e.end, status:e.status||'draft' });
+        });
+      });
+      return { entries };
+    },
+  },
+  sched_leaves: {
+    saveAction: 'saveSchedLeaves',
+    buildPayload: () => {
+      const arr = [];
+      Object.keys(leaves).forEach(date=>{
+        (leaves[date]||[]).forEach(l=>{
+          arr.push({ date, staffId:l.staffId, type:l.type, note:l.note||'' });
+        });
+      });
+      return { leaves: arr };
+    },
+  },
+  sched_publishedMonths: {
+    saveAction: 'saveSchedPublished',
+    buildPayload: () => ({ publishedMonths: publishedMonths }),
+  },
+  sched_attendance: {
+    saveAction: 'saveSchedAttendance',
+    buildPayload: () => ({ attendance: attendanceRecords }),
+  },
+};
+
+let syncTimers = {};
+let syncStatus = { state: 'idle', lastSyncAt: null, error: null }; // idle | syncing | success | error
+
+function setSyncStatusUI(){
+  const el = document.getElementById('dataStatus');
+  if(!el) return;
+  if(syncStatus.state === 'syncing'){
+    el.textContent = '資料：同步中…';
+    el.title = '';
+  } else if(syncStatus.state === 'error'){
+    el.textContent = '資料：' + (syncStatus.error || '同步失敗（已存本機，將自動重試）');
+    el.title = '';
+  } else if(syncStatus.lastSyncAt){
+    const t = syncStatus.lastSyncAt;
+    el.textContent = `資料：已同步（${t.getHours()}:${String(t.getMinutes()).padStart(2,'0')}）`;
+    el.title = syncStatus.error || ''; // 部分失敗時，滑鼠移上去可看到細節，但不影響主要顯示
+  } else {
+    el.textContent = '資料：本機儲存';
+    el.title = '';
+  }
+}
+
+async function gasGet(params){
+  const url = GAS_URL + '?' + new URLSearchParams(params);
+  const res = await fetch(url);
+  return res.json();
+}
+async function gasPost(data){
+  const res = await fetch(GAS_URL, { method:'POST', body: JSON.stringify(data) });
+  return res.json();
+}
+
+// debounce：同一個 key 在短時間內多次寫入，只送出最後一次（避免逐筆操作時瘋狂打API）
+function schedulePush(key){
+  if(!SYNC_ENABLED) return;
+  const conf = SYNC_MAP[key];
+  if(!conf){
+    // 防呆：若有新的資料種類寫入localStorage但忘了在SYNC_MAP註冊對應的GAS action，
+    // 此處會留下明確警告，而不是靜默跳過（靜默跳過會讓資料只存在本機、永遠不會同步、且毫無察覺）。
+    console.warn('[同步警告] localStorage key「'+key+'」未在 SYNC_MAP 註冊對應的 GAS action，此筆資料將不會同步到雲端。');
+    return;
+  }
+  if(syncTimers[key]) clearTimeout(syncTimers[key]);
+  syncTimers[key] = setTimeout(()=>pushToGAS(key), 800);
+}
+async function pushToGAS(key, retry){
+  const conf = SYNC_MAP[key];
+  if(!conf) return;
+  syncStatus.state = 'syncing';
+  setSyncStatusUI();
+  try{
+    const payload = Object.assign({ action: conf.saveAction }, conf.buildPayload());
+    const res = await gasPost(payload);
+    if(res && res.ok){
+      syncStatus.state = 'success';
+      syncStatus.lastSyncAt = new Date();
+      syncStatus.error = null;
+    } else {
+      throw new Error((res && res.error) || '未知錯誤');
+    }
+  }catch(err){
+    syncStatus.state = 'error';
+    syncStatus.error = err.message;
+    // 失敗時延遲重試一次，避免暫時網路問題造成資料遺失同步
+    if(!retry){
+      setTimeout(()=>pushToGAS(key, true), 4000);
+    }
+  }
+  setSyncStatusUI();
+}
+
+function saveStore(key, val){
+  localStorage.setItem(key, JSON.stringify(val));
+  schedulePush(key);
+}
+
+// 開啟系統時，從GAS拉取最新資料覆蓋本機（若拉取失敗則維持本機現有資料）
+async function pullAllFromGAS(){
+  if(!SYNC_ENABLED) return;
+  syncStatus.state = 'syncing';
+  setSyncStatusUI();
+  const tasks = [
+    { getAction:'getSchedStaff',     apply: r => { if(r.staff && r.staff.length){ staff = r.staff; saveLocalOnly(STORE_KEYS.staff, staff); } } },
+    { getAction:'getSchedSites',     apply: r => {
+        if(r.sites && r.sites.length){
+          sites = r.sites;
+          // 舊版後端尚未同步operatingWeekdays欄位時，拉回來的資料可能沒有這個欄位，
+          // 此處重新補上預設值，避免拉取覆蓋掉本機原本補過的預設(尤其北華村的例外設定)
+          sites.forEach(site=>{
+            if(!site.operatingWeekdays || !site.operatingWeekdays.length){
+              site.operatingWeekdays = site.name==='北華村' ? [2] : [1,2,3,4,5];
+            }
+          });
+          saveLocalOnly(STORE_KEYS.sites, sites);
+        }
+      } },
+    { getAction:'getSchedTeachers',  apply: r => { if(r.teachers){ externalTeachers = r.teachers; saveLocalOnly(STORE_KEYS.externalTeachers, externalTeachers); } } },
+    { getAction:'getSchedTemplates', apply: r => { if(r.templates && r.templates.length){ shiftTemplates = r.templates; saveLocalOnly(STORE_KEYS.shiftTemplates, shiftTemplates); } } },
+    { getAction:'getSchedSchedule',  apply: r => {
+        if(r.entries){
+          const rebuilt = {};
+          r.entries.forEach(e=>{
+            if(!rebuilt[e.date]) rebuilt[e.date]=[];
+            rebuilt[e.date].push({ staffId:e.staffId, site:e.site, start:e.start, end:e.end, status:e.status||'draft' });
+          });
+          schedule = rebuilt;
+          saveLocalOnly(STORE_KEYS.schedule, schedule);
+        }
+      } },
+    { getAction:'getSchedLeaves',    apply: r => {
+        if(r.leaves){
+          const rebuilt = {};
+          r.leaves.forEach(l=>{
+            if(!rebuilt[l.date]) rebuilt[l.date]=[];
+            rebuilt[l.date].push({ staffId:l.staffId, type:l.type, note:l.note||'' });
+          });
+          leaves = rebuilt;
+          saveLocalOnly(STORE_KEYS.leaves, leaves);
+        }
+      } },
+    { getAction:'getSchedPublished',  apply: r => { if(r.publishedMonths){ publishedMonths = r.publishedMonths; saveLocalOnly(STORE_KEYS.publishedMonths, publishedMonths); } } },
+    { getAction:'getSchedAttendance', apply: r => { if(r.attendance){ attendanceRecords = r.attendance; saveLocalOnly(STORE_KEYS.attendance, attendanceRecords); } } },
+    { getAction:'getSchedClinicHours', apply: r => { if(r.operatingWeekdays && r.operatingWeekdays.length){ clinicOperatingWeekdays = r.operatingWeekdays; saveLocalOnly(STORE_KEYS.clinicOperatingWeekdays, clinicOperatingWeekdays); } } },
+    { getAction:'getSchedCourseItems', apply: r => { if(r.courseItems && r.courseItems.length){ courseItems = r.courseItems; saveLocalOnly(STORE_KEYS.courseItems, courseItems); } } },
+    { getAction:'getSchedCourseSchedule', apply: r => {
+        if(r.entries){
+          const rebuilt = {};
+          r.entries.forEach(c=>{
+            if(!rebuilt[c.date]) rebuilt[c.date]=[];
+            rebuilt[c.date].push({ id:c.id, siteId:c.siteId, courseItemId:c.courseItemId, teacherId:c.teacherId||'', start:c.start, end:c.end, note:c.note||'' });
+          });
+          courseSchedule = rebuilt;
+          saveLocalOnly(STORE_KEYS.courseSchedule, courseSchedule);
+        }
+      } },
+  ];
+  try{
+    let failCount = 0;
+    await Promise.all(tasks.map(async t=>{
+      try{
+        const r = await gasGet({ action: t.getAction });
+        if(r && r.ok) t.apply(r);
+        else failCount++;
+      }catch(e){ failCount++; /* 單一資料拉取失敗不影響其他資料的套用 */ }
+    }));
+    if(failCount === 0){
+      syncStatus.state = 'success';
+      syncStatus.lastSyncAt = new Date();
+      syncStatus.error = null;
+    } else if(failCount === tasks.length){
+      // 全部拉取失敗（例如GAS尚未部署對應action）→ 明確標示失敗，不要誤報成功
+      syncStatus.state = 'error';
+      syncStatus.error = '雲端資料拉取失敗，目前顯示本機資料';
+    } else {
+      // 部分成功：仍標示成功並記錄時間，但保留錯誤訊息供除錯
+      syncStatus.state = 'success';
+      syncStatus.lastSyncAt = new Date();
+      syncStatus.error = `部分資料拉取失敗（${failCount}/${tasks.length}）`;
+    }
+  }catch(e){
+    syncStatus.state = 'error';
+    syncStatus.error = e.message;
+  }
+  setSyncStatusUI();
+  // 重新渲染所有畫面，反映拉取到的最新資料
+  if(typeof renderAllAfterSync === 'function') renderAllAfterSync();
+}
+
+// 僅寫本機，不觸發推送（用於從GAS拉取資料後寫回本機快取，避免造成「拉取後立刻又推送」的迴圈）
+function saveLocalOnly(key, val){
+  localStorage.setItem(key, JSON.stringify(val));
+}
+function uid(prefix){
+  return prefix+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+}
+
+// 預設時段快速按鈕（不綁地點，純時段模板，排班時另選人員＋地點）
+const DEFAULT_SHIFT_TEMPLATES = [
+  { id:'tpl_full',    name:'整天',   start:'08:00', end:'16:30' },
+  { id:'tpl_am',      name:'上午',   start:'08:00', end:'12:00' },
+  { id:'tpl_pm',      name:'下午',   start:'13:00', end:'16:30' },
+  { id:'tpl_h08',     name:'08點起', start:'08:00', end:'12:00' },
+  { id:'tpl_h09',     name:'09點起', start:'09:00', end:'12:00' },
+  { id:'tpl_h13',     name:'13點起', start:'13:00', end:'17:00' },
+  { id:'tpl_h14',     name:'14點起', start:'14:00', end:'18:00' }
+];
+
+// 22位員工名單（自 checkin.html 匯入）
+const IMPORTED_STAFF_NAMES = ['高麗君','翁美慧','蔡雅安','潘淑凰','顏淑萍','曾麗惠','陳韻筑','鍾文鶯','林智仁','黃千千','蕭淑滿','李孟娟','蔡芸樺','徐暐達','臧妘惠','張淑貞','蔡尚文','袁子晏','侯妙薇','侯雅琳','黃靚'];
+
+// 16個據點（13個原便當系統據點 + 3個新增）
+const DEFAULT_SITE_NAMES = ['江山里','振寮里','永安里','興中里','岱江里','岑海里','新岑里','復興里','西安里','新店村','官和村','見龍里','考試里','國姓村','下寮村','興中村','水頭村','協會'];
+
+// 外師類別
+const TEACHER_CATEGORIES = ['潔牙','佛教','精準','延緩','樂齡','用藥'];
+
+function buildDefaultStaff(){
+  return IMPORTED_STAFF_NAMES.map(name=>({
+    id: uid('st'),
+    name: name,
+    sites: 'both',   // 'clinic' | 'station' | 'both'
+    active: true
+  }));
+}
+function buildDefaultSites(){
+  return DEFAULT_SITE_NAMES.map(name=>({
+    id: uid('site'),
+    name: name,
+    mainStaffIds: [],
+    reliefStaffIds: [],
+    operatingWeekdays: name==='北華村' ? [2] : [1,2,3,4,5]
+  }));
+}
+
+let staff = loadStore(STORE_KEYS.staff, null) || buildDefaultStaff();
+let shiftTemplates = loadStore(STORE_KEYS.shiftTemplates, null) || DEFAULT_SHIFT_TEMPLATES;
+// 相容性處理：舊版模板含有 site 欄位且只有3筆固定診所/據點班別 → 升級為新版彈性時段模板
+if(shiftTemplates.some(t=>t.site) && shiftTemplates.length<=3){
+  shiftTemplates = DEFAULT_SHIFT_TEMPLATES;
+}
+let schedule = loadStore(STORE_KEYS.schedule, {});   // { 'YYYY-MM-DD': [ {staffId, site, shiftId|custom{start,end}, status} ] }
+let leaves   = loadStore(STORE_KEYS.leaves, {});      // { 'YYYY-MM-DD': [ {staffId, type, note} ] }
+
+// 請假類型
+const LEAVE_TYPES = ['請假','排休','特休','公假','事假','病假'];
+
+// ===========================================================
+// 請假登記鎖定規則（滾動式）：
+//   1) 「本月」永遠鎖定，不可新增申請、也不可取消/刪除（本月班表已定案）
+//   2) 「下個月」自每月21號起鎖定（新增與取消皆鎖），20號（含）以前開放
+//   3) 下下個月以後：永遠開放，不受限制
+// 隨著時間推進，原本的「下個月」會變成「本月」而自動鎖定，
+// 原本的「下下個月」會變成新的「下個月」而套用21號規則，以此類推。
+// ===========================================================
+function getLockedMonthsForAdd(){
+  // 新增申請的鎖定月份清單（'YYYY-MM'字串陣列），本月一定在清單內
+  const today = new Date();
+  const day = today.getDate();
+  const y = today.getFullYear();
+  const m = today.getMonth(); // 0-indexed
+  const currentMonthStr = `${y}-${String(m+1).padStart(2,'0')}`;
+  const locked = [currentMonthStr]; // 本月永遠鎖定新增
+  if(day >= 21){
+    const nextMonth = new Date(y, m+1, 1);
+    const ny = nextMonth.getFullYear();
+    const nm = String(nextMonth.getMonth()+1).padStart(2,'0');
+    locked.push(`${ny}-${nm}`);
+  }
+  return locked;
+}
+function getLockedMonthsForCancel(){
+  // 取消請假的鎖定月份：與新增規則相同 —— 本月一律鎖定，下個月21號起鎖定
+  return getLockedMonthsForAdd();
+}
+// 判斷某個日期字串('YYYY-MM-DD')在指定動作('add'新增／'cancel'取消)下是否被鎖定
+function isDateLeaveLocked(dateStr, action='add'){
+  if(!dateStr) return false;
+  const lockedMonths = action==='cancel' ? getLockedMonthsForCancel() : getLockedMonthsForAdd();
+  return lockedMonths.includes(dateStr.slice(0,7));
+}
+function leaveLockMessage(action='add'){
+  const lockedMonths = action==='cancel' ? getLockedMonthsForCancel() : getLockedMonthsForAdd();
+  if(action==='cancel'){
+    return `🔒 ${lockedMonths.join('、')} 的請假取消已鎖定（本月不開放取消/刪除；下個月自每月21號起鎖定），若需臨時調整請洽主管協調班表。`;
+  }
+  return `🔒 ${lockedMonths.join('、')} 的請假登記已鎖定（本月不開放新增申請；下個月自每月21號起鎖定），若需臨時請假請洽主管協調班表。`;
+}
+function renderM4LockBanner(){
+  const banner = document.getElementById('m4LockBanner');
+  if(!banner) return;
+  const lockedMonths = getLockedMonthsForAdd(); // 新增與取消規則相同，共用同一份清單
+  banner.style.display = 'block';
+  banner.innerHTML = `<div class="lock-banner">🔒 目前鎖定月份：<strong>${lockedMonths.join('、')}</strong>（本月一律鎖定；下個月自21號起鎖定）的請假登記與取消/刪除皆已鎖定。若需臨時請假，請洽主管協調班表。</div>`;
+}
+let sites    = loadStore(STORE_KEYS.sites, null) || buildDefaultSites();
+// 資料相容性處理：舊資料的據點物件沒有 operatingWeekdays 欄位，補上預設值
+// （0=日,1=一,2=二,3=三,4=四,5=五,6=六）；北華村原本是寫死在程式碼裡的例外(僅週二上課)，
+// 這裡做一次性遷移改成可在M1介面編輯的資料，之後修改直接透過UI即可，不用再改程式碼
+sites.forEach(site=>{
+  if(!site.operatingWeekdays){
+    site.operatingWeekdays = site.name==='北華村' ? [2] : [1,2,3,4,5];
+  }
+});
+// 診所固定上班日設定（預設週一、二、四、五、六，固定休週三、週日）；可在M1「🏥 診所上班日設定」卡片調整
+let clinicOperatingWeekdays = loadStore(STORE_KEYS.clinicOperatingWeekdays, null) || [1,2,4,5,6];
+let externalTeachers = loadStore(STORE_KEYS.externalTeachers, []); // [{id, name, type:'internal'|'external', staffId|null, contact, assignments:[{siteId, categories:[]}]}]
+// M3次模組：外師課程排定。課程項目預設沿用外師管理既有的6大類別作為起始清單，之後可在M3自行增刪
+let courseItems = loadStore(STORE_KEYS.courseItems, null) || TEACHER_CATEGORIES.map(name=>({ id: uid('course'), name }));
+let courseSchedule = loadStore(STORE_KEYS.courseSchedule, {}); // { 'YYYY-MM-DD': [{id, siteId, courseItemId, teacherId, start, end, note}] }
+let publishedMonths = loadStore(STORE_KEYS.publishedMonths, []); // ['2026-06', '2026-07', ...] 已發布的月份清單(YYYY-MM)
+let attendanceRecords = loadStore(STORE_KEYS.attendance, []); // [{id, staffId, date, site:'clinic'|siteId|'other', otherLabel, start, end, note}]
+
+saveLocalOnly(STORE_KEYS.staff, staff);
+saveLocalOnly(STORE_KEYS.shiftTemplates, shiftTemplates); // 確保預設值落地（僅本機，不觸發雲端推送）
+saveLocalOnly(STORE_KEYS.sites, sites);
+saveLocalOnly(STORE_KEYS.externalTeachers, externalTeachers);
+saveLocalOnly(STORE_KEYS.publishedMonths, publishedMonths);
+saveLocalOnly(STORE_KEYS.attendance, attendanceRecords);
+
+function getStaffName(id){
+  const s = staff.find(x=>x.id===id);
+  return s ? s.name : '（已刪除）';
+}
+function getSiteName(id){
+  const s = sites.find(x=>x.id===id);
+  return s ? s.name : '（已刪除）';
+}
+
+// ===== 頁籤切換 =====
+document.getElementById('tabBar').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.tab-btn');
+  if(!btn) return;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-'+btn.dataset.panel).classList.add('active');
+});
+
+// ===========================================================
+// M1 員工管理
+// ===========================================================
+function renderStaffTable(){
+  const tbody = document.getElementById('staffTbody');
+  tbody.innerHTML = staff.map(s=>`
+    <tr>
+      <td>${s.name}</td>
+      <td>
+        <div class="pill-select">
+          <span class="pill ${s.sites==='clinic'?'active clinic':''}" onclick="setStaffSite('${s.id}','clinic')">診所</span>
+          <span class="pill ${s.sites==='station'?'active station':''}" onclick="setStaffSite('${s.id}','station')">據點</span>
+          <span class="pill ${s.sites==='both'?'active both':''}" onclick="setStaffSite('${s.id}','both')">兩者皆可</span>
+        </div>
+      </td>
+      <td><span class="toggle-active ${s.active?'on':'off'}" onclick="toggleStaffActive('${s.id}')">${s.active?'啟用':'停用'}</span></td>
+      <td><button class="row-del" onclick="deleteStaff('${s.id}')">✕ 刪除</button></td>
+    </tr>
+  `).join('');
+}
+function setStaffSite(id, val){
+  const s = staff.find(x=>x.id===id);
+  if(!s) return;
+  s.sites = val;
+  saveStore(STORE_KEYS.staff, staff);
+  renderStaffTable();
+}
+function toggleStaffActive(id){
+  const s = staff.find(x=>x.id===id);
+  if(!s) return;
+  s.active = !s.active;
+  saveStore(STORE_KEYS.staff, staff);
+  renderStaffTable();
+  renderSites();
+  populateTeacherStaffSelect();
+}
+function deleteStaff(id){
+  if(!confirm('確定刪除此員工？相關據點指派與外師連結將一併移除。')) return;
+  staff = staff.filter(x=>x.id!==id);
+  sites.forEach(site=>{
+    site.mainStaffIds = site.mainStaffIds.filter(x=>x!==id);
+    site.reliefStaffIds = site.reliefStaffIds.filter(x=>x!==id);
+  });
+  externalTeachers.forEach(t=>{ if(t.staffId===id){ t.staffId=null; t.type='external'; } });
+  saveStore(STORE_KEYS.staff, staff);
+  saveStore(STORE_KEYS.sites, sites);
+  saveStore(STORE_KEYS.externalTeachers, externalTeachers);
+  renderStaffTable(); renderSites(); renderTeachers(); populateTeacherStaffSelect();
+  if(typeof populateLeaveFilterSelects==='function') populateLeaveFilterSelects();
+}
+function addStaff(){
+  const inp = document.getElementById('newStaffName');
+  const name = inp.value.trim();
+  if(!name){ alert('請輸入姓名'); return; }
+  staff.push({ id: uid('st'), name, sites:'both', active:true });
+  saveStore(STORE_KEYS.staff, staff);
+  inp.value='';
+  renderStaffTable(); populateTeacherStaffSelect(); renderSites();
+  if(typeof populateLeaveFilterSelects==='function') populateLeaveFilterSelects();
+}
+
+// ===========================================================
+// M1 據點指派
+// ===========================================================
+function renderSites(){
+  const container = document.getElementById('siteList');
+  const WEEKDAY_LABELS = ['日','一','二','三','四','五','六'];
+  container.innerHTML = sites.map(site=>`
+    <div class="site-card">
+      <div class="site-head">
+        <span class="site-name">📍 ${site.name}</span>
+        <button class="row-del" onclick="deleteSite('${site.id}')">✕ 刪除據點</button>
+      </div>
+      <div class="site-role-row">
+        <span class="role-label">上班日</span>
+        <div class="tag-list">
+          ${WEEKDAY_LABELS.map((label, dow)=>{
+            const active = (site.operatingWeekdays||[]).includes(dow);
+            return `<span class="weekday-toggle ${active?'active':''}" onclick="toggleSiteOperatingDay('${site.id}',${dow})">${label}</span>`;
+          }).join('')}
+        </div>
+      </div>
+      <div class="site-role-row">
+        <span class="role-label">主責人員</span>
+        <div class="tag-list">
+          ${site.mainStaffIds.map(sid=>`<span class="tag-chip">${getStaffName(sid)}<span class="x" onclick="removeSiteRole('${site.id}','main','${sid}')">✕</span></span>`).join('')}
+          <select class="add-tag-select" onchange="addSiteRole('${site.id}','main',this.value);this.value='';">
+            <option value="">＋新增主責</option>
+            ${staff.filter(s=>s.active && !site.mainStaffIds.includes(s.id)).map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="site-role-row">
+        <span class="role-label">延緩老師</span>
+        <div class="tag-list">
+          ${site.reliefStaffIds.map(sid=>`<span class="tag-chip relief">${getStaffName(sid)}<span class="x" onclick="removeSiteRole('${site.id}','relief','${sid}')">✕</span></span>`).join('')}
+          <select class="add-tag-select" onchange="addSiteRole('${site.id}','relief',this.value);this.value='';">
+            <option value="">＋新增延緩老師</option>
+            ${staff.filter(s=>s.active && !site.reliefStaffIds.includes(s.id)).map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+function toggleSiteOperatingDay(siteId, dow){
+  const site = sites.find(x=>x.id===siteId);
+  if(!site) return;
+  if(!site.operatingWeekdays) site.operatingWeekdays = [1,2,3,4,5];
+  if(site.operatingWeekdays.includes(dow)){
+    site.operatingWeekdays = site.operatingWeekdays.filter(d=>d!==dow);
+  } else {
+    site.operatingWeekdays.push(dow);
+  }
+  saveStore(STORE_KEYS.sites, sites);
+  renderSites();
+  if(typeof renderConflictOverview==='function') renderConflictOverview();
+}
+function renderClinicWeekdays(){
+  const container = document.getElementById('clinicWeekdayList');
+  if(!container) return;
+  const WEEKDAY_LABELS = ['日','一','二','三','四','五','六'];
+  container.innerHTML = WEEKDAY_LABELS.map((label, dow)=>{
+    const active = clinicOperatingWeekdays.includes(dow);
+    return `<span class="weekday-toggle ${active?'active':''}" onclick="toggleClinicOperatingDay(${dow})">${label}</span>`;
+  }).join('');
+}
+function toggleClinicOperatingDay(dow){
+  if(clinicOperatingWeekdays.includes(dow)){
+    clinicOperatingWeekdays = clinicOperatingWeekdays.filter(d=>d!==dow);
+  } else {
+    clinicOperatingWeekdays.push(dow);
+  }
+  saveStore(STORE_KEYS.clinicOperatingWeekdays, clinicOperatingWeekdays);
+  renderClinicWeekdays();
+  if(typeof renderConflictOverview==='function') renderConflictOverview();
+}
+function addSiteRole(siteId, role, staffId){
+  if(!staffId) return;
+  const site = sites.find(x=>x.id===siteId);
+  if(!site) return;
+  const key = role==='main' ? 'mainStaffIds' : 'reliefStaffIds';
+  if(!site[key].includes(staffId)) site[key].push(staffId);
+  saveStore(STORE_KEYS.sites, sites);
+  renderSites();
+}
+function removeSiteRole(siteId, role, staffId){
+  const site = sites.find(x=>x.id===siteId);
+  if(!site) return;
+  const key = role==='main' ? 'mainStaffIds' : 'reliefStaffIds';
+  site[key] = site[key].filter(x=>x!==staffId);
+  saveStore(STORE_KEYS.sites, sites);
+  renderSites();
+}
+function deleteSite(siteId){
+  if(!confirm('確定刪除此據點？相關外師指派將一併移除。')) return;
+  sites = sites.filter(x=>x.id!==siteId);
+  externalTeachers.forEach(t=>{
+    t.assignments = (t.assignments||[]).filter(a=>a.siteId!==siteId);
+  });
+  saveStore(STORE_KEYS.sites, sites);
+  saveStore(STORE_KEYS.externalTeachers, externalTeachers);
+  renderSites(); renderTeachers();
+}
+function addSite(){
+  const inp = document.getElementById('newSiteName');
+  const name = inp.value.trim();
+  if(!name){ alert('請輸入據點名稱'); return; }
+  sites.push({ id: uid('site'), name, mainStaffIds:[], reliefStaffIds:[], operatingWeekdays:[1,2,3,4,5] });
+  saveStore(STORE_KEYS.sites, sites);
+  inp.value='';
+  renderSites();
+}
+
+// ===========================================================
+// M1 外師管理
+// ===========================================================
+function populateTeacherStaffSelect(){
+  const sel = document.getElementById('newTeacherStaffSel');
+  sel.innerHTML = staff.filter(s=>s.active).map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+}
+function toggleTeacherInput(){
+  const type = document.getElementById('newTeacherType').value;
+  document.getElementById('newTeacherStaffSel').style.display = type==='internal' ? '' : 'none';
+  document.getElementById('newTeacherName').style.display = type==='external' ? '' : 'none';
+  document.getElementById('newTeacherContact').style.display = type==='external' ? '' : 'none';
+}
+function addTeacher(){
+  const type = document.getElementById('newTeacherType').value;
+  if(type==='internal'){
+    const staffId = document.getElementById('newTeacherStaffSel').value;
+    if(!staffId){ alert('請選擇員工'); return; }
+    const s = staff.find(x=>x.id===staffId);
+    externalTeachers.push({ id: uid('tch'), name: s.name, type:'internal', staffId, contact:'', assignments:[] });
+  } else {
+    const nameInp = document.getElementById('newTeacherName');
+    const contactInp = document.getElementById('newTeacherContact');
+    const name = nameInp.value.trim();
+    if(!name){ alert('請輸入外部講師姓名'); return; }
+    externalTeachers.push({ id: uid('tch'), name, type:'external', staffId:null, contact: contactInp.value.trim(), assignments:[] });
+    nameInp.value=''; contactInp.value='';
+  }
+  saveStore(STORE_KEYS.externalTeachers, externalTeachers);
+  renderTeachers();
+}
+function deleteTeacher(id){
+  if(!confirm('確定刪除此外師？')) return;
+  externalTeachers = externalTeachers.filter(x=>x.id!==id);
+  saveStore(STORE_KEYS.externalTeachers, externalTeachers);
+  renderTeachers();
+}
+function renderTeachers(){
+  const container = document.getElementById('teacherList');
+  if(externalTeachers.length===0){
+    container.innerHTML = '<div style="text-align:center;color:var(--text-soft);font-size:12px;padding:16px;">尚無外師資料</div>';
+    return;
+  }
+  container.innerHTML = externalTeachers.map(t=>{
+    const assignedSiteIds = (t.assignments||[]).map(a=>a.siteId);
+    const availableSites = sites.filter(s=>!assignedSiteIds.includes(s.id));
+    return `
+    <div class="teacher-card">
+      <div class="t-head">
+        <span>
+          <span class="t-name">${t.name}</span>
+          <span class="t-type ${t.type}">${t.type==='internal'?'內部員工':'外部講師'}</span>
+          ${t.contact?`<span style="font-size:11px;color:var(--text-soft);margin-left:6px;">📞 ${t.contact}</span>`:''}
+        </span>
+        <button class="row-del" onclick="deleteTeacher('${t.id}')">✕ 刪除</button>
+      </div>
+      <div class="assign-block">
+        ${(t.assignments||[]).map(a=>`
+          <div class="assign-line">
+            <span class="site-tag">📍 ${getSiteName(a.siteId)}</span>
+            ${TEACHER_CATEGORIES.map(cat=>`<span class="cat-chip ${a.categories.includes(cat)?'active':''}" onclick="toggleTeacherCategory('${t.id}','${a.siteId}','${cat}')">${cat}</span>`).join('')}
+            <span class="x" style="cursor:pointer;color:var(--danger);font-size:12px;" onclick="removeTeacherAssignment('${t.id}','${a.siteId}')">✕移除據點</span>
+          </div>
+        `).join('')}
+        <div class="assign-line">
+          <select class="add-tag-select" onchange="addTeacherAssignment('${t.id}',this.value);this.value='';">
+            <option value="">＋指派到據點</option>
+            ${availableSites.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+    </div>
+  `;}).join('');
+}
+function addTeacherAssignment(teacherId, siteId){
+  if(!siteId) return;
+  const t = externalTeachers.find(x=>x.id===teacherId);
+  if(!t) return;
+  if(!t.assignments) t.assignments=[];
+  if(!t.assignments.find(a=>a.siteId===siteId)){
+    t.assignments.push({ siteId, categories: [] });
+  }
+  saveStore(STORE_KEYS.externalTeachers, externalTeachers);
+  renderTeachers();
+}
+function removeTeacherAssignment(teacherId, siteId){
+  const t = externalTeachers.find(x=>x.id===teacherId);
+  if(!t) return;
+  t.assignments = t.assignments.filter(a=>a.siteId!==siteId);
+  saveStore(STORE_KEYS.externalTeachers, externalTeachers);
+  renderTeachers();
+}
+function toggleTeacherCategory(teacherId, siteId, cat){
+  const t = externalTeachers.find(x=>x.id===teacherId);
+  if(!t) return;
+  const a = (t.assignments||[]).find(x=>x.siteId===siteId);
+  if(!a) return;
+  const idx = a.categories.indexOf(cat);
+  if(idx>=0) a.categories.splice(idx,1);
+  else a.categories.push(cat);
+  saveStore(STORE_KEYS.externalTeachers, externalTeachers);
+  renderTeachers();
+}
+
+// ===========================================================
+// M3次模組：外師課程排定
+// 課程項目（courseItems）：可自訂新增/刪除的課程名稱清單
+// 課程排定（courseSchedule）：把某個課程項目安插到某個據點/日期/時段，可選填授課外師
+// ===========================================================
+function renderCourseItemList(){
+  const container = document.getElementById('courseItemList');
+  if(!container) return;
+  if(courseItems.length===0){
+    container.innerHTML = '<div style="font-size:12px;color:var(--text-soft);">尚未新增課程項目</div>';
+  } else {
+    container.innerHTML = courseItems.map(c=>`
+      <span class="tag-chip">${c.name}<span class="x" onclick="deleteCourseItem('${c.id}')">✕</span></span>
+    `).join('');
+  }
+  populateCourseSessionSelects();
+}
+function addCourseItem(){
+  const inp = document.getElementById('newCourseItemName');
+  const name = inp.value.trim();
+  if(!name){ alert('請輸入課程項目名稱'); return; }
+  courseItems.push({ id: uid('course'), name });
+  saveStore(STORE_KEYS.courseItems, courseItems);
+  inp.value = '';
+  renderCourseItemList();
+}
+function deleteCourseItem(courseItemId){
+  const inUseCount = Object.values(courseSchedule).flat().filter(c=>c.courseItemId===courseItemId).length;
+  const msg = inUseCount>0
+    ? `此課程項目已被安插 ${inUseCount} 筆課程排定紀錄，刪除後這些紀錄也會一併移除，確定刪除？`
+    : '確定刪除此課程項目？';
+  if(!confirm(msg)) return;
+  courseItems = courseItems.filter(c=>c.id!==courseItemId);
+  Object.keys(courseSchedule).forEach(date=>{
+    courseSchedule[date] = (courseSchedule[date]||[]).filter(c=>c.courseItemId!==courseItemId);
+    if(courseSchedule[date].length===0) delete courseSchedule[date];
+  });
+  saveStore(STORE_KEYS.courseItems, courseItems);
+  saveStore(STORE_KEYS.courseSchedule, courseSchedule);
+  renderCourseItemList();
+  renderCourseSessionList();
+}
+function populateCourseSessionSelects(){
+  const siteSel = document.getElementById('courseSessionSite');
+  const itemSel = document.getElementById('courseSessionItem');
+  const teacherSel = document.getElementById('courseSessionTeacher');
+  if(!siteSel || !itemSel || !teacherSel) return;
+  siteSel.innerHTML = `<option value="clinic">🏥診所</option>` +
+    sites.map(s=>`<option value="${s.id}">📍${s.name}</option>`).join('');
+  itemSel.innerHTML = courseItems.length
+    ? courseItems.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')
+    : `<option value="">（尚無課程項目，請先新增）</option>`;
+  teacherSel.innerHTML = `<option value="">（不指定外師）</option>` +
+    externalTeachers.map(t=>`<option value="${t.id}">${t.name}${t.type==='external'?'（外部）':''}</option>`).join('');
+}
+function addCourseSession(){
+  const dateStr = document.getElementById('courseSessionDate').value;
+  const siteId = document.getElementById('courseSessionSite').value;
+  const courseItemId = document.getElementById('courseSessionItem').value;
+  const teacherId = document.getElementById('courseSessionTeacher').value;
+  const start = document.getElementById('courseSessionStart').value;
+  const end = document.getElementById('courseSessionEnd').value;
+  const note = document.getElementById('courseSessionNote').value.trim();
+  if(!dateStr){ alert('請選擇日期'); return; }
+  if(!courseItemId){ alert('請先新增並選擇課程項目'); return; }
+  if(!start || !end){ alert('請填寫上課時段'); return; }
+  if(!courseSchedule[dateStr]) courseSchedule[dateStr] = [];
+  courseSchedule[dateStr].push({ id: uid('csess'), siteId, courseItemId, teacherId, start, end, note });
+  saveStore(STORE_KEYS.courseSchedule, courseSchedule);
+  document.getElementById('courseSessionNote').value = '';
+  // 課程清單月份自動切到剛新增的這筆所在月份，方便立即看到結果
+  document.getElementById('courseListMonthPicker').value = dateStr.slice(0,7);
+  renderCourseSessionList();
+}
+function deleteCourseSession(dateStr, sessionId){
+  if(!courseSchedule[dateStr]) return;
+  courseSchedule[dateStr] = courseSchedule[dateStr].filter(c=>c.id!==sessionId);
+  if(courseSchedule[dateStr].length===0) delete courseSchedule[dateStr];
+  saveStore(STORE_KEYS.courseSchedule, courseSchedule);
+  renderCourseSessionList();
+}
+function renderCourseSessionList(){
+  const container = document.getElementById('courseSessionList');
+  const monthPicker = document.getElementById('courseListMonthPicker');
+  if(!container || !monthPicker) return;
+  if(!monthPicker.value){
+    const today = new Date();
+    monthPicker.value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+  }
+  const month = monthPicker.value;
+  const dates = Object.keys(courseSchedule).filter(d=>d.startsWith(month)).sort();
+  const rows = [];
+  dates.forEach(dateStr=>{
+    (courseSchedule[dateStr]||[]).forEach(c=>{
+      rows.push({ dateStr, ...c });
+    });
+  });
+  if(rows.length===0){
+    container.innerHTML = '<div style="text-align:center;color:var(--text-soft);font-size:12px;padding:10px;">本月尚無課程排定</div>';
+    return;
+  }
+  container.innerHTML = rows.map(r=>{
+    const courseName = (courseItems.find(c=>c.id===r.courseItemId)||{}).name || '（已刪除的課程項目）';
+    const teacherName = r.teacherId ? (externalTeachers.find(t=>t.id===r.teacherId)||{}).name : '';
+    return `
+      <div class="leave-overview-row">
+        <span class="lo-date">${r.dateStr}</span>
+        <span><span class="site-badge ${siteColorClass(r.siteId)}">${siteLabel(r.siteId)}</span></span>
+        <span><strong>${courseName}</strong>${teacherName?`　🎓${teacherName}`:''}</span>
+        <span>${r.start}–${r.end}</span>
+        ${r.note ? `<span style="color:var(--text-soft);font-size:11px;">${r.note}</span>` : ''}
+        <button class="row-del" onclick="deleteCourseSession('${r.dateStr}','${r.id}')">✕ 刪除</button>
+      </div>
+    `;
+  }).join('');
+}
+
+
+// ===========================================================
+// M2 快速時段按鈕管理
+// ===========================================================
+function renderShiftTemplates(){
+  const container = document.getElementById('shiftTplList');
+  container.innerHTML = shiftTemplates.map(t=>`
+    <div class="tpl-card">
+      <div class="tpl-info">
+        <span class="tpl-name">${t.name}</span>
+        <input type="time" value="${t.start}" onchange="updateTplTime('${t.id}','start',this.value)">
+        <span class="tpl-time">至</span>
+        <input type="time" value="${t.end}" onchange="updateTplTime('${t.id}','end',this.value)">
+      </div>
+      <button class="row-del" onclick="deleteShiftTemplate('${t.id}')">✕ 刪除</button>
+    </div>
+  `).join('');
+  renderTplPreviewBtns();
+}
+function updateTplTime(id, field, val){
+  const t = shiftTemplates.find(x=>x.id===id);
+  if(!t) return;
+  t[field] = val;
+  saveStore(STORE_KEYS.shiftTemplates, shiftTemplates);
+  renderTplPreviewBtns();
+}
+function deleteShiftTemplate(id){
+  if(!confirm('確定刪除此時段按鈕？')) return;
+  shiftTemplates = shiftTemplates.filter(x=>x.id!==id);
+  saveStore(STORE_KEYS.shiftTemplates, shiftTemplates);
+  renderShiftTemplates();
+}
+function addShiftTemplate(){
+  const nameInp = document.getElementById('newTplName');
+  const startInp = document.getElementById('newTplStart');
+  const endInp = document.getElementById('newTplEnd');
+  const name = nameInp.value.trim();
+  if(!name){ alert('請輸入按鈕名稱'); return; }
+  if(startInp.value >= endInp.value){ alert('結束時間需晚於開始時間'); return; }
+  shiftTemplates.push({ id: uid('tpl'), name, start:startInp.value, end:endInp.value });
+  saveStore(STORE_KEYS.shiftTemplates, shiftTemplates);
+  nameInp.value='';
+  renderShiftTemplates();
+}
+function renderTplPreviewBtns(){
+  const container = document.getElementById('tplPreviewBtns');
+  container.innerHTML = shiftTemplates.map(t=>
+    `<button class="quick-btn" onclick="applyTplPreview('${t.start}','${t.end}')">${t.name}<br><span style="font-size:10px;font-weight:400;">${t.start}–${t.end}</span></button>`
+  ).join('');
+}
+function applyTplPreview(start, end){
+  document.getElementById('previewStart').value = start;
+  document.getElementById('previewEnd').value = end;
+}
+
+// ===========================================================
+// M3 月曆排班
+// ===========================================================
+let calMode = 'month'; // 'month' | 'week'
+let calRefDate = new Date(); // 參考日期，決定目前顯示的月份/週
+let modalDate = null; // 'YYYY-MM-DD' 目前彈窗對應日期
+
+function pad2(n){ return String(n).padStart(2,'0'); }
+function fmtDate(d){ return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+function todayStr(){ return fmtDate(new Date()); }
+
+function timeOverlap(s1,e1,s2,e2){
+  return s1 < e2 && s2 < e1;
+}
+
+// 取得某日的所有排班紀錄（含 entry index 方便刪除）
+function getEntriesForDate(dateStr){
+  return (schedule[dateStr]||[]).map((e,idx)=>({...e, _idx:idx}));
+}
+
+// 偵測某日某筆紀錄是否衝突：①同人同時段跨地點重疊 ②與請假/排休衝突
+function detectConflicts(dateStr){
+  const entries = getEntriesForDate(dateStr);
+  const dayLeaves = leaves[dateStr]||[];
+  const conflictIdx = new Set();
+  for(let i=0;i<entries.length;i++){
+    const a = entries[i];
+    // 與請假/排休衝突
+    if(dayLeaves.some(l=>l.staffId===a.staffId)){
+      conflictIdx.add(a._idx);
+    }
+    for(let j=i+1;j<entries.length;j++){
+      const b = entries[j];
+      if(a.staffId===b.staffId){
+        const aStart = a.custom?a.custom.start:a.start;
+        const aEnd   = a.custom?a.custom.end:a.end;
+        const bStart = b.custom?b.custom.start:b.start;
+        const bEnd   = b.custom?b.custom.end:b.end;
+        if(timeOverlap(aStart,aEnd,bStart,bEnd)){
+          conflictIdx.add(a._idx); conflictIdx.add(b._idx);
+        }
+      }
+    }
+  }
+  return conflictIdx;
+}
+
+function setCalView(mode){
+  calMode = mode;
+  document.getElementById('viewModeMonthBtn').classList.toggle('gold', mode==='month');
+  document.getElementById('viewModeWeekBtn').classList.toggle('gold', mode==='week');
+  document.getElementById('viewModeMatrixBtn').classList.toggle('gold', mode==='matrix');
+  const calGrid = document.getElementById('calGrid');
+  const matrixContainer = document.getElementById('matrixContainer');
+  const legendNormal = document.getElementById('calLegendNormal');
+  if(mode==='matrix'){
+    calGrid.style.display = 'none';
+    matrixContainer.style.display = '';
+    legendNormal.style.display = 'none';
+    renderMatrixView();
+  } else {
+    calGrid.style.display = '';
+    matrixContainer.style.display = 'none';
+    legendNormal.style.display = '';
+    renderCalendar();
+  }
+}
+function navCal(dir){
+  if(calMode==='week'){
+    calRefDate.setDate(calRefDate.getDate()+dir*7);
+  } else {
+    // 'month' 與 'matrix' 共用以月為單位的導航
+    calRefDate.setMonth(calRefDate.getMonth()+dir);
+  }
+  renderCalendar(); // 內部會自動依calMode分流到矩陣或月曆渲染
+}
+
+function siteColorClass(site){
+  return site==='clinic' ? '' : 'station';
+}
+function siteLabel(siteOrId){
+  if(siteOrId==='clinic') return '🏥診所';
+  return '📍'+getSiteName(siteOrId);
+}
+// CSV/純文字輸出用：不含emoji前綴的地點名稱，避免emoji在不同編碼環境下顯示異常
+function siteLabelPlain(siteOrId){
+  if(siteOrId==='clinic') return '診所';
+  return getSiteName(siteOrId);
+}
+
+// ===========================================================
+// M3 矩陣總覽表：橫軸日期、縱軸員工，色塊呈現地點
+// ===========================================================
+// 17種固定色盤（診所+16據點），輪流分配，確保每個地點顏色固定不隨資料變動
+const MATRIX_COLOR_PALETTE = [
+  '#B85042','#5C7A6E','#3A7BD5','#C98A2E','#8C3A8C','#2E8B7E','#B5651D','#5B6EE1',
+  '#A13D63','#3D8361','#C44536','#4A6FA5','#9C6644','#577590','#BC6C25','#6A4C93','#1B998B','#7A8450'
+];
+let matrixColorMap = null; // siteKey('clinic'|siteId) -> color，第一次渲染時建立並固定
+
+function buildMatrixColorMap(){
+  const map = {};
+  let idx = 0;
+  map['clinic'] = MATRIX_COLOR_PALETTE[idx % MATRIX_COLOR_PALETTE.length]; idx++;
+  sites.forEach(s=>{
+    map[s.id] = MATRIX_COLOR_PALETTE[idx % MATRIX_COLOR_PALETTE.length];
+    idx++;
+  });
+  return map;
+}
+
+// 共用矩陣表格HTML建構：橫軸日期、縱軸員工，色塊呈現地點
+// onCellClick: 點格子要呼叫的JS函式名稱字串（傳入dateStr），例如 "jumpToScheduleDate" 或 "showQueryDayDetail"
+// 矩陣格子文字用：把一筆排班的起訖時間簡化成「全/上/下」標籤（以中午12:00為分界，
+// 跟M5「只排半天」檢核用同一套判斷基準），例如「岱江里全」「岱江里上」「診所下」
+function getShiftHalfLabel(start, end){
+  const MID = '12:00';
+  const startsMorning = start < MID;
+  const endsAfternoon = end > MID;
+  if(startsMorning && endsAfternoon) return '全';
+  if(startsMorning && !endsAfternoon) return '上';
+  if(!startsMorning && endsAfternoon) return '下';
+  return '全'; // 極端邊界情況（起訖剛好都是12:00）保底顯示為全
+}
+function buildMatrixTableHtml(year, month, onCellClick){
+  matrixColorMap = buildMatrixColorMap();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const dateList = [];
+  for(let d=1; d<=daysInMonth; d++){
+    dateList.push(new Date(year, month, d));
+  }
+  const weekdayNames = ['日','一','二','三','四','五','六'];
+  const activeStaff = staff.filter(s=>s.active);
+
+  let legendHtml = `<div class="matrix-legend">` +
+    Object.keys(matrixColorMap).map(key=>
+      `<span class="matrix-legend-chip" style="background:${matrixColorMap[key]};">${siteLabelPlain(key)}</span>`
+    ).join('') + `</div>`;
+
+  let theadHtml = '<thead><tr><th>姓名</th>' + dateList.map(d=>{
+    const dow = d.getDay();
+    const isWeekend = dow===0 || dow===6;
+    return `<th class="${isWeekend?'weekend-col':''}">${d.getDate()}<br>${weekdayNames[dow]}</th>`;
+  }).join('') + '</tr></thead>';
+
+  let tbodyHtml = '<tbody>' + activeStaff.map(s=>{
+    const rowCells = dateList.map(d=>{
+      const dateStr = fmtDate(d);
+      const entries = getEntriesForDate(dateStr).filter(e=>e.staffId===s.id);
+      const conflictIdx = detectConflicts(dateStr);
+      const hasConflict = entries.some(e=>conflictIdx.has(e._idx));
+      const clickAttr = onCellClick ? `onclick="${onCellClick}('${dateStr}')"` : '';
+      if(entries.length===0){
+        // 沒有排班紀錄時，檢查該人員當天是否有登記請假/排休，若有則顯示假別文字，而不是留空白格
+        const leaveEntry = (leaves[dateStr]||[]).find(l=>l.staffId===s.id);
+        if(leaveEntry){
+          return `<td class="matrix-cell matrix-leave-cell" ${clickAttr}><span class="mc-leave">${leaveEntry.type}</span></td>`;
+        }
+        return `<td class="matrix-cell" ${clickAttr}></td>`;
+      }
+      const cellContent = `<div class="mc-cell-inner">` + entries.map(e=>{
+        const segColor = matrixColorMap[e.site] || '#999';
+        const halfLabel = getShiftHalfLabel(e.start, e.end);
+        return `<div class="mc-seg" style="background:${segColor};">
+          <span class="mc-site">${siteLabelPlain(e.site)}${halfLabel}</span>
+        </div>`;
+      }).join('') + `</div>`;
+      // 同一格內若涵蓋多個不同地點，每個地點各自用自己的顏色顯示（不再整格套用單一顏色），
+      // 並加上◆記號提醒使用者這天有跨地點排班，點擊可查看/編輯詳情
+      const distinctSites = new Set(entries.map(e=>e.site));
+      const multiSiteClass = distinctSites.size > 1 ? 'multi-site' : '';
+      return `<td class="matrix-cell ${hasConflict?'conflict-cell':''} ${multiSiteClass}" ${clickAttr}>${cellContent}</td>`;
+    }).join('');
+    return `<tr><th>${s.name}</th>${rowCells}</tr>`;
+  }).join('') + '</tbody>';
+
+  return legendHtml + `<div class="matrix-scroll"><table class="matrix-table">${theadHtml}${tbodyHtml}</table></div>`;
+}
+
+function renderMatrixView(){
+  const container = document.getElementById('matrixContainer');
+  const title = document.getElementById('calTitle');
+  if(!container || !title) return;
+
+  const y = calRefDate.getFullYear(), m = calRefDate.getMonth();
+  title.textContent = y+'年 '+(m+1)+'月（矩陣總覽）';
+  container.innerHTML = buildMatrixTableHtml(y, m, 'openCellSchedModal');
+}
+
+function renderCalendar(){
+  // 統一分流：若目前是矩陣總覽模式，所有原本呼叫renderCalendar()的地方都改為刷新矩陣，
+  // 避免每個新增/刪除/修改排班的呼叫點都要各自記得判斷calMode（之前在矩陣模式下新增跨地點排班，
+  // 矩陣畫面沒有跟著更新，就是因為這裡漏了判斷）。
+  if(calMode==='matrix'){
+    renderMatrixView();
+    return;
+  }
+  const grid = document.getElementById('calGrid');
+  const title = document.getElementById('calTitle');
+  if(!grid || !title) return; // 員工端M3已移除，無需渲染月曆
+  const weekdayNames = ['日','一','二','三','四','五','六'];
+
+  let cells = [];
+  if(calMode==='month'){
+    const y = calRefDate.getFullYear(), m = calRefDate.getMonth();
+    title.textContent = y+'年 '+(m+1)+'月';
+    const firstDay = new Date(y,m,1);
+    const startOffset = firstDay.getDay();
+    const gridStart = new Date(y,m,1-startOffset);
+    for(let i=0;i<42;i++){
+      const d = new Date(gridStart); d.setDate(gridStart.getDate()+i);
+      cells.push({date:d, otherMonth: d.getMonth()!==m});
+    }
+  } else {
+    const d0 = new Date(calRefDate);
+    const offset = d0.getDay();
+    const weekStart = new Date(d0); weekStart.setDate(d0.getDate()-offset);
+    const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate()+6);
+    title.textContent = fmtDate(weekStart)+' ～ '+fmtDate(weekEnd);
+    for(let i=0;i<7;i++){
+      const d = new Date(weekStart); d.setDate(weekStart.getDate()+i);
+      cells.push({date:d, otherMonth:false});
+    }
+  }
+
+  grid.className = 'cal-grid'+(calMode==='week'?' week-mode':'');
+  let html = weekdayNames.map(w=>`<div class="cal-weekday">${w}</div>`).join('');
+
+  cells.forEach(c=>{
+    const dateStr = fmtDate(c.date);
+    const entries = getEntriesForDate(dateStr);
+    const conflictIdx = detectConflicts(dateStr);
+    const hasConflict = conflictIdx.size>0;
+    const isToday = dateStr===todayStr();
+    const maxShow = calMode==='week' ? 6 : 2;
+    let tagsHtml = entries.slice(0,maxShow).map(e=>{
+      const isConf = conflictIdx.has(e._idx);
+      const cls = isConf ? 'conflict' : siteColorClass(e.site);
+      const label = getStaffName(e.staffId)+' '+siteLabel(e.site);
+      return `<div class="entry-tag ${cls}">${label}</div>`;
+    }).join('');
+    let moreHtml = entries.length>maxShow ? `<div class="entry-more">+${entries.length-maxShow} 更多</div>` : '';
+    html += `<div class="cal-cell ${c.otherMonth?'other-month':''} ${isToday?'today':''} ${hasConflict?'has-conflict':''}" onclick="openSchedModal('${dateStr}')">
+      <div class="cal-daynum">${c.date.getDate()}</div>
+      ${tagsHtml}${moreHtml}
+    </div>`;
+  });
+  grid.innerHTML = html;
+}
+
+let selectedLeaveType = LEAVE_TYPES[0];
+let selectedLeaveStaffPending = null;
+
+// 從其他模組（如M5）跳轉到M3指定日期的排班彈窗
+function jumpToScheduleDate(dateStr){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelector('.tab-btn[data-panel="m3"]').classList.add('active');
+  document.getElementById('panel-m3').classList.add('active');
+  // 確保月曆導航到該日期所在的月份
+  const d = new Date(dateStr+'T00:00:00');
+  calRefDate = new Date(d);
+  calMode = 'month';
+  document.getElementById('viewModeMonthBtn').classList.add('gold');
+  document.getElementById('viewModeWeekBtn').classList.remove('gold');
+  renderCalendar();
+  openSchedModal(dateStr);
+}
+// 矩陣總覽格子點擊專用：只開排班彈窗，不切換頁籤、不改變calMode，
+// 確保關閉彈窗後仍停留在矩陣總覽（之前共用jumpToScheduleDate會被強制切回月檢視，
+// 導致在矩陣模式下新增/刪除排班後，矩陣畫面沒有跟著更新）。
+function openCellSchedModal(dateStr){
+  openSchedModal(dateStr);
+}
+function openSchedModal(dateStr){
+  modalDate = dateStr;
+  document.getElementById('modalDateTitle').textContent = dateStr;
+  populateFormStaffSelect();
+  populateFormSiteSelect();
+  populateLeaveStaffSelect();
+  renderFormQuickBtns();
+  renderLeaveTypeBtns();
+  renderModalLeaves();
+  renderModalEntries();
+  document.getElementById('schedModalOverlay').classList.add('open');
+}
+function closeSchedModal(e){
+  if(e && e.target!==e.currentTarget) return;
+  document.getElementById('schedModalOverlay').classList.remove('open');
+  modalDate = null;
+}
+function populateFormStaffSelect(){
+  const sel = document.getElementById('formStaffSel');
+  sel.innerHTML = staff.filter(s=>s.active).map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+}
+function populateLeaveStaffSelect(){
+  const sel = document.getElementById('leaveStaffSel');
+  sel.innerHTML = staff.filter(s=>s.active).map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+}
+function populateFormSiteSelect(){
+  const sel = document.getElementById('formSiteSel');
+  sel.innerHTML = '<option value="clinic">🏥 診所</option>' +
+    sites.map(s=>`<option value="${s.id}">📍 ${s.name}</option>`).join('');
+}
+function renderFormQuickBtns(){
+  const container = document.getElementById('formQuickBtns');
+  container.innerHTML = shiftTemplates.map(t=>
+    `<span class="qbtn" onclick="applyFormQuick('${t.start}','${t.end}')">${t.name}</span>`
+  ).join('');
+}
+function applyFormQuick(start,end){
+  document.getElementById('formStart').value = start;
+  document.getElementById('formEnd').value = end;
+}
+function renderLeaveTypeBtns(){
+  const container = document.getElementById('leaveTypeBtns');
+  container.innerHTML = LEAVE_TYPES.map(t=>
+    `<span class="qbtn leave-type ${t===selectedLeaveType?'selected':''}" onclick="selectLeaveType('${t}')">${t}</span>`
+  ).join('');
+}
+function selectLeaveType(t){
+  selectedLeaveType = t;
+  renderLeaveTypeBtns();
+}
+function renderModalLeaves(){
+  const container = document.getElementById('modalLeaveList');
+  const dayLeaves = (leaves[modalDate]||[]).map((l,idx)=>({...l,_idx:idx}));
+  if(dayLeaves.length===0){
+    container.innerHTML = '<div style="text-align:center;color:var(--text-soft);font-size:12px;padding:6px;">本日尚無請假登記</div>';
+  } else {
+    container.innerHTML = dayLeaves.map(l=>`
+      <div class="leave-row">
+        <span><strong>${getStaffName(l.staffId)}</strong> <span class="leave-type-badge">${l.type}</span></span>
+        <button class="row-del" onclick="deleteLeaveEntry(${l._idx})">✕</button>
+      </div>
+    `).join('');
+  }
+  updateScheduleFormAvailability();
+}
+function addLeaveEntry(){
+  if(isDateLeaveLocked(modalDate)){ alert(leaveLockMessage()); return; }
+  const staffId = document.getElementById('leaveStaffSel').value;
+  if(!staffId){ alert('請選擇人員'); return; }
+  if(!leaves[modalDate]) leaves[modalDate]=[];
+  if(leaves[modalDate].some(l=>l.staffId===staffId && l.type===selectedLeaveType)){
+    alert('此人員當日已登記相同類型的請假');
+    return;
+  }
+  leaves[modalDate].push({ staffId, type: selectedLeaveType, note:'' });
+  saveStore(STORE_KEYS.leaves, leaves);
+  renderModalLeaves();
+  renderModalEntries();
+  renderCalendar();
+  if(typeof renderLeaveOverview==='function') renderLeaveOverview();
+  if(typeof renderConflictOverview==='function') renderConflictOverview();
+}
+function deleteLeaveEntry(idx){
+  if(!IS_ADMIN){ alert('⚠️ 一般員工僅能新增請假登記，無法修改或刪除已登記的紀錄。如需取消/更正，請洽管理者協助處理。'); return; }
+  if(isDateLeaveLocked(modalDate, 'cancel')){ alert(leaveLockMessage('cancel')); return; }
+  if(!leaves[modalDate]) return;
+  leaves[modalDate].splice(idx,1);
+  if(leaves[modalDate].length===0) delete leaves[modalDate];
+  saveStore(STORE_KEYS.leaves, leaves);
+  renderModalLeaves();
+  renderModalEntries();
+  renderCalendar();
+  if(typeof renderLeaveOverview==='function') renderLeaveOverview();
+  if(typeof renderConflictOverview==='function') renderConflictOverview();
+}
+
+// ===========================================================
+// M4 獨立登記表單（給員工端使用，不依賴M3月曆彈窗）
+// ===========================================================
+let m4SelectedLeaveType = LEAVE_TYPES[0];
+
+function populateM4LeaveStaffSelect(){
+  const sel = document.getElementById('m4LeaveStaffSel');
+  if(!sel) return;
+  sel.innerHTML = staff.filter(s=>s.active).map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+}
+function renderM4LeaveTypeBtns(){
+  const container = document.getElementById('m4LeaveTypeBtns');
+  if(!container) return;
+  container.innerHTML = LEAVE_TYPES.map(t=>
+    `<span class="qbtn leave-type ${t===m4SelectedLeaveType?'selected':''}" onclick="selectM4LeaveType('${t}')">${t}</span>`
+  ).join('');
+}
+function selectM4LeaveType(t){
+  m4SelectedLeaveType = t;
+  renderM4LeaveTypeBtns();
+}
+// 員工選人員/日期時，提示該日是否已被排班（僅提示，不阻擋請假登記）
+function updateM4ScheduleHint(){
+  const staffId = document.getElementById('m4LeaveStaffSel').value;
+  const dateStr = document.getElementById('m4LeaveDate').value;
+  const hint = document.getElementById('m4LeaveScheduleHint');
+  if(!hint) return;
+  if(!dateStr){ hint.style.display='none'; return; }
+  // 鎖定狀態優先顯示，因為這會直接導致操作被拒絕，比「已排班」提示更重要
+  if(isDateLeaveLocked(dateStr)){
+    hint.textContent = leaveLockMessage();
+    hint.style.color = 'var(--danger)';
+    hint.style.display = 'block';
+    return;
+  }
+  hint.style.color = 'var(--warn)';
+  if(!staffId){ hint.style.display='none'; return; }
+  const entries = getEntriesForDate(dateStr).filter(e=>e.staffId===staffId);
+  if(entries.length>0){
+    const detail = entries.map(e=>`${siteLabel(e.site)} ${e.start}–${e.end}`).join('、');
+    hint.textContent = `⚠ ${getStaffName(staffId)} 當日已被排班：${detail}（仍可登記請假，但請留意衝突，最終會在M5顯示）`;
+    hint.style.display = 'block';
+  } else {
+    hint.style.display = 'none';
+  }
+}
+function addLeaveEntryM4(){
+  const staffId = document.getElementById('m4LeaveStaffSel').value;
+  const dateStr = document.getElementById('m4LeaveDate').value;
+  if(!staffId){ alert('請選擇人員'); return; }
+  if(!dateStr){ alert('請選擇日期'); return; }
+  if(isDateLeaveLocked(dateStr)){ alert(leaveLockMessage()); return; }
+  if(!leaves[dateStr]) leaves[dateStr]=[];
+  if(leaves[dateStr].some(l=>l.staffId===staffId && l.type===m4SelectedLeaveType)){
+    alert('此人員當日已登記相同類型的請假');
+    return;
+  }
+  leaves[dateStr].push({ staffId, type: m4SelectedLeaveType, note:'' });
+  saveStore(STORE_KEYS.leaves, leaves);
+  if(typeof renderLeaveOverview==='function') renderLeaveOverview();
+  if(typeof renderConflictOverview==='function') renderConflictOverview();
+  if(typeof renderCalendar==='function') renderCalendar();
+  updateM4ScheduleHint();
+  alert(`已為 ${getStaffName(staffId)} 登記 ${dateStr} 的「${m4SelectedLeaveType}」`);
+}
+// 取得當日已請假的員工id清單
+function getLeaveStaffIds(dateStr){
+  return (leaves[dateStr]||[]).map(l=>l.staffId);
+}
+// 依目前表單選擇的人員，檢查是否被請假阻擋，更新UI禁用狀態
+function updateScheduleFormAvailability(){
+  const staffId = document.getElementById('formStaffSel').value;
+  const leaveStaffIds = getLeaveStaffIds(modalDate);
+  const notice = document.getElementById('formBlockNotice');
+  const btn = document.getElementById('addScheduleBtn');
+  if(staffId && leaveStaffIds.includes(staffId)){
+    const l = (leaves[modalDate]||[]).find(x=>x.staffId===staffId);
+    notice.style.display='block';
+    notice.textContent = `⚠ ${getStaffName(staffId)} 當日已登記「${l?l.type:''}」，需先取消請假才能排班`;
+    btn.disabled = true;
+    btn.style.opacity = '.5';
+    btn.style.cursor = 'not-allowed';
+  } else {
+    notice.style.display='none';
+    btn.disabled = false;
+    btn.style.opacity = '';
+    btn.style.cursor = '';
+  }
+}
+function renderModalEntries(){
+  const container = document.getElementById('modalEntryList');
+  const entries = getEntriesForDate(modalDate);
+  const conflictIdx = detectConflicts(modalDate);
+  if(entries.length===0){
+    container.innerHTML = '<div style="text-align:center;color:var(--text-soft);font-size:12px;padding:10px;">本日尚無排班</div>';
+    return;
+  }
+  container.innerHTML = entries.map(e=>{
+    const isConf = conflictIdx.has(e._idx);
+    const start = e.custom?e.custom.start:e.start;
+    const end = e.custom?e.custom.end:e.end;
+    return `
+    <div class="entry-row ${isConf?'conflict':''}">
+      <div class="entry-main">
+        <strong>${getStaffName(e.staffId)}</strong>
+        <span class="site-badge ${siteColorClass(e.site)}">${siteLabel(e.site)}</span>
+        <span>${start}–${end}</span>
+        ${isConf?'<span style="color:var(--danger);font-weight:700;">⚠衝突</span>':''}
+      </div>
+      <button class="row-del" onclick="deleteScheduleEntry(${e._idx})">✕</button>
+    </div>`;
+  }).join('');
+}
+function addScheduleEntry(){
+  const staffId = document.getElementById('formStaffSel').value;
+  const site = document.getElementById('formSiteSel').value;
+  const start = document.getElementById('formStart').value;
+  const end = document.getElementById('formEnd').value;
+  if(!staffId){ alert('請選擇人員'); return; }
+  if(start>=end){ alert('結束時間需晚於開始時間'); return; }
+  if(getLeaveStaffIds(modalDate).includes(staffId)){
+    alert('此人員當日已登記請假/排休，需先取消請假才能排班');
+    return;
+  }
+  if(!schedule[modalDate]) schedule[modalDate]=[];
+  schedule[modalDate].push({ staffId, site, start, end, status:'draft' });
+  saveStore(STORE_KEYS.schedule, schedule);
+  renderModalEntries();
+  renderCalendar();
+  if(typeof renderConflictOverview==='function') renderConflictOverview();
+}
+function deleteScheduleEntry(idx){
+  if(!schedule[modalDate]) return;
+  schedule[modalDate].splice(idx,1);
+  if(schedule[modalDate].length===0) delete schedule[modalDate];
+  saveStore(STORE_KEYS.schedule, schedule);
+  renderModalEntries();
+  renderCalendar();
+  if(typeof renderConflictOverview==='function') renderConflictOverview();
+}
+
+// ===========================================================
+// 批量排班：多人 × 一個地點 × 一段日期範圍 × 多個時段規則，一次套用
+// ===========================================================
+let bulkSelectedStaffIds = [];
+let bulkRules = []; // 累加的時段規則 [{start, end}, ...]，按「設定」一次加一筆
+let bulkMode = 'apply'; // 'apply' | 'cancel'
+
+function openBulkScheduleModal(){
+  bulkSelectedStaffIds = [];
+  bulkRules = [];
+  setBulkMode('apply');
+  populateBulkStaffChecklist();
+  populateBulkSiteSelect();
+  renderBulkQuickBtns();
+  renderBulkRuleCount();
+  document.getElementById('bulkResultReport').innerHTML = '';
+  document.getElementById('bulkScheduleOverlay').classList.add('open');
+}
+function closeBulkScheduleModal(e){
+  if(e && e.target!==e.currentTarget) return;
+  document.getElementById('bulkScheduleOverlay').classList.remove('open');
+}
+function setBulkMode(mode){
+  bulkMode = mode;
+  document.getElementById('bulkModeApplyBtn').classList.toggle('gold', mode==='apply');
+  document.getElementById('bulkModeApplyBtn').classList.toggle('outline', mode!=='apply');
+  document.getElementById('bulkModeCancelBtn').classList.toggle('gold', mode==='cancel');
+  document.getElementById('bulkModeCancelBtn').classList.toggle('outline', mode!=='cancel');
+  document.getElementById('bulkApplySection').style.display = mode==='apply' ? '' : 'none';
+  document.getElementById('bulkCancelSection').style.display = mode==='cancel' ? '' : 'none';
+  document.getElementById('bulkExcludeWeekendRow').style.display = mode==='apply' ? '' : 'none';
+  document.getElementById('bulkModeDesc').textContent = mode==='apply'
+    ? '選人員＋地點＋日期範圍 → 選時段後點「設定」（可重複設定多個時段，例如上午、下午各設一次）→ 全部設定完後點「套用」一次性排入月曆。'
+    : '選人員＋地點＋日期範圍 → 點「批量取消」，刪除這些人員在這個地點、這段期間內的所有排班（不影響他們在其他地點的班）。';
+  document.getElementById('bulkResultReport').innerHTML = '';
+}
+function populateBulkStaffChecklist(){
+  const container = document.getElementById('bulkStaffChecklist');
+  container.innerHTML = staff.filter(s=>s.active).map(s=>
+    `<span class="bulk-staff-chip ${bulkSelectedStaffIds.includes(s.id)?'selected':''}" onclick="toggleBulkStaff('${s.id}')">${s.name}</span>`
+  ).join('');
+}
+function toggleBulkStaff(staffId){
+  const idx = bulkSelectedStaffIds.indexOf(staffId);
+  if(idx>=0) bulkSelectedStaffIds.splice(idx,1);
+  else bulkSelectedStaffIds.push(staffId);
+  populateBulkStaffChecklist();
+}
+let bulkSelectedSite = 'clinic'; // 批量排班目前選定的地點(單選)
+function populateBulkSiteSelect(){
+  renderBulkSiteChecklist();
+}
+function renderBulkSiteChecklist(){
+  const container = document.getElementById('bulkSiteChecklist');
+  if(!container) return;
+  const opts = [{ id:'clinic', name:'🏥 診所' }, ...sites.map(s=>({ id:s.id, name:'📍 '+s.name }))];
+  container.innerHTML = opts.map(o=>
+    `<span class="bulk-staff-chip ${bulkSelectedSite===o.id?'selected':''}" onclick="selectBulkSite('${o.id}')">${o.name}</span>`
+  ).join('');
+}
+function selectBulkSite(siteId){
+  bulkSelectedSite = siteId;
+  renderBulkSiteChecklist();
+}
+function renderBulkQuickBtns(){
+  const container = document.getElementById('bulkQuickBtns');
+  container.innerHTML = shiftTemplates.map(t=>
+    `<span class="qbtn" onclick="applyBulkQuick('${t.start}','${t.end}')">${t.name}</span>`
+  ).join('');
+}
+function applyBulkQuick(start,end){
+  document.getElementById('bulkStart').value = start;
+  document.getElementById('bulkEnd').value = end;
+}
+
+// 按「設定」：把目前選定的時段累加進規則清單，不立即套用
+function addBulkRule(){
+  const start = document.getElementById('bulkStart').value;
+  const end = document.getElementById('bulkEnd').value;
+  if(start>=end){ alert('結束時間需晚於開始時間'); return; }
+  if(bulkRules.some(r=>r.start===start && r.end===end)){
+    alert('此時段已設定過');
+    return;
+  }
+  bulkRules.push({ start, end });
+  renderBulkRuleCount();
+}
+function removeBulkRule(idx){
+  bulkRules.splice(idx,1);
+  renderBulkRuleCount();
+}
+function renderBulkRuleCount(){
+  const container = document.getElementById('bulkRuleCount');
+  if(bulkRules.length===0){
+    container.classList.remove('has-rules');
+    container.innerHTML = '';
+    return;
+  }
+  container.classList.add('has-rules');
+  container.innerHTML = `已設定 ${bulkRules.length} 個時段：` +
+    bulkRules.map((r,i)=>`
+      <div class="bulk-rule-item">
+        <span>${r.start}–${r.end}</span>
+        <span class="x" onclick="removeBulkRule(${i})">✕</span>
+      </div>
+    `).join('');
+}
+
+// 列出兩個日期之間（含頭尾）的所有日期字串
+function listDatesInRange(startDate, endDate){
+  const dates = [];
+  let cur = new Date(startDate+'T00:00:00');
+  const end = new Date(endDate+'T00:00:00');
+  while(cur <= end){
+    dates.push(fmtDate(cur));
+    cur.setDate(cur.getDate()+1);
+  }
+  return dates;
+}
+// 判斷日期字串是否為週六或週日
+function isWeekend(dateStr){
+  const d = new Date(dateStr+'T00:00:00').getDay();
+  return d===0 || d===6;
+}
+
+function runBulkSchedule(){
+  if(bulkSelectedStaffIds.length===0){ alert('請至少選擇一位人員'); return; }
+  const site = bulkSelectedSite;
+  const startDate = document.getElementById('bulkStartDate').value;
+  const endDate = document.getElementById('bulkEndDate').value;
+  const excludeWeekend = document.getElementById('bulkExcludeWeekend').checked;
+  if(!startDate || !endDate){ alert('請選擇日期範圍'); return; }
+  if(startDate > endDate){ alert('起始日不能晚於結束日'); return; }
+  // 若尚未按過「設定」，把目前畫面上選的時段視為唯一規則，方便只排單一時段時不用多按一次
+  let rulesToApply = bulkRules.length>0 ? bulkRules : [{
+    start: document.getElementById('bulkStart').value,
+    end: document.getElementById('bulkEnd').value
+  }];
+  if(rulesToApply.some(r=>r.start>=r.end)){ alert('時段設定有誤，結束時間需晚於開始時間'); return; }
+
+  let allDates = listDatesInRange(startDate, endDate);
+  let excludedWeekendCount = 0;
+  if(excludeWeekend){
+    const before = allDates.length;
+    allDates = allDates.filter(d=>!isWeekend(d));
+    excludedWeekendCount = before - allDates.length;
+  }
+
+  let addedCount = 0;
+  const skipped = []; // { dateStr, staffName, reason }
+
+  bulkSelectedStaffIds.forEach(staffId=>{
+    const staffName = getStaffName(staffId);
+    allDates.forEach(dateStr=>{
+      const dayLeaves = leaves[dateStr] || [];
+      if(dayLeaves.some(l=>l.staffId===staffId)){
+        skipped.push({ dateStr, staffName });
+        return;
+      }
+      rulesToApply.forEach(rule=>{
+        if(!schedule[dateStr]) schedule[dateStr] = [];
+        schedule[dateStr].push({ staffId, site, start:rule.start, end:rule.end, status:'draft' });
+        addedCount++;
+      });
+    });
+  });
+
+  saveStore(STORE_KEYS.schedule, schedule);
+  renderCalendar();
+  if(typeof renderConflictOverview==='function') renderConflictOverview();
+
+  renderBulkReport(addedCount, skipped, allDates.length, bulkSelectedStaffIds.length, rulesToApply.length, excludedWeekendCount);
+  // 套用完成後清空規則，避免重複按套用時誤加
+  bulkRules = [];
+  renderBulkRuleCount();
+}
+
+function renderBulkReport(addedCount, skipped, totalDays, totalStaff, ruleCount, excludedWeekendCount){
+  const container = document.getElementById('bulkResultReport');
+  let html = `<div class="bulk-report-box success">✅ 已成功套用 <strong>${addedCount}</strong> 筆排班（${totalStaff}位人員 × ${totalDays}天 × ${ruleCount}個時段）。`;
+  if(excludedWeekendCount>0){
+    html += `<br>已自動排除 ${excludedWeekendCount} 天週末。`;
+  }
+  if(skipped.length>0){
+    html += `<div class="skip-line">⚠ 以下 ${skipped.length} 筆因當日已登記請假而跳過：<br>` +
+      skipped.map(s=>`${s.dateStr} ${s.staffName}`).join('、') + '</div>';
+  }
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+// 批量取消：選人員＋地點＋日期範圍，刪除這些人員在這個地點、這段期間內的所有排班
+// 精準刪除「該人在該地點」的紀錄，不影響該人在其他地點的正確排班
+function runBulkCancel(){
+  if(bulkSelectedStaffIds.length===0){ alert('請至少選擇一位人員'); return; }
+  const site = bulkSelectedSite;
+  const startDate = document.getElementById('bulkStartDate').value;
+  const endDate = document.getElementById('bulkEndDate').value;
+  if(!startDate || !endDate){ alert('請選擇日期範圍'); return; }
+  if(startDate > endDate){ alert('起始日不能晚於結束日'); return; }
+
+  const siteName = siteLabel(site);
+  const staffNames = bulkSelectedStaffIds.map(getStaffName).join('、');
+  if(!confirm(`確定要刪除 ${staffNames} 在「${siteName}」於 ${startDate} ~ ${endDate} 期間的所有排班嗎？此操作無法復原。`)) return;
+
+  const dateList = listDatesInRange(startDate, endDate);
+  let removedCount = 0;
+  const affectedDates = new Set();
+
+  dateList.forEach(dateStr=>{
+    if(!schedule[dateStr]) return;
+    const before = schedule[dateStr].length;
+    schedule[dateStr] = schedule[dateStr].filter(e=>{
+      const match = bulkSelectedStaffIds.includes(e.staffId) && e.site===site;
+      if(match) affectedDates.add(dateStr);
+      return !match; // 保留不符合條件的紀錄，符合條件的(要刪除的)濾掉
+    });
+    removedCount += before - schedule[dateStr].length;
+    if(schedule[dateStr].length===0) delete schedule[dateStr];
+  });
+
+  saveStore(STORE_KEYS.schedule, schedule);
+  renderCalendar();
+  if(typeof renderConflictOverview==='function') renderConflictOverview();
+
+  renderBulkCancelReport(removedCount, affectedDates.size, staffNames, siteName);
+}
+
+function renderBulkCancelReport(removedCount, affectedDayCount, staffNames, siteName){
+  const container = document.getElementById('bulkResultReport');
+  if(removedCount===0){
+    container.innerHTML = `<div class="bulk-report-box">ℹ️ 沒有找到符合條件的排班紀錄（${staffNames} 在「${siteName}」這段期間內沒有排班）。</div>`;
+    return;
+  }
+  container.innerHTML = `<div class="bulk-report-box success">🗑️ 已刪除 <strong>${removedCount}</strong> 筆排班（${staffNames} 在「${siteName}」，共 ${affectedDayCount} 天）。</div>`;
+}
+
+// ===========================================================
+// 複製排班：①複製月份班表(單人跨月) ②複製給其他人(多人同月)
+// ===========================================================
+let copyMode = 'month'; // 'month' | 'person'
+let copyTargetStaffIds = [];
+let copyTargetSites = {}; // staffId -> 該人指定的新地點('__keep__'表示維持原地點)
+
+function openCopyScheduleModal(){
+  copyTargetStaffIds = [];
+  copyTargetSites = {};
+  setCopyMode('month');
+  populateCopyStaffSelects();
+  document.getElementById('copyResultReport').innerHTML = '';
+  document.getElementById('copyScheduleOverlay').classList.add('open');
+}
+function closeCopyScheduleModal(e){
+  if(e && e.target!==e.currentTarget) return;
+  document.getElementById('copyScheduleOverlay').classList.remove('open');
+}
+function setCopyMode(mode){
+  copyMode = mode;
+  document.getElementById('copyModeMonthBtn').classList.toggle('gold', mode==='month');
+  document.getElementById('copyModeMonthBtn').classList.toggle('outline', mode!=='month');
+  document.getElementById('copyModeFullBtn').classList.toggle('gold', mode==='full');
+  document.getElementById('copyModeFullBtn').classList.toggle('outline', mode!=='full');
+  document.getElementById('copyModePersonBtn').classList.toggle('gold', mode==='person');
+  document.getElementById('copyModePersonBtn').classList.toggle('outline', mode!=='person');
+  document.getElementById('copyModeClearBtn').classList.toggle('gold', mode==='clear');
+  document.getElementById('copyModeClearBtn').classList.toggle('outline', mode!=='clear');
+  document.getElementById('copyMonthSection').style.display = mode==='month' ? '' : 'none';
+  document.getElementById('copyFullMonthSection').style.display = mode==='full' ? '' : 'none';
+  document.getElementById('copyPersonSection').style.display = mode==='person' ? '' : 'none';
+  document.getElementById('copyClearSection').style.display = mode==='clear' ? '' : 'none';
+  if(mode==='month'){
+    document.getElementById('copyModeDesc').textContent = '選一位人員，把他某個月份的班表完整複製到另一個月份（適合固定排班的據點人員）。若目標月份已有班表，會拒絕複製。';
+  } else if(mode==='full'){
+    document.getElementById('copyModeDesc').textContent = '把整個月份「所有人員、所有地點」的排班，逐日複製到另一個月份（適合整月班表要原封不動搬到下個月的情況）。若目標月份已有任何排班，會拒絕複製。';
+  } else if(mode==='person'){
+    document.getElementById('copyModeDesc').textContent = '選一位來源人員與月份，複製給多位目標人員（複製後每個人都可以自己再微調地點/時間）。若目標人員當月已有班表，會拒絕複製。';
+  } else {
+    document.getElementById('copyModeDesc').textContent = '選「指定人員」或「全公司」＋月份，刪除整月、不論哪個地點的所有排班（整月清零重來）。此操作無法復原，適合排錯後重新排班前的清空步驟。';
+  }
+  document.getElementById('copyResultReport').innerHTML = '';
+  if(mode==='clear' && typeof setClearMode==='function') setClearMode('person');
+}
+let copyMonthSelectedStaff = null; // 「複製月份班表」目前選定的人員(單選)
+let copySourceSelectedStaff = null; // 「複製給其他人」目前選定的來源人員(單選)
+
+function populateCopyStaffSelects(){
+  const opts = staff.filter(s=>s.active).map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+  document.getElementById('clearMonthStaffSel').innerHTML = opts;
+  renderCopyMonthStaffChecklist();
+  renderCopySourceStaffChecklist();
+  renderCopyTargetStaffChecklist();
+}
+function renderCopyMonthStaffChecklist(){
+  const container = document.getElementById('copyMonthStaffChecklist');
+  if(!container) return;
+  const activeStaff = staff.filter(s=>s.active);
+  if(copyMonthSelectedStaff===null && activeStaff.length>0) copyMonthSelectedStaff = activeStaff[0].id;
+  container.innerHTML = activeStaff.map(s=>
+    `<span class="bulk-staff-chip ${copyMonthSelectedStaff===s.id?'selected':''}" onclick="selectCopyMonthStaff('${s.id}')">${s.name}</span>`
+  ).join('');
+}
+function selectCopyMonthStaff(staffId){
+  copyMonthSelectedStaff = staffId;
+  renderCopyMonthStaffChecklist();
+}
+function renderCopySourceStaffChecklist(){
+  const container = document.getElementById('copySourceStaffChecklist');
+  if(!container) return;
+  const activeStaff = staff.filter(s=>s.active);
+  if(copySourceSelectedStaff===null && activeStaff.length>0) copySourceSelectedStaff = activeStaff[0].id;
+  container.innerHTML = activeStaff.map(s=>
+    `<span class="bulk-staff-chip ${copySourceSelectedStaff===s.id?'selected':''}" onclick="selectCopySourceStaff('${s.id}')">${s.name}</span>`
+  ).join('');
+}
+function selectCopySourceStaff(staffId){
+  copySourceSelectedStaff = staffId;
+  renderCopySourceStaffChecklist();
+  renderCopyTargetStaffChecklist(); // 來源人員變更時，目標清單要排除新的來源人員(避免複製給自己)
+}
+function renderCopyTargetStaffChecklist(){
+  const container = document.getElementById('copyTargetStaffChecklist');
+  if(!container) return;
+  const sourceId = copySourceSelectedStaff;
+  container.innerHTML = staff.filter(s=>s.active && s.id!==sourceId).map(s=>
+    `<span class="bulk-staff-chip ${copyTargetStaffIds.includes(s.id)?'selected':''}" onclick="toggleCopyTargetStaff('${s.id}')">${s.name}</span>`
+  ).join('');
+  renderCopyTargetSiteList();
+}
+function toggleCopyTargetStaff(staffId){
+  const idx = copyTargetStaffIds.indexOf(staffId);
+  if(idx>=0){
+    copyTargetStaffIds.splice(idx,1);
+    delete copyTargetSites[staffId];
+  } else {
+    copyTargetStaffIds.push(staffId);
+    if(!copyTargetSites[staffId]) copyTargetSites[staffId] = '__keep__'; // 預設維持原地點
+  }
+  renderCopyTargetStaffChecklist();
+}
+// 勾選後展開的逐人地點指定列表：每位已勾選的目標人員一行，可個別選地點（預設維持原地點）
+function renderCopyTargetSiteList(){
+  const container = document.getElementById('copyTargetSiteList');
+  if(!container) return;
+  if(copyTargetStaffIds.length===0){
+    container.innerHTML = '';
+    return;
+  }
+  const siteOpts = [{ id:'__keep__', name:'維持原地點不變' }, { id:'clinic', name:'🏥 診所' }, ...sites.map(s=>({ id:s.id, name:'📍 '+s.name }))];
+  container.innerHTML = copyTargetStaffIds.map(id=>{
+    const current = copyTargetSites[id] || '__keep__';
+    const chipsHtml = siteOpts.map(o=>
+      `<span class="bulk-staff-chip ${current===o.id?'selected':''}" onclick="setCopyTargetSite('${id}','${o.id}')">${o.name}</span>`
+    ).join('');
+    return `<div class="target-site-row" style="flex-direction:column;align-items:stretch;">
+      <span class="tsr-name" style="margin-bottom:6px;">${getStaffName(id)}</span>
+      <div class="bulk-staff-checklist" style="border:none;padding:0;max-height:none;">${chipsHtml}</div>
+    </div>`;
+  }).join('');
+}
+function setCopyTargetSite(staffId, site){
+  copyTargetSites[staffId] = site;
+  renderCopyTargetSiteList();
+}
+
+// 取得某人在某月份('YYYY-MM')的所有排班紀錄，附帶當月日期清單
+function getStaffScheduleInMonth(staffId, monthStr){
+  const result = [];
+  Object.keys(schedule).forEach(dateStr=>{
+    if(!dateStr.startsWith(monthStr)) return;
+    (schedule[dateStr]||[]).forEach(e=>{
+      if(e.staffId===staffId) result.push({ dateStr, ...e });
+    });
+  });
+  return result;
+}
+// 檢查某人在某月份是否已有任何排班
+function staffHasScheduleInMonth(staffId, monthStr){
+  return Object.keys(schedule).some(dateStr=>
+    dateStr.startsWith(monthStr) && (schedule[dateStr]||[]).some(e=>e.staffId===staffId)
+  );
+}
+
+function runCopyMonth(){
+  const staffId = copyMonthSelectedStaff;
+  const sourceMonth = document.getElementById('copySourceMonth').value;
+  const targetMonth = document.getElementById('copyTargetMonth').value;
+  if(!staffId){ alert('請選擇人員'); return; }
+  if(!sourceMonth || !targetMonth){ alert('請選擇來源與目標月份'); return; }
+  if(sourceMonth===targetMonth){ alert('來源與目標月份不能相同'); return; }
+
+  const staffName = getStaffName(staffId);
+  const sourceEntries = getStaffScheduleInMonth(staffId, sourceMonth);
+  if(sourceEntries.length===0){
+    document.getElementById('copyResultReport').innerHTML =
+      `<div class="bulk-report-box">ℹ️ ${staffName} 在 ${sourceMonth} 沒有任何排班紀錄，無法複製。</div>`;
+    return;
+  }
+  if(staffHasScheduleInMonth(staffId, targetMonth)){
+    document.getElementById('copyResultReport').innerHTML =
+      `<div class="bulk-report-box" style="background:var(--danger-bg);border-color:var(--danger);color:var(--danger);">
+        ❌ 複製失敗：${staffName} 在目標月份 ${targetMonth} 已有班表，請先清空該月份的排班才能複製。
+      </div>`;
+    return;
+  }
+
+  // 偵測來源月份是否為「單一固定模式」：同一個地點+起+訖組合。
+  // 設計原則：據點人員整月通常固定同一地點/時段，不會「週一診所、週二據點」混合，
+  // 所以複製時不依日期/星期對應，而是把這個固定模式套用到目標月份的「所有工作日」（排除週六週日）。
+  const patternKeys = new Set(sourceEntries.map(e => `${e.site}|${e.start}|${e.end}`));
+  if(patternKeys.size > 1){
+    const patternList = Array.from(patternKeys).map(k=>{
+      const [site, start, end] = k.split('|');
+      return `${siteLabelPlain(site)} ${start}–${end}`;
+    }).join('、');
+    document.getElementById('copyResultReport').innerHTML =
+      `<div class="bulk-report-box" style="background:var(--danger-bg);border-color:var(--danger);color:var(--danger);">
+        ❌ 複製失敗：${staffName} 在 ${sourceMonth} 有超過一種排班模式（${patternList}），
+        此功能僅適用於整月固定同一地點/時段的人員。請改用M3手動排班或批量排班處理。
+      </div>`;
+    return;
+  }
+  const pattern = sourceEntries[0]; // 唯一的固定模式：{site, start, end}
+
+  // 套用固定模式到目標月份的所有工作日（排除週六、週日）
+  let copiedCount = 0;
+  let skippedWeekendCount = 0;
+  const targetDaysInMonth = new Date(Number(targetMonth.slice(0,4)), Number(targetMonth.slice(5,7)), 0).getDate();
+  for(let day=1; day<=targetDaysInMonth; day++){
+    const dateStr = targetMonth + '-' + String(day).padStart(2,'0');
+    if(isWeekend(dateStr)){ skippedWeekendCount++; continue; }
+    if(!schedule[dateStr]) schedule[dateStr] = [];
+    schedule[dateStr].push({ staffId, site: pattern.site, start: pattern.start, end: pattern.end, status: 'draft' });
+    copiedCount++;
+  }
+
+  saveStore(STORE_KEYS.schedule, schedule);
+  renderCalendar();
+  if(typeof renderConflictOverview==='function') renderConflictOverview();
+
+  const patternLabel = `${siteLabelPlain(pattern.site)} ${pattern.start}–${pattern.end}`;
+  let reportHtml = `<div class="bulk-report-box success">✅ 已將 ${staffName} 在 ${sourceMonth} 的固定模式（${patternLabel}）套用到 ${targetMonth} 所有工作日，共 <strong>${copiedCount}</strong> 筆。`;
+  if(skippedWeekendCount>0){
+    reportHtml += `<br>已自動排除 ${skippedWeekendCount} 天週六／週日。`;
+  }
+  reportHtml += '可至M3微調地點或時間。</div>';
+  document.getElementById('copyResultReport').innerHTML = reportHtml;
+}
+
+// 整月複製（全員）：把來源月份所有人員、所有地點的排班，複製到目標月份
+// 對齊方式：依「星期幾＋該月第幾次出現」對齊（例如來源月的「第2個星期一」對到目標月的「第2個星期一」），
+// 而不是直接對照日期數字——因為兩個月份的1號可能不是同一個星期幾，若直接用數字對照，
+// 平日班表會被複製到週末、週末反而變成平日的錯位問題。
+function getWeekdayOccurrence(dateStr){
+  // 回傳 { dow: 0~6, occurrence: 這是該月第幾次出現此星期幾 }
+  const d = new Date(dateStr+'T00:00:00');
+  const dow = d.getDay();
+  const day = d.getDate();
+  const occurrence = Math.floor((day-1)/7) + 1; // 同星期幾在月曆中必定每7天出現一次，用日期反推第幾次很安全
+  return { dow, occurrence };
+}
+function findDateByWeekdayOccurrence(monthStr, dow, occurrence){
+  // 在目標月份中找出「第occurrence次出現的星期dow」是幾號；若該月沒有這麼多次則回傳null
+  const year = Number(monthStr.slice(0,4));
+  const month = Number(monthStr.slice(5,7));
+  const daysInMonth = new Date(year, month, 0).getDate();
+  let count = 0;
+  for(let day=1; day<=daysInMonth; day++){
+    const dt = new Date(year, month-1, day);
+    if(dt.getDay()===dow){
+      count++;
+      if(count===occurrence) return monthStr + '-' + String(day).padStart(2,'0');
+    }
+  }
+  return null;
+}
+function runCopyFullMonth(){
+  const sourceMonth = document.getElementById('copyFullSourceMonth').value;
+  const targetMonth = document.getElementById('copyFullTargetMonth').value;
+  if(!sourceMonth || !targetMonth){ alert('請選擇來源與目標月份'); return; }
+  if(sourceMonth===targetMonth){ alert('來源與目標月份不能相同'); return; }
+
+  // 蒐集來源月份所有排班紀錄（依日）
+  const sourceDates = Object.keys(schedule).filter(d=>d.startsWith(sourceMonth) && (schedule[d]||[]).length>0);
+  if(sourceDates.length===0){
+    document.getElementById('copyResultReport').innerHTML =
+      `<div class="bulk-report-box">ℹ️ ${sourceMonth} 沒有任何排班紀錄，無法複製。</div>`;
+    return;
+  }
+  // 目標月份若已有任何排班，拒絕複製（避免覆蓋掉既有安排；需要重排請先用「清空整月」）
+  const targetHasAny = Object.keys(schedule).some(d=>d.startsWith(targetMonth) && (schedule[d]||[]).length>0);
+  if(targetHasAny){
+    document.getElementById('copyResultReport').innerHTML =
+      `<div class="bulk-report-box" style="background:var(--danger-bg);border-color:var(--danger);color:var(--danger);">
+        ❌ 複製失敗：目標月份 ${targetMonth} 已有排班資料，請先用「🗑️ 清空整月」清空後再複製，避免覆蓋既有安排。
+      </div>`;
+    return;
+  }
+
+  let copiedCount = 0;
+  let skippedOutOfRangeDays = 0;
+  sourceDates.forEach(sourceDateStr=>{
+    const { dow, occurrence } = getWeekdayOccurrence(sourceDateStr);
+    const targetDateStr = findDateByWeekdayOccurrence(targetMonth, dow, occurrence);
+    if(!targetDateStr){ skippedOutOfRangeDays++; return; } // 目標月份沒有「第occurrence次的星期dow」（例如來源有第5個星期一，目標月只有4個）
+    if(!schedule[targetDateStr]) schedule[targetDateStr] = [];
+    (schedule[sourceDateStr]||[]).forEach(entry=>{
+      // 完整複製每筆排班內容（人員/地點/時段/自訂時間），狀態一律設為草稿，方便複製後再統一確認發布
+      schedule[targetDateStr].push({ ...entry, status: 'draft' });
+      copiedCount++;
+    });
+  });
+
+  saveStore(STORE_KEYS.schedule, schedule);
+  renderCalendar();
+  if(typeof renderConflictOverview==='function') renderConflictOverview();
+
+  let reportHtml = `<div class="bulk-report-box success">✅ 已將 ${sourceMonth} 整月排班（全員、全地點）依星期對齊複製到 ${targetMonth}，共 <strong>${copiedCount}</strong> 筆。`;
+  if(skippedOutOfRangeDays>0){
+    reportHtml += `<br>來源月份有 ${skippedOutOfRangeDays} 天在目標月份中沒有對應的星期次數，已自動略過。`;
+  }
+  reportHtml += '複製後狀態皆為草稿，請至M3或M7確認後再發布。</div>';
+  document.getElementById('copyResultReport').innerHTML = reportHtml;
+}
+
+// 清空整月：模式①指定人員 ②全公司（不分人員）
+let clearMode = 'person'; // 'person' | 'all'
+function setClearMode(mode){
+  clearMode = mode;
+  document.getElementById('clearModePersonBtn').classList.toggle('gold', mode==='person');
+  document.getElementById('clearModePersonBtn').classList.toggle('outline', mode!=='person');
+  document.getElementById('clearModeAllBtn').classList.toggle('gold', mode==='all');
+  document.getElementById('clearModeAllBtn').classList.toggle('outline', mode!=='all');
+  document.getElementById('clearStaffRow').style.display = mode==='person' ? '' : 'none';
+  document.getElementById('clearAllWarning').style.display = mode==='all' ? '' : 'none';
+  document.getElementById('copyResultReport').innerHTML = '';
+}
+
+// 判斷日期字串('YYYY-MM-DD')所屬的月份('YYYY-MM')是否落在起訖月份範圍內（含頭尾）
+function isMonthInRange(dateStr, startMonth, endMonth){
+  const monthStr = dateStr.slice(0,7);
+  return monthStr >= startMonth && monthStr <= endMonth;
+}
+// 產生起訖月份範圍內的所有月份清單('YYYY-MM')，用於報告呈現
+function listMonthsInRange(startMonth, endMonth){
+  const months = [];
+  let y = Number(startMonth.slice(0,4)), m = Number(startMonth.slice(5,7));
+  const endY = Number(endMonth.slice(0,4)), endM = Number(endMonth.slice(5,7));
+  while(y < endY || (y===endY && m<=endM)){
+    months.push(`${y}-${String(m).padStart(2,'0')}`);
+    m++;
+    if(m>12){ m=1; y++; }
+  }
+  return months;
+}
+
+function runClearMonth(){
+  const startMonth = document.getElementById('clearMonthStart').value;
+  const endMonth = document.getElementById('clearMonthEnd').value;
+  if(!startMonth || !endMonth){ alert('請選擇起訖月份'); return; }
+  if(startMonth > endMonth){ alert('起始月份不能晚於結束月份'); return; }
+
+  if(clearMode==='all'){
+    runClearMonthAll(startMonth, endMonth);
+    return;
+  }
+
+  const staffId = document.getElementById('clearMonthStaffSel').value;
+  if(!staffId){ alert('請選擇人員'); return; }
+
+  const staffName = getStaffName(staffId);
+  let existingCount = 0;
+  Object.keys(schedule).forEach(dateStr=>{
+    if(!isMonthInRange(dateStr, startMonth, endMonth)) return;
+    existingCount += schedule[dateStr].filter(e=>e.staffId===staffId).length;
+  });
+  const rangeLabel = startMonth===endMonth ? startMonth : `${startMonth} ~ ${endMonth}`;
+  if(existingCount===0){
+    document.getElementById('copyResultReport').innerHTML =
+      `<div class="bulk-report-box">ℹ️ ${staffName} 在 ${rangeLabel} 沒有任何排班紀錄，無需清空。</div>`;
+    return;
+  }
+
+  if(!confirm(`確定要刪除 ${staffName} 在 ${rangeLabel} 的所有排班（共 ${existingCount} 筆，不論哪個地點）嗎？此操作無法復原。`)) return;
+
+  let removedCount = 0;
+  Object.keys(schedule).forEach(dateStr=>{
+    if(!isMonthInRange(dateStr, startMonth, endMonth)) return;
+    const before = schedule[dateStr].length;
+    schedule[dateStr] = schedule[dateStr].filter(e=>e.staffId!==staffId);
+    removedCount += before - schedule[dateStr].length;
+    if(schedule[dateStr].length===0) delete schedule[dateStr];
+  });
+
+  saveStore(STORE_KEYS.schedule, schedule);
+  renderCalendar();
+  if(typeof renderConflictOverview==='function') renderConflictOverview();
+
+  document.getElementById('copyResultReport').innerHTML =
+    `<div class="bulk-report-box success">🗑️ 已清空 ${staffName} 在 ${rangeLabel} 的所有排班，共刪除 <strong>${removedCount}</strong> 筆。</div>`;
+}
+
+// 全公司清空：選定起訖月份範圍，不限人員，刪除範圍內所有排班紀錄
+function runClearMonthAll(startMonth, endMonth){
+  const rangeLabel = startMonth===endMonth ? startMonth : `${startMonth} ~ ${endMonth}`;
+  let totalEntries = 0;
+  Object.keys(schedule).forEach(dateStr=>{
+    if(isMonthInRange(dateStr, startMonth, endMonth)) totalEntries += schedule[dateStr].length;
+  });
+  if(totalEntries===0){
+    document.getElementById('copyResultReport').innerHTML =
+      `<div class="bulk-report-box">ℹ️ ${rangeLabel} 沒有任何排班紀錄，無需清空。</div>`;
+    return;
+  }
+
+  const monthCount = listMonthsInRange(startMonth, endMonth).length;
+  if(!confirm(`⚠ 確定要清空「全公司」在 ${rangeLabel}（共${monthCount}個月）的所有排班嗎？\n共 ${totalEntries} 筆，涵蓋所有人員、所有地點。此操作無法復原。`)) return;
+  // 全公司清空影響範圍大，二次確認避免誤觸
+  if(!confirm(`再次確認：這會刪除 ${rangeLabel} 整個範圍、所有員工的排班紀錄，確定要繼續嗎？`)) return;
+
+  let removedCount = 0;
+  Object.keys(schedule).forEach(dateStr=>{
+    if(!isMonthInRange(dateStr, startMonth, endMonth)) return;
+    removedCount += schedule[dateStr].length;
+    delete schedule[dateStr];
+  });
+
+  saveStore(STORE_KEYS.schedule, schedule);
+  renderCalendar();
+  if(typeof renderConflictOverview==='function') renderConflictOverview();
+
+  document.getElementById('copyResultReport').innerHTML =
+    `<div class="bulk-report-box success">🗑️ 已清空全公司在 ${rangeLabel} 的所有排班，共刪除 <strong>${removedCount}</strong> 筆。</div>`;
+}
+
+function runCopyToPersons(){
+  const sourceId = copySourceSelectedStaff;
+  const monthStr = document.getElementById('copyPersonMonth').value;
+  if(!sourceId){ alert('請選擇來源人員'); return; }
+  if(!monthStr){ alert('請選擇月份'); return; }
+  if(copyTargetStaffIds.length===0){ alert('請至少選擇一位目標人員'); return; }
+
+  const sourceName = getStaffName(sourceId);
+  const sourceEntries = getStaffScheduleInMonth(sourceId, monthStr);
+  if(sourceEntries.length===0){
+    document.getElementById('copyResultReport').innerHTML =
+      `<div class="bulk-report-box">ℹ️ ${sourceName} 在 ${monthStr} 沒有任何排班紀錄，無法複製。</div>`;
+    return;
+  }
+
+  // 先檢查所有目標人員，若任何一位當月已有班表，整批拒絕（不部分執行，避免「複製了一半」的混亂狀態）
+  const conflicted = copyTargetStaffIds.filter(id=>staffHasScheduleInMonth(id, monthStr));
+  if(conflicted.length>0){
+    const conflictedNames = conflicted.map(getStaffName).join('、');
+    document.getElementById('copyResultReport').innerHTML =
+      `<div class="bulk-report-box" style="background:var(--danger-bg);border-color:var(--danger);color:var(--danger);">
+        ❌ 複製失敗：以下人員在 ${monthStr} 已有班表，請先清空才能複製：${conflictedNames}
+      </div>`;
+    return;
+  }
+
+  let totalCopied = 0;
+  const targetSiteNotes = []; // 記錄每人實際套用的地點，用於報告呈現
+  copyTargetStaffIds.forEach(targetId=>{
+    const newSite = copyTargetSites[targetId] || '__keep__'; // 每位目標人員各自指定的地點
+    sourceEntries.forEach(e=>{
+      if(!schedule[e.dateStr]) schedule[e.dateStr] = [];
+      const appliedSite = newSite==='__keep__' ? e.site : newSite;
+      schedule[e.dateStr].push({ staffId: targetId, site: appliedSite, start: e.start, end: e.end, status: 'draft' });
+      totalCopied++;
+    });
+    const siteLabel2 = newSite==='__keep__' ? '維持原地點' : siteLabelPlain(newSite);
+    targetSiteNotes.push(`${getStaffName(targetId)}→${siteLabel2}`);
+  });
+
+  saveStore(STORE_KEYS.schedule, schedule);
+  renderCalendar();
+  if(typeof renderConflictOverview==='function') renderConflictOverview();
+
+  document.getElementById('copyResultReport').innerHTML =
+    `<div class="bulk-report-box success">✅ 已將 ${sourceName} 在 ${monthStr} 的班表複製給選定人員，共 <strong>${totalCopied}</strong> 筆。<br>
+      ${targetSiteNotes.join('、')}<br>可至M3分別微調各自的地點或時間。</div>`;
+  copyTargetStaffIds = [];
+  copyTargetSites = {};
+  renderCopyTargetStaffChecklist();
+}
+
+// ===========================================================
+// M4 請假排休總覽
+// ===========================================================
+function populateLeaveFilterSelects(){
+  const staffSel = document.getElementById('leaveFilterStaff');
+  staffSel.innerHTML = '<option value="">全部人員</option>' +
+    staff.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+  const typeSel = document.getElementById('leaveFilterType');
+  typeSel.innerHTML = '<option value="">全部類型</option>' +
+    LEAVE_TYPES.map(t=>`<option value="${t}">${t}</option>`).join('');
+}
+function renderLeaveOverview(){
+  const container = document.getElementById('leaveOverviewList');
+  const filterStaff = document.getElementById('leaveFilterStaff').value;
+  const filterType = document.getElementById('leaveFilterType').value;
+
+  let rows = [];
+  Object.keys(leaves).sort().forEach(dateStr=>{
+    (leaves[dateStr]||[]).forEach((l, idx)=>{
+      if(filterStaff && l.staffId!==filterStaff) return;
+      if(filterType && l.type!==filterType) return;
+      rows.push({ dateStr, idx, ...l });
+    });
+  });
+
+  if(rows.length===0){
+    container.innerHTML = '<div style="text-align:center;color:var(--text-soft);font-size:12px;padding:16px;">查無請假紀錄</div>';
+    return;
+  }
+  container.innerHTML = rows.map(r=>{
+    const locked = isDateLeaveLocked(r.dateStr, 'cancel');
+    let delBtn;
+    if(!IS_ADMIN){
+      delBtn = `<span style="font-size:11px;color:var(--warn);font-weight:600;" title="一般員工無法刪除，請洽管理者">🔒 僅管理者可刪除</span>`;
+    } else if(locked){
+      delBtn = `<span style="font-size:11px;color:var(--warn);font-weight:600;">🔒 已鎖定</span>`;
+    } else {
+      delBtn = `<button class="row-del" onclick="deleteLeaveFromOverview('${r.dateStr}',${r.idx})">✕ 刪除</button>`;
+    }
+    return `
+    <div class="leave-overview-row">
+      <span class="lo-date">${r.dateStr}</span>
+      <span><strong>${getStaffName(r.staffId)}</strong></span>
+      <span class="leave-type-badge" style="background:var(--warn);color:#fff;">${r.type}</span>
+      ${delBtn}
+    </div>
+  `;}).join('');
+}
+function deleteLeaveFromOverview(dateStr, idx){
+  if(!IS_ADMIN){ alert('⚠️ 一般員工僅能新增請假登記，無法修改或刪除已登記的紀錄。如需取消/更正，請洽管理者協助處理。'); return; }
+  if(isDateLeaveLocked(dateStr, 'cancel')){ alert(leaveLockMessage('cancel')); return; }
+  if(!leaves[dateStr]) return;
+  leaves[dateStr].splice(idx,1);
+  if(leaves[dateStr].length===0) delete leaves[dateStr];
+  saveStore(STORE_KEYS.leaves, leaves);
+  renderLeaveOverview();
+  renderCalendar();
+  if(typeof renderConflictOverview==='function') renderConflictOverview();
+}
+
+// ===========================================================
+// M5 衝突偵測總覽
+// ===========================================================
+// 掃描所有已有排班資料的日期，回傳衝突清單
+// 每筆: { dateStr, staffId, site, start, end, reasons:['overlap'|'leave'] }
+function scanAllConflicts(){
+  const results = [];
+  const allDates = Object.keys(schedule).sort();
+  allDates.forEach(dateStr=>{
+    const conflictIdx = detectConflicts(dateStr);
+    if(conflictIdx.size===0) return;
+    const entries = getEntriesForDate(dateStr);
+    const dayLeaves = leaves[dateStr]||[];
+    entries.forEach(e=>{
+      if(!conflictIdx.has(e._idx)) return;
+      const reasons = [];
+      if(dayLeaves.some(l=>l.staffId===e.staffId)) reasons.push('leave');
+      // 跟同日其他紀錄比對是否有時間重疊（排除自己）
+      const hasOverlap = entries.some(other=>{
+        if(other._idx===e._idx) return false;
+        if(other.staffId!==e.staffId) return false;
+        return timeOverlap(e.start, e.end, other.start, other.end);
+      });
+      if(hasOverlap) reasons.push('overlap');
+      results.push({ dateStr, staffId:e.staffId, site:e.site, start:e.start, end:e.end, reasons });
+    });
+  });
+  return results;
+}
+// ===========================================================
+// 據點營運日規則 + 國定假日名單（用於M5「據點漏排」檢核，避免把
+// 「本來就沒開課」的日子誤判成漏排）
+// 據點與診所的營運星期改為在M1模組介面設定（site.operatingWeekdays／
+// clinicOperatingWeekdays），不再寫死於程式碼中；這裡只保留一個
+// 保底預設值，供尚未設定過的舊資料使用。
+// ===========================================================
+const DEFAULT_SITE_OPERATING_WEEKDAYS = [1,2,3,4,5]; // 保底預設：週一至週五
+function getSiteOperatingWeekdays(site){
+  return (site.operatingWeekdays && site.operatingWeekdays.length) ? site.operatingWeekdays : DEFAULT_SITE_OPERATING_WEEKDAYS;
+}
+// 中華民國115年（2026年）國定假日／連假名單（依行政院人事行政總處公布之办公日曆表）
+// ⚠️ 此名單需每年手動更新：政府通常於當年6月底前公布次年度行事曆，屆時請更新此陣列
+const NATIONAL_HOLIDAYS_2026 = [
+  '2026-01-01', // 元旦
+  '2026-02-14','2026-02-15','2026-02-16','2026-02-17','2026-02-18','2026-02-19','2026-02-20','2026-02-21','2026-02-22', // 春節連假（含小年夜補假、除夕、初一~初三）
+  '2026-02-28', // 和平紀念日
+  '2026-04-04', // 兒童節
+  '2026-04-05', // 清明節
+  '2026-05-01', // 勞動節
+  '2026-06-19', // 端午節
+  '2026-09-25', // 中秋節
+  '2026-09-28', // 教師節
+  '2026-10-09', // 國慶日補假（10/10適逢週六）
+  '2026-10-10', // 國慶日
+  '2026-10-25', // 台灣光復節
+  '2026-10-26', // 台灣光復節補假（10/25適逢週日）
+  '2026-12-25', // 行憲紀念日
+];
+function isNationalHoliday(dateStr){
+  return NATIONAL_HOLIDAYS_2026.includes(dateStr);
+}
+// 取得某天某地點的「人力涵蓋」紀錄：合併①一般員工排班(schedule) ②外師課程排定(courseSchedule)，
+// 因為課程排定是獨立於員工排班的另一份資料，之前M5沒有把它算進去，導致「協會上午有排課程、
+// 下午沒排班」這種情況被誤判成「當天完全沒有安排人力」，這裡統一合併兩種來源再判斷涵蓋範圍
+function getCoverageEntriesForDate(dateStr){
+  const entries = [];
+  (schedule[dateStr]||[]).forEach(e=>entries.push({ site: e.site, start: e.start, end: e.end }));
+  (courseSchedule[dateStr]||[]).forEach(c=>entries.push({ site: c.siteId, start: c.start, end: c.end }));
+  return entries;
+}
+// 「有排班資料」的日期清單：員工排班或課程排定，只要其中一種當天有資料，就視為系統當天有在運作
+function getActiveCoverageDates(){
+  const scheduleDates = Object.keys(schedule).filter(d=>(schedule[d]||[]).length>0);
+  const courseDates = Object.keys(courseSchedule).filter(d=>(courseSchedule[d]||[]).length>0);
+  return Array.from(new Set([...scheduleDates, ...courseDates])).sort();
+}
+// 檢核據點（含診所）某天是否完全沒有安排人力：以「有排班紀錄的日期」視為系統有在運作的一天，
+// 逐一檢查診所與每個據點當天是否至少有一筆排班或課程；完全沒有的話視為漏排（提醒管理者確認是否為
+// 該據點/診所當天原本就沒開，或是單純漏排忘記排班）。
+// 會先排除：①國定假日（一律停課，不檢查任何據點/診所）②當天本來就不營運的星期
+// （常規據點週六日不檢查；北華村除了週二以外都不檢查；診所週三、週日不檢查）
+function scanSiteCoverageGaps(){
+  const gaps = [];
+  const activeDates = getActiveCoverageDates();
+  activeDates.forEach(dateStr=>{
+    if(isNationalHoliday(dateStr)) return; // 國定假日一律停課，不檢查
+    const dow = new Date(dateStr+'T00:00:00').getDay();
+    const assignedSites = new Set(getCoverageEntriesForDate(dateStr).map(e=>e.site));
+    // 診所
+    if(clinicOperatingWeekdays.includes(dow) && !assignedSites.has('clinic')){
+      gaps.push({ dateStr, siteId: 'clinic' });
+    }
+    // 各社區據點
+    sites.forEach(site=>{
+      const operatingWeekdays = getSiteOperatingWeekdays(site);
+      if(!operatingWeekdays.includes(dow)) return; // 該據點今天本來就不上課，不檢查
+      if(!assignedSites.has(site.id)){
+        gaps.push({ dateStr, siteId: site.id });
+      }
+    });
+  });
+  return gaps;
+}
+// 檢核據點（含診所）某天是否只有上午或只有下午有人力（另一半完全空著）：
+// 只檢查「當天已經有人力紀錄（排班或課程）」的地點，完全沒有紀錄的天數交給 scanSiteCoverageGaps 處理，
+// 避免同一種缺口被重複警示兩次。以中午12:00為早上/下午的分界點。
+function checkHalfDayCoverage(entries, midpoint){
+  const morningCovered = entries.some(e=>e.start < midpoint);
+  const afternoonCovered = entries.some(e=>e.end > midpoint);
+  if(morningCovered && afternoonCovered) return null; // 早上下午都有人，沒問題
+  if(morningCovered && !afternoonCovered) return 'afternoon'; // 缺下午
+  if(!morningCovered && afternoonCovered) return 'morning'; // 缺早上
+  return null;
+}
+function scanPartialDayCoverage(){
+  const DAY_MIDPOINT = '12:00';
+  const results = [];
+  const activeDates = getActiveCoverageDates();
+  activeDates.forEach(dateStr=>{
+    if(isNationalHoliday(dateStr)) return;
+    const dow = new Date(dateStr+'T00:00:00').getDay();
+    const entries = getCoverageEntriesForDate(dateStr);
+    const bySite = {};
+    entries.forEach(e=>{
+      if(!bySite[e.site]) bySite[e.site] = [];
+      bySite[e.site].push(e);
+    });
+    // 診所
+    if(clinicOperatingWeekdays.includes(dow) && bySite['clinic'] && bySite['clinic'].length>0){
+      const missing = checkHalfDayCoverage(bySite['clinic'], DAY_MIDPOINT);
+      if(missing) results.push({ dateStr, siteId:'clinic', missing });
+    }
+    // 各社區據點
+    sites.forEach(site=>{
+      const operatingWeekdays = getSiteOperatingWeekdays(site);
+      if(!operatingWeekdays.includes(dow)) return;
+      const siteEntries = bySite[site.id];
+      if(!siteEntries || siteEntries.length===0) return;
+      const missing = checkHalfDayCoverage(siteEntries, DAY_MIDPOINT);
+      if(missing) results.push({ dateStr, siteId:site.id, missing });
+    });
+  });
+  return results;
+}
+function renderConflictOverview(){
+  const conflicts = scanAllConflicts();
+  const gaps = scanSiteCoverageGaps();
+  const halfDayGaps = scanPartialDayCoverage();
+  const summaryEl = document.getElementById('conflictSummary');
+  const listEl = document.getElementById('conflictList');
+
+  const overlapCount = conflicts.filter(c=>c.reasons.includes('overlap')).length;
+  const leaveCount = conflicts.filter(c=>c.reasons.includes('leave')).length;
+  const dateCount = new Set([...conflicts.map(c=>c.dateStr), ...gaps.map(g=>g.dateStr), ...halfDayGaps.map(g=>g.dateStr)]).size;
+
+  summaryEl.innerHTML = `
+    <div class="conflict-stat-row">
+      <div class="conflict-stat-card"><div class="num">${conflicts.length}</div><div class="lbl">總衝突筆數</div></div>
+      <div class="conflict-stat-card"><div class="num">${overlapCount}</div><div class="lbl">跨地點重疊</div></div>
+      <div class="conflict-stat-card"><div class="num">${leaveCount}</div><div class="lbl">與請假衝突</div></div>
+      <div class="conflict-stat-card"><div class="num">${gaps.length}</div><div class="lbl">據點未安排人力</div></div>
+      <div class="conflict-stat-card"><div class="num">${halfDayGaps.length}</div><div class="lbl">只排半天</div></div>
+      <div class="conflict-stat-card"><div class="num">${dateCount}</div><div class="lbl">受影響日期</div></div>
+    </div>
+  `;
+
+  if(conflicts.length===0 && gaps.length===0 && halfDayGaps.length===0){
+    listEl.innerHTML = '<div class="no-conflict-box">✅ 目前沒有偵測到任何排班衝突或據點漏排</div>';
+    return;
+  }
+  const conflictItemsHtml = conflicts.map(c=>{
+    const reasonLabels = c.reasons.map(r=>r==='overlap'?'跨地點重疊':'與請假衝突').join('、');
+    return `
+      <div class="conflict-item" onclick="jumpToScheduleDate('${c.dateStr}')">
+        <div class="ci-date">📅 ${c.dateStr}</div>
+        <div class="ci-detail">
+          <strong>${getStaffName(c.staffId)}</strong>
+          <span class="site-badge ${siteColorClass(c.site)}">${siteLabel(c.site)}</span>
+          <span>${c.start}–${c.end}</span>
+          <span class="ci-reason">⚠ ${reasonLabels}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+  const gapItemsHtml = gaps.map(g=>`
+    <div class="conflict-item" onclick="jumpToScheduleDate('${g.dateStr}')">
+      <div class="ci-date">📅 ${g.dateStr}</div>
+      <div class="ci-detail">
+        <span class="site-badge station">${siteLabel(g.siteId)}</span>
+        <span class="ci-reason" style="color:var(--warn);">⚠ 當天完全沒有安排人力</span>
+      </div>
+    </div>
+  `).join('');
+  const halfDayItemsHtml = halfDayGaps.map(g=>`
+    <div class="conflict-item" onclick="jumpToScheduleDate('${g.dateStr}')">
+      <div class="ci-date">📅 ${g.dateStr}</div>
+      <div class="ci-detail">
+        <span class="site-badge ${siteColorClass(g.siteId)}">${siteLabel(g.siteId)}</span>
+        <span class="ci-reason" style="color:var(--warn);">🌗 只有${g.missing==='morning'?'下午':'上午'}有安排，${g.missing==='morning'?'上午':'下午'}空著</span>
+      </div>
+    </div>
+  `).join('');
+  listEl.innerHTML = conflictItemsHtml + gapItemsHtml + halfDayItemsHtml;
+}
+
+// ===========================================================
+// M7 班表發布管理 + 員工查詢
+// ===========================================================
+function renderPublishedMonthList(){
+  const container = document.getElementById('publishedMonthList');
+  if(!container) return; // 員工模式下「班表發布管理」卡片已從DOM移除，此函式不需要執行
+  if(publishedMonths.length===0){
+    container.innerHTML = '<div class="report-empty">尚無已發布的月份</div>';
+    return;
+  }
+  const sorted = [...publishedMonths].sort().reverse();
+  container.innerHTML = sorted.map(m=>`
+    <span class="published-month-chip">📅 ${m}<span class="unpub-x" onclick="unpublishMonth('${m}')">✕ 取消發布</span></span>
+  `).join('');
+}
+function togglePublishMonth(){
+  const picker = document.getElementById('publishMonthPicker');
+  const month = picker.value; // 'YYYY-MM'
+  if(!month){ alert('請選擇月份'); return; }
+  if(publishedMonths.includes(month)){
+    alert('此月份已發布過');
+    return;
+  }
+  publishedMonths.push(month);
+  saveStore(STORE_KEYS.publishedMonths, publishedMonths);
+  renderPublishedMonthList();
+  document.getElementById('publishStatusHint').textContent = `${month} 已發布`;
+}
+function unpublishMonth(month){
+  if(!confirm(`確定取消發布 ${month} 嗎？員工將無法再查詢此月份。`)) return;
+  publishedMonths = publishedMonths.filter(m=>m!==month);
+  saveStore(STORE_KEYS.publishedMonths, publishedMonths);
+  renderPublishedMonthList();
+}
+
+let queryView = 'calendar'; // 'calendar' | 'list'
+function setQueryView(view){
+  queryView = view;
+  document.getElementById('queryViewCalBtn').classList.toggle('gold', view==='calendar');
+  document.getElementById('queryViewListBtn').classList.toggle('gold', view==='list');
+  document.getElementById('queryDownloadBtn').style.display = view==='calendar' ? '' : 'none';
+  runEmployeeQuery();
+}
+function runEmployeeQuery(){
+  const monthVal = document.getElementById('queryMonthPicker').value; // 'YYYY-MM'
+  const container = document.getElementById('queryResultArea');
+  if(!monthVal){
+    container.innerHTML = '<div class="report-empty">請選擇月份後查詢</div>';
+    return;
+  }
+  if(!publishedMonths.includes(monthVal)){
+    container.innerHTML = `<div class="locked-month-box">🔒 ${monthVal} 尚未發布，無法查詢</div>`;
+    return;
+  }
+  const [y, m] = monthVal.split('-').map(Number);
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const dateList = [];
+  for(let d=1; d<=daysInMonth; d++){
+    dateList.push(`${y}-${pad2(m)}-${pad2(d)}`);
+  }
+
+  if(queryView === 'list'){
+    let rowsHtml = '';
+    let hasAny = false;
+    dateList.forEach(dateStr=>{
+      const entries = getEntriesForDate(dateStr);
+      if(entries.length===0) return;
+      hasAny = true;
+      entries.forEach(e=>{
+        rowsHtml += `<div class="query-list-row">
+          <span class="ql-date">${dateStr}</span>
+          <strong>${getStaffName(e.staffId)}</strong>
+          <span class="site-badge ${siteColorClass(e.site)}">${siteLabel(e.site)}</span>
+          <span>${e.start}–${e.end}</span>
+        </div>`;
+      });
+    });
+    container.innerHTML = hasAny ? rowsHtml : '<div class="report-empty">本月尚無排班資料</div>';
+  } else {
+    container.innerHTML = buildMatrixTableHtml(y, m-1, 'showQueryDayDetail');
+  }
+}
+
+// M7矩陣表下載成圖片：用Canvas手繪，不依賴外部函式庫
+function downloadMatrixImage(){
+  const table = document.querySelector('#queryResultArea .matrix-table');
+  if(!table){
+    alert('目前沒有矩陣表可下載，請先查詢已發布的月份。');
+    return;
+  }
+  const monthVal = document.getElementById('queryMonthPicker').value;
+  const rows = Array.from(table.querySelectorAll('tr'));
+  const headerCells = Array.from(rows[0].querySelectorAll('th'));
+  const dayCount = headerCells.length - 1;
+  const staffRows = rows.slice(1);
+
+  // 版面參數
+  const nameColW = 76, dayColW = 40, baseRowH = 32, headRowH = 38;
+  const titleH = 40, legendH = 28, padding = 12;
+  const tableW = nameColW + dayColW * dayCount;
+
+  // 每一列的高度依該列中「最多分段數」（多地點格子會有多個mc-seg）動態調整，
+  // 避免多地點的格子被壓縮成一行導致文字重疊、看起來像資料不見或跑版
+  const rowSegCounts = staffRows.map(tr=>{
+    const cells = Array.from(tr.querySelectorAll('td'));
+    let maxSegs = 1;
+    cells.forEach(td=>{
+      const segs = td.querySelectorAll('.mc-seg').length;
+      if(segs > maxSegs) maxSegs = segs;
+    });
+    return maxSegs;
+  });
+  const rowHeights = rowSegCounts.map(segs => baseRowH * segs);
+  const totalRowsH = rowHeights.reduce((a,b)=>a+b, 0);
+
+  const canvasW = tableW + padding * 2;
+  const canvasH = titleH + legendH + headRowH + totalRowsH + padding * 2;
+
+  const canvas = document.createElement('canvas');
+  // 提高解析度避免下載圖片模糊
+  const scale = 2;
+  canvas.width = canvasW * scale;
+  canvas.height = canvasH * scale;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(scale, scale);
+
+  // 背景
+  ctx.fillStyle = '#FFFDF8';
+  ctx.fillRect(0, 0, canvasW, canvasH);
+
+  // 標題
+  ctx.fillStyle = '#3A2E22';
+  ctx.font = 'bold 16px "Microsoft JhengHei", sans-serif';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(`${monthVal} 全體班表（矩陣總覽）`, padding, padding + titleH/2);
+
+  // 圖例
+  let legendX = padding;
+  const legendY = padding + titleH + legendH/2;
+  ctx.font = '10px "Microsoft JhengHei", sans-serif';
+  Object.keys(matrixColorMap).forEach(key=>{
+    const label = siteLabelPlain(key);
+    const w = ctx.measureText(label).width + 16;
+    ctx.fillStyle = matrixColorMap[key];
+    ctx.fillRect(legendX, legendY-9, w, 18);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText(label, legendX+8, legendY);
+    legendX += w + 6;
+  });
+
+  const tableTop = padding + titleH + legendH;
+
+  // 表頭
+  ctx.font = 'bold 10px "Microsoft JhengHei", sans-serif';
+  ctx.fillStyle = '#F0E6CC';
+  ctx.fillRect(padding, tableTop, tableW, headRowH);
+  ctx.fillStyle = '#3A2E22';
+  ctx.textAlign = 'center';
+  headerCells.forEach((th, i)=>{
+    const x = padding + (i===0 ? nameColW/2 : nameColW + (i-1)*dayColW + dayColW/2);
+    const lines = th.innerText.split('\n');
+    lines.forEach((line, li)=>{
+      ctx.fillText(line, x, tableTop + headRowH/2 + (li - (lines.length-1)/2) * 11);
+    });
+  });
+
+  // 表身
+  let cursorY = tableTop + headRowH;
+  staffRows.forEach((tr, rIdx)=>{
+    const y = cursorY;
+    const rowH = rowHeights[rIdx];
+    const cells = Array.from(tr.querySelectorAll('th, td'));
+    // 姓名欄
+    ctx.fillStyle = '#F0E6CC';
+    ctx.fillRect(padding, y, nameColW, rowH);
+    ctx.fillStyle = '#3A2E22';
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 10px "Microsoft JhengHei", sans-serif';
+    ctx.fillText(cells[0].innerText, padding+4, y+rowH/2, nameColW-8);
+    // 日期格
+    for(let c=1; c<cells.length; c++){
+      const cellX = padding + nameColW + (c-1)*dayColW;
+      const td = cells[c];
+      ctx.strokeStyle = '#DDD0B8';
+      ctx.lineWidth = 0.5;
+
+      const segs = Array.from(td.querySelectorAll('.mc-seg'));
+      const leaveEl = td.querySelector('.mc-leave');
+      if(segs.length > 0){
+        // 有排班紀錄：每個地點各自用自己的顏色分段繪製，跟畫面上的顯示方式一致
+        const segH = rowH / segs.length;
+        segs.forEach((seg, si)=>{
+          const segY = y + si*segH;
+          const segBg = seg.style.background || '#999';
+          ctx.fillStyle = segBg;
+          ctx.fillRect(cellX, segY, dayColW, segH);
+          const segText = seg.innerText.trim();
+          if(segText){
+            ctx.fillStyle = '#FFFFFF';
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 8px "Microsoft JhengHei", sans-serif';
+            const lines = segText.split('\n');
+            lines.forEach((line, li)=>{
+              ctx.fillText(line, cellX+dayColW/2, segY+segH/2 + (li-(lines.length-1)/2)*9, dayColW-2);
+            });
+          }
+        });
+      } else if(leaveEl){
+        // 請假/排休：淺灰底、深色文字
+        ctx.fillStyle = '#E8E2D5';
+        ctx.fillRect(cellX, y, dayColW, rowH);
+        ctx.fillStyle = '#6B5E4F';
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 8px "Microsoft JhengHei", sans-serif';
+        ctx.fillText(leaveEl.innerText.trim(), cellX+dayColW/2, y+rowH/2, dayColW-2);
+      } else {
+        // 空白格：無排班也無請假
+        ctx.fillStyle = '#FFFEFB';
+        ctx.fillRect(cellX, y, dayColW, rowH);
+      }
+      ctx.strokeRect(cellX, y, dayColW, rowH);
+    }
+    cursorY += rowH;
+  });
+
+  // 外框
+  ctx.strokeStyle = '#DDD0B8';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(padding, tableTop, tableW, headRowH + totalRowsH);
+
+  canvas.toBlob(blob=>{
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `班表矩陣_${monthVal}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 'image/png');
+}
+
+// M7矩陣表點格子：彈出該日詳細內容（唯讀，不可編輯）
+function showQueryDayDetail(dateStr){
+  const entries = getEntriesForDate(dateStr);
+  const overlay = document.getElementById('queryDayDetailOverlay');
+  const titleEl = document.getElementById('queryDayDetailTitle');
+  const bodyEl = document.getElementById('queryDayDetailBody');
+  if(!overlay) return;
+  titleEl.textContent = dateStr;
+  if(entries.length===0){
+    bodyEl.innerHTML = '<div class="report-empty">本日尚無排班資料</div>';
+  } else {
+    bodyEl.innerHTML = entries.map(e=>`
+      <div class="query-list-row">
+        <strong>${getStaffName(e.staffId)}</strong>
+        <span class="site-badge ${siteColorClass(e.site)}">${siteLabel(e.site)}</span>
+        <span>${e.start}–${e.end}</span>
+      </div>
+    `).join('');
+  }
+  overlay.classList.add('open');
+}
+function closeQueryDayDetail(e){
+  if(e && e.target!==e.currentTarget) return;
+  document.getElementById('queryDayDetailOverlay').classList.remove('open');
+}
+
+// ===========================================================
+// M8 報表統計
+// ===========================================================
+function timeToHours(start, end){
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  return ((eh*60+em) - (sh*60+sm)) / 60;
+}
+
+// 取得指定日期區間（含起訖）內的所有排班紀錄，附帶日期
+function getEntriesInRange(startDate, endDate){
+  const result = [];
+  Object.keys(schedule).forEach(dateStr=>{
+    if(dateStr < startDate || dateStr > endDate) return;
+    (schedule[dateStr]||[]).forEach(e=>{
+      result.push({ date: dateStr, ...e });
+    });
+  });
+  return result;
+}
+
+let lastReportData = null; // 供CSV匯出使用
+
+function runReport(){
+  const startDate = document.getElementById('reportStartDate').value;
+  const endDate = document.getElementById('reportEndDate').value;
+  if(!startDate || !endDate){ alert('請選擇起始日與結束日'); return; }
+  if(startDate > endDate){ alert('起始日不能晚於結束日'); return; }
+
+  const entries = getEntriesInRange(startDate, endDate);
+
+  // 維度1：每人總班數（診所/據點細分）
+  const byStaff = {}; // staffId -> { clinicCount, stationCount, total }
+  // 維度2：每人總工時（排班）
+  const hoursByStaff = {}; // staffId -> totalHours
+  // 維度3：每據點人力分布
+  const bySite = {}; // siteKey('clinic'|siteId) -> count
+
+  entries.forEach(e=>{
+    if(!byStaff[e.staffId]) byStaff[e.staffId] = { clinicCount:0, stationCount:0 };
+    if(e.site === 'clinic') byStaff[e.staffId].clinicCount++;
+    else byStaff[e.staffId].stationCount++;
+
+    if(!hoursByStaff[e.staffId]) hoursByStaff[e.staffId] = 0;
+    hoursByStaff[e.staffId] += timeToHours(e.start, e.end);
+
+    if(!bySite[e.site]) bySite[e.site] = 0;
+    bySite[e.site]++;
+  });
+
+  // M9加班明細：統計區間內的支援填報紀錄
+  const overtimeRecords = attendanceRecords.filter(r=> r.date>=startDate && r.date<=endDate)
+    .sort((a,b)=> a.date===b.date ? a.start.localeCompare(b.start) : a.date.localeCompare(b.date));
+  const overtimeHoursByStaff = {}; // staffId -> totalOvertimeHours
+  overtimeRecords.forEach(r=>{
+    if(!overtimeHoursByStaff[r.staffId]) overtimeHoursByStaff[r.staffId] = 0;
+    overtimeHoursByStaff[r.staffId] += timeToHours(r.start, r.end);
+  });
+
+  lastReportData = { startDate, endDate, byStaff, hoursByStaff, bySite, overtimeRecords, overtimeHoursByStaff };
+  renderReportByStaff(byStaff);
+  renderReportHours(hoursByStaff);
+  renderReportOvertime(overtimeRecords);
+  renderReportCombined(hoursByStaff, overtimeHoursByStaff);
+  renderReportBySite(bySite);
+}
+
+function renderReportByStaff(byStaff){
+  const container = document.getElementById('reportByStaffTable');
+  const staffIds = Object.keys(byStaff);
+  if(staffIds.length===0){
+    container.innerHTML = '<div class="report-empty">此區間尚無排班資料</div>';
+    return;
+  }
+  staffIds.sort((a,b)=> (byStaff[b].clinicCount+byStaff[b].stationCount) - (byStaff[a].clinicCount+byStaff[a].stationCount));
+  let html = `<table class="report-table"><thead><tr><th>姓名</th><th class="num-head">診所班數</th><th class="num-head">據點班數</th><th class="num-head">總班數</th></tr></thead><tbody>`;
+  staffIds.forEach(id=>{
+    const d = byStaff[id];
+    const total = d.clinicCount + d.stationCount;
+    html += `<tr><td>${getStaffName(id)}</td><td class="num">${d.clinicCount}</td><td class="num">${d.stationCount}</td><td class="num">${total}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+function renderReportHours(hoursByStaff){
+  const container = document.getElementById('reportHoursTable');
+  const staffIds = Object.keys(hoursByStaff);
+  if(staffIds.length===0){
+    container.innerHTML = '<div class="report-empty">此區間尚無排班資料</div>';
+    return;
+  }
+  staffIds.sort((a,b)=> hoursByStaff[b] - hoursByStaff[a]);
+  let html = `<table class="report-table"><thead><tr><th>姓名</th><th class="num-head">總工時（小時）</th></tr></thead><tbody>`;
+  staffIds.forEach(id=>{
+    html += `<tr><td>${getStaffName(id)}</td><td class="num">${hoursByStaff[id].toFixed(1)}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function renderReportOvertime(overtimeRecords){
+  const container = document.getElementById('reportOvertimeTable');
+  if(overtimeRecords.length===0){
+    container.innerHTML = '<div class="report-empty">此區間尚無M9支援填報紀錄</div>';
+    return;
+  }
+  let html = `<table class="report-table attendance-table"><thead><tr>
+    <th>姓名</th><th>日期</th><th>時間區間</th><th>地點</th><th>事由</th><th class="num-head">支援時數</th>
+  </tr></thead><tbody>`;
+  overtimeRecords.forEach(r=>{
+    const hours = timeToHours(r.start, r.end).toFixed(1);
+    html += `<tr>
+      <td>${getStaffName(r.staffId)}</td>
+      <td>${r.date}</td>
+      <td>${r.start}–${r.end}</td>
+      <td>${attendanceSiteLabel(r)}</td>
+      <td>${r.note || '（支援）'}</td>
+      <td class="num">${hours}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function renderReportCombined(hoursByStaff, overtimeHoursByStaff){
+  const container = document.getElementById('reportCombinedTable');
+  const staffIds = Array.from(new Set([...Object.keys(hoursByStaff), ...Object.keys(overtimeHoursByStaff)]));
+  if(staffIds.length===0){
+    container.innerHTML = '<div class="report-empty">此區間尚無排班或支援紀錄</div>';
+    return;
+  }
+  const combined = staffIds.map(id=>({
+    id,
+    schedHours: hoursByStaff[id] || 0,
+    otHours: overtimeHoursByStaff[id] || 0,
+  }));
+  combined.sort((a,b)=> (b.schedHours+b.otHours) - (a.schedHours+a.otHours));
+  let html = `<table class="report-table"><thead><tr>
+    <th>姓名</th><th class="num-head">排班工時</th><th class="num-head">加班工時</th><th class="num-head">合計工時</th>
+  </tr></thead><tbody>`;
+  combined.forEach(c=>{
+    const total = c.schedHours + c.otHours;
+    html += `<tr><td>${getStaffName(c.id)}</td><td class="num">${c.schedHours.toFixed(1)}</td><td class="num">${c.otHours.toFixed(1)}</td><td class="num" style="color:var(--brown-dark);font-weight:700;">${total.toFixed(1)}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+function renderReportBySite(bySite){
+  const container = document.getElementById('reportBySiteTable');
+  const siteKeys = Object.keys(bySite);
+  if(siteKeys.length===0){
+    container.innerHTML = '<div class="report-empty">此區間尚無排班資料</div>';
+    return;
+  }
+  siteKeys.sort((a,b)=> bySite[b]-bySite[a]);
+  let html = `<table class="report-table"><thead><tr><th>地點</th><th class="num-head">班次數</th></tr></thead><tbody>`;
+  siteKeys.forEach(key=>{
+    html += `<tr><td>${siteLabel(key)}</td><td class="num">${bySite[key]}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function exportReportCSV(){
+  if(!lastReportData){ alert('請先產生報表'); return; }
+  const { startDate, endDate, byStaff, hoursByStaff, bySite, overtimeRecords, overtimeHoursByStaff } = lastReportData;
+  let csv = `報表區間,${startDate} ~ ${endDate}\n\n`;
+  csv += '每人總班數\n姓名,診所班數,據點班數,總班數\n';
+  Object.keys(byStaff).forEach(id=>{
+    const d = byStaff[id];
+    csv += `${getStaffName(id)},${d.clinicCount},${d.stationCount},${d.clinicCount+d.stationCount}\n`;
+  });
+  csv += '\n每人總工時(排班)\n姓名,總工時(小時)\n';
+  Object.keys(hoursByStaff).forEach(id=>{
+    csv += `${getStaffName(id)},${hoursByStaff[id].toFixed(1)}\n`;
+  });
+  csv += '\n加班明細(M9支援紀錄)\n姓名,日期,時間區間,地點,事由,支援時數\n';
+  overtimeRecords.forEach(r=>{
+    const hours = timeToHours(r.start, r.end).toFixed(1);
+    csv += `${getStaffName(r.staffId)},${r.date},${r.start}-${r.end},${attendanceSiteLabelPlain(r)},${r.note || '（支援）'},${hours}\n`;
+  });
+  csv += '\n彙整總工時(排班＋加班)\n姓名,排班工時,加班工時,合計工時\n';
+  const combinedIds = Array.from(new Set([...Object.keys(hoursByStaff), ...Object.keys(overtimeHoursByStaff)]));
+  combinedIds.forEach(id=>{
+    const sched = hoursByStaff[id] || 0, ot = overtimeHoursByStaff[id] || 0;
+    csv += `${getStaffName(id)},${sched.toFixed(1)},${ot.toFixed(1)},${(sched+ot).toFixed(1)}\n`;
+  });
+  csv += '\n每據點人力分布\n地點,班次數\n';
+  Object.keys(bySite).forEach(key=>{
+    csv += `${siteLabelPlain(key)},${bySite[key]}\n`;
+  });
+
+  const blob = new Blob(['\uFEFF'+csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `排班報表_${startDate}_至_${endDate}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ===========================================================
+// M9 支援填報：實際出勤紀錄，不與M3排班比對
+// ===========================================================
+function uid9(){
+  return 'att_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+}
+function populateM9Selects(){
+  const staffSel = document.getElementById('m9StaffSel');
+  if(!staffSel) return;
+  staffSel.innerHTML = staff.filter(s=>s.active).map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+  const siteSel = document.getElementById('m9SiteSel');
+  siteSel.innerHTML = '<option value="clinic">🏥 診所</option>' +
+    sites.map(s=>`<option value="${s.id}">📍 ${s.name}</option>`).join('') +
+    '<option value="other">🚗 其他／公務出差</option>';
+  populateM9FilterStaffSelect();
+}
+function populateM9FilterStaffSelect(){
+  const sel = document.getElementById('m9FilterStaff');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">全部人員</option>' +
+    staff.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+}
+function toggleM9OtherInput(){
+  const site = document.getElementById('m9SiteSel').value;
+  document.getElementById('m9OtherRow').style.display = site==='other' ? '' : 'none';
+}
+function attendanceSiteLabel(rec){
+  if(rec.site==='other') return '🚗 '+(rec.otherLabel || '其他');
+  return siteLabel(rec.site);
+}
+function attendanceSiteLabelPlain(rec){
+  if(rec.site==='other') return rec.otherLabel || '其他';
+  return siteLabelPlain(rec.site);
+}
+// ===========================================================
+// M9 照片上傳：選擇後在瀏覽器端壓縮(最長邊1200px)，暫存於記憶體，
+// 按「登記支援紀錄」時才實際上傳到Drive(透過GAS)，成功後才連同紀錄一起存檔。
+// ===========================================================
+let m9PendingPhotos = []; // [{dataUrl, blob, fileName}] 已選取且壓縮完成、尚未上傳的照片
+
+function handleM9PhotoSelect(event){
+  const files = Array.from(event.target.files || []);
+  files.forEach(file=>{
+    compressImageFile(file, 1200, 0.7).then(({ dataUrl, blob })=>{
+      m9PendingPhotos.push({ dataUrl, blob, fileName: file.name });
+      renderM9PhotoPreview();
+    }).catch(err=>{
+      console.warn('圖片壓縮失敗:', err);
+      alert('其中一張照片處理失敗，請重新選擇');
+    });
+  });
+  event.target.value = ''; // 清空，允許重複選擇同一檔案
+}
+
+// 壓縮圖片：等比例縮小到最長邊不超過maxSize，輸出JPEG格式並降低品質
+function compressImageFile(file, maxSize, quality){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = (e)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        let { width, height } = img;
+        if(width > height && width > maxSize){
+          height = Math.round(height * maxSize / width);
+          width = maxSize;
+        } else if(height > maxSize){
+          width = Math.round(width * maxSize / height);
+          height = maxSize;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        canvas.toBlob(blob=>{
+          resolve({ dataUrl, blob });
+        }, 'image/jpeg', quality);
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderM9PhotoPreview(){
+  const container = document.getElementById('m9PhotoPreview');
+  if(!container) return;
+  container.innerHTML = m9PendingPhotos.map((p, idx)=>
+    `<div class="m9-photo-thumb"><img src="${p.dataUrl}"><button class="m9-photo-remove" onclick="removeM9PendingPhoto(${idx})">✕</button></div>`
+  ).join('');
+}
+function removeM9PendingPhoto(idx){
+  m9PendingPhotos.splice(idx,1);
+  renderM9PhotoPreview();
+}
+
+// 把單張壓縮後的照片上傳到GAS，取得Drive網址（複用gasPost的同步機制）
+async function uploadOnePhoto(photo){
+  const base64Data = photo.dataUrl.split(',')[1]; // 去掉 "data:image/jpeg;base64," 前綴
+  const result = await gasPost({
+    action: 'uploadAttendancePhoto',
+    base64Data, fileName: photo.fileName, mimeType: 'image/jpeg'
+  });
+  if(result && result.ok) return result.url;
+  throw new Error(result && result.error || '上傳失敗');
+}
+
+async function addAttendanceRecord(){
+  const staffId = document.getElementById('m9StaffSel').value;
+  const dateStr = document.getElementById('m9Date').value;
+  const site = document.getElementById('m9SiteSel').value;
+  const otherLabel = document.getElementById('m9OtherLabel').value.trim();
+  const start = document.getElementById('m9Start').value;
+  const end = document.getElementById('m9End').value;
+  const note = document.getElementById('m9Note').value.trim();
+  if(!staffId){ alert('請選擇人員'); return; }
+  if(!dateStr){ alert('請選擇日期'); return; }
+  if(site==='other' && !otherLabel){ alert('請輸入地點名稱'); return; }
+  if(start>=end){ alert('結束時間需晚於開始時間'); return; }
+
+  const statusEl = document.getElementById('m9PhotoUploadStatus');
+  let photoUrls = [];
+
+  if(m9PendingPhotos.length>0){
+    const btn = document.querySelector('button[onclick="addAttendanceRecord()"]');
+    if(btn) btn.disabled = true;
+    try{
+      for(let i=0; i<m9PendingPhotos.length; i++){
+        if(statusEl) statusEl.textContent = `上傳照片中...（${i+1}/${m9PendingPhotos.length}）`;
+        const url = await uploadOnePhoto(m9PendingPhotos[i]);
+        photoUrls.push(url);
+      }
+      if(statusEl) statusEl.textContent = '';
+    }catch(err){
+      if(statusEl) statusEl.textContent = '';
+      if(btn) btn.disabled = false;
+      alert('照片上傳失敗，請檢查網路連線後重試：' + err.message);
+      return;
+    }
+    if(btn) btn.disabled = false;
+  }
+
+  attendanceRecords.push({
+    id: uid9(), staffId, date: dateStr, site,
+    otherLabel: site==='other' ? otherLabel : '',
+    start, end, note, photos: photoUrls
+  });
+  saveStore(STORE_KEYS.attendance, attendanceRecords);
+  document.getElementById('m9OtherLabel').value = '';
+  document.getElementById('m9Note').value = '';
+  m9PendingPhotos = [];
+  renderM9PhotoPreview();
+  renderAttendanceOverview();
+  alert(`已為 ${getStaffName(staffId)} 登記 ${dateStr} 的支援紀錄${photoUrls.length>0?`（含${photoUrls.length}張照片）`:''}`);
+}
+function deleteAttendanceRecord(id){
+  if(!IS_ADMIN){ alert('⚠️ 一般員工僅能新增支援填報紀錄，無法修改或刪除已填報的紀錄。如需更正，請洽管理者協助處理。'); return; }
+  if(!confirm('確定刪除此筆支援紀錄？')) return;
+  attendanceRecords = attendanceRecords.filter(r=>r.id!==id);
+  saveStore(STORE_KEYS.attendance, attendanceRecords);
+  renderAttendanceOverview();
+}
+function renderAttendanceOverview(){
+  const container = document.getElementById('attendanceOverviewList');
+  const totalBox = document.getElementById('m9TotalHoursBox');
+  if(!container || !totalBox) return;
+  const filterStaff = document.getElementById('m9FilterStaff').value;
+  const filterStart = document.getElementById('m9FilterStart').value;
+  const filterEnd = document.getElementById('m9FilterEnd').value;
+
+  let rows = attendanceRecords.filter(r=>{
+    if(filterStaff && r.staffId!==filterStaff) return false;
+    if(filterStart && r.date < filterStart) return false;
+    if(filterEnd && r.date > filterEnd) return false;
+    return true;
+  }).sort((a,b)=> a.date===b.date ? a.start.localeCompare(b.start) : a.date.localeCompare(b.date));
+
+  let totalHours = 0;
+  rows.forEach(r=> totalHours += timeToHours(r.start, r.end));
+  totalBox.textContent = `⏱️ 符合篩選條件的總工時：${totalHours.toFixed(1)} 小時（共 ${rows.length} 筆紀錄）`;
+
+  if(rows.length===0){
+    container.innerHTML = '<div class="report-empty">查無支援紀錄</div>';
+    return;
+  }
+  let html = `<table class="report-table attendance-table">
+    <thead><tr>
+      <th>姓名</th><th>日期</th><th>時間區間</th><th>地點</th><th>事由</th><th class="num-head">支援時數</th><th>照片</th><th></th>
+    </tr></thead><tbody>`;
+  rows.forEach(r=>{
+    const hours = timeToHours(r.start, r.end).toFixed(1);
+    const photosHtml = (r.photos && r.photos.length>0)
+      ? r.photos.map(url=>`<a href="${url}" target="_blank" class="m9-photo-link"><img src="${url}" loading="lazy"></a>`).join('')
+      : '<span style="color:var(--text-soft);font-size:11px;">無</span>';
+    const delCell = IS_ADMIN
+      ? `<button class="row-del" onclick="deleteAttendanceRecord('${r.id}')">✕ 刪除</button>`
+      : `<span style="font-size:11px;color:var(--warn);font-weight:600;" title="一般員工無法刪除，請洽管理者">🔒 僅管理者可刪除</span>`;
+    html += `<tr>
+      <td>${getStaffName(r.staffId)}</td>
+      <td>${r.date}</td>
+      <td>${r.start}–${r.end}</td>
+      <td>${attendanceSiteLabel(r)}</td>
+      <td>${r.note || '（支援）'}</td>
+      <td class="num">${hours}</td>
+      <td>${photosHtml}</td>
+      <td>${delCell}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+// ===== 初始渲染 =====
+function renderAllAfterSync(){
+  if(IS_ADMIN){
+    renderStaffTable();
+    renderSites();
+    renderClinicWeekdays();
+    populateTeacherStaffSelect();
+    toggleTeacherInput();
+    renderTeachers();
+    renderShiftTemplates();
+    renderCalendar(); // 內部會自動依calMode分流到矩陣或月曆渲染
+    renderConflictOverview();
+  }
+  // M4（請假登記＋總覽）與M7（發布清單）兩種角色都需要：
+  // 幹部要管理發布狀態／也可登記請假，員工要登記請假／查詢已發布班表
+  populateLeaveFilterSelects();
+  renderLeaveOverview();
+  populateM4LeaveStaffSelect();
+  renderM4LeaveTypeBtns();
+  renderM4LockBanner();
+  updateM4ScheduleHint();
+  renderPublishedMonthList();
+  populateM9Selects();
+  renderAttendanceOverview();
+  if(document.getElementById('queryMonthPicker') && document.getElementById('queryMonthPicker').value){
+    runEmployeeQuery();
+  }
+}
+
+// 第一次渲染：先用本機快取資料畫面，避免等待網路才能操作
+renderAllAfterSync();
+if(IS_ADMIN) setCalView('month');
+setQueryView('calendar');
+setSyncStatusUI();
+
+// 背景從GAS拉取最新資料，拉取完成後自動重繪（多裝置/多人共用的資料來源）
+pullAllFromGAS();
+
+// 手動「立即同步」按鈕：重新從GAS拉取最新資料（適合多人共用時隨時刷新看別人的更新）
+// 查詢模式下此按鈕已被移除（一般使用者不需要手動同步，系統仍會背景自動同步）
+const syncBtnEl = document.getElementById('syncBtn');
+if(syncBtnEl){
+  syncBtnEl.addEventListener('click', ()=>{
+    pullAllFromGAS();
+  });
+}
+
+// PWA：註冊Service Worker，讓App可以加到主畫面、離線時仍能打開網頁殼
+// （實際排班資料的離線能力，是靠本來就有的localStorage本機優先機制，SW只負責網頁殼快取）
+// 「每次開啟即時更新」：
+//   ① updateViaCache:'none' → 每次都直接跟伺服器要service-worker.js本身的最新版本，
+//      不透過瀏覽器HTTP快取判斷是否有更新（瀏覽器預設最多24小時才檢查一次，這裡強制每次都查）
+//   ② 註冊完立即呼叫 reg.update()，不用等瀏覽器背景排程
+//   ③ 新版SW接手時(controllerchange)自動重新整理一次頁面，確保使用者看到的一定是最新版，
+//      不用手動下拉刷新；用sessionStorage做一次性防呆，避免異常情況下無限重整
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('service-worker.js', { updateViaCache:'none' })
+      .then(reg=>{
+        reg.update().catch(()=>{});
+      })
+      .catch(err=>{
+        console.warn('[PWA] Service Worker 註冊失敗（不影響一般網頁使用）：', err);
+      });
+  });
+  let swReloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', ()=>{
+    if(swReloaded) return;
+    swReloaded = true;
+    window.location.reload();
+  });
+}
+
+</script>
+</body>
+</html>
