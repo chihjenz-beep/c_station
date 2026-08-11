@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
 <title>平安長照醫療體系排班系統</title>
+<!-- PWA：可加到手機主畫面、獨立視窗開啟、離線時仍可打開App殼 -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#6b4f3b">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="平安排班">
 <style>
   :root{
     --bg:#f5f0e6;
@@ -331,7 +340,6 @@
   }
   .mc-seg:not(:last-child){border-bottom:1px solid rgba(255,255,255,0.5);}
   .matrix-cell .mc-site{font-weight:700;display:block;}
-  .matrix-cell .mc-time{display:block;opacity:.85;font-size:9.2px;}
   .matrix-cell.matrix-leave-cell{background:#e8e2d5;}
   .matrix-cell .mc-leave{font-weight:700;display:block;color:var(--text-soft);text-align:center;padding:3px 4px;}
   .matrix-legend{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;font-size:10.8px;}
@@ -357,7 +365,7 @@
     font-size:10px;padding:2px 8px;border-radius:10px;background:var(--warn);color:#fff;font-weight:700;
   }
   .leave-overview-row{
-    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;
     padding:8px 10px;border-radius:8px;margin-bottom:6px;background:#fffefb;border:1px solid var(--border);
     font-size:13px;
   }
@@ -573,6 +581,41 @@
       </div>
       <div id="calGrid" class="cal-grid"></div>
       <div id="matrixContainer" style="display:none;"></div>
+    </div>
+
+    <div class="card">
+      <h2>🎓 外師課程排定</h2>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
+        管理課程項目（例如口腔保健講座、佛學生命教育），並將課程安插到指定據點與日期
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+        <input type="text" id="newCourseItemName" placeholder="新增課程項目名稱" style="flex:1;min-width:160px;">
+        <button class="btn" onclick="addCourseItem()">＋ 新增課程項目</button>
+      </div>
+      <div id="courseItemList" class="tag-list" style="margin-bottom:14px;"></div>
+
+      <div style="border-top:1px solid var(--border);padding-top:12px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+          <input type="date" id="courseSessionDate" style="flex:1;min-width:140px;">
+          <select id="courseSessionSite" style="flex:1;min-width:120px;"></select>
+          <select id="courseSessionItem" style="flex:1;min-width:120px;"></select>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+          <select id="courseSessionTeacher" style="flex:1;min-width:120px;"></select>
+          <input type="time" id="courseSessionStart" value="09:00" style="flex:1;min-width:100px;">
+          <input type="time" id="courseSessionEnd" value="10:00" style="flex:1;min-width:100px;">
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+          <input type="text" id="courseSessionNote" placeholder="備註（選填）" style="flex:1;min-width:120px;">
+          <button class="btn gold" onclick="addCourseSession()">＋ 安插課程</button>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 8px;border-top:1px solid var(--border);padding-top:12px;">
+        <span style="font-size:12px;color:var(--text-soft);">課程排定清單</span>
+        <input type="month" id="courseListMonthPicker" onchange="renderCourseSessionList()">
+      </div>
+      <div id="courseSessionList"></div>
     </div>
   </div>
 
@@ -842,11 +885,12 @@
         <button class="btn outline" onclick="renderConflictOverview()">🔄 重新掃描</button>
       </div>
       <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
-        掃描所有已有排班資料的日期，列出：
+        掃描所有已有排班或課程資料的日期（員工排班與M3外師課程排定皆列入人力涵蓋判斷），列出：
         <span class="badge danger">衝突①</span> 同人同時段跨地點重疊　
         <span class="badge danger">衝突②</span> 已登記請假/排休卻被排班　
-        <span class="badge" style="background:var(--warn);color:#fff;">提醒③</span> 據點當天完全沒有安排人力<br>
-        （提醒③已排除國定假日，以及各據點/診所在「M1 員工管理」設定的營運星期，例如北華村僅設定週二、診所固定休週三與週日；可到M1調整）<br>
+        <span class="badge" style="background:var(--warn);color:#fff;">提醒③</span> 據點當天完全沒有安排人力　
+        <span class="badge" style="background:var(--warn);color:#fff;">提醒④</span> 據點當天只排了上午或下午（另一半空著）<br>
+        （提醒③④已排除國定假日，以及各據點/診所在「M1 員工管理」設定的營運星期，例如北華村僅設定週二、診所固定休週三與週日；可到M1調整。提醒④以中午12:00為上午/下午分界）<br>
         點擊任一筆可直接跳轉到當日排班彈窗處理。
       </div>
       <div id="conflictSummary" style="margin-bottom:10px;"></div>
@@ -1075,7 +1119,9 @@ const STORE_KEYS = {
   externalTeachers: 'sched_externalTeachers',
   publishedMonths: 'sched_publishedMonths',
   attendance: 'sched_attendance',
-  clinicOperatingWeekdays: 'sched_clinicOperatingWeekdays'
+  clinicOperatingWeekdays: 'sched_clinicOperatingWeekdays',
+  courseItems: 'sched_courseItems',
+  courseSchedule: 'sched_courseSchedule'
 };
 
 function loadStore(key, fallback){
@@ -1105,6 +1151,22 @@ const SYNC_MAP = {
   sched_clinicOperatingWeekdays: {
     saveAction: 'saveSchedClinicHours',
     buildPayload: () => ({ operatingWeekdays: clinicOperatingWeekdays }),
+  },
+  sched_courseItems: {
+    saveAction: 'saveSchedCourseItems',
+    buildPayload: () => ({ courseItems: courseItems }),
+  },
+  sched_courseSchedule: {
+    saveAction: 'saveSchedCourseSchedule',
+    buildPayload: () => {
+      const entries = [];
+      Object.keys(courseSchedule).forEach(date=>{
+        (courseSchedule[date]||[]).forEach(c=>{
+          entries.push({ id:c.id, date, siteId:c.siteId, courseItemId:c.courseItemId, teacherId:c.teacherId||'', start:c.start, end:c.end, note:c.note||'' });
+        });
+      });
+      return { entries };
+    },
   },
   sched_externalTeachers: {
     saveAction: 'saveSchedTeachers',
@@ -1271,6 +1333,18 @@ async function pullAllFromGAS(){
     { getAction:'getSchedPublished',  apply: r => { if(r.publishedMonths){ publishedMonths = r.publishedMonths; saveLocalOnly(STORE_KEYS.publishedMonths, publishedMonths); } } },
     { getAction:'getSchedAttendance', apply: r => { if(r.attendance){ attendanceRecords = r.attendance; saveLocalOnly(STORE_KEYS.attendance, attendanceRecords); } } },
     { getAction:'getSchedClinicHours', apply: r => { if(r.operatingWeekdays && r.operatingWeekdays.length){ clinicOperatingWeekdays = r.operatingWeekdays; saveLocalOnly(STORE_KEYS.clinicOperatingWeekdays, clinicOperatingWeekdays); } } },
+    { getAction:'getSchedCourseItems', apply: r => { if(r.courseItems && r.courseItems.length){ courseItems = r.courseItems; saveLocalOnly(STORE_KEYS.courseItems, courseItems); } } },
+    { getAction:'getSchedCourseSchedule', apply: r => {
+        if(r.entries){
+          const rebuilt = {};
+          r.entries.forEach(c=>{
+            if(!rebuilt[c.date]) rebuilt[c.date]=[];
+            rebuilt[c.date].push({ id:c.id, siteId:c.siteId, courseItemId:c.courseItemId, teacherId:c.teacherId||'', start:c.start, end:c.end, note:c.note||'' });
+          });
+          courseSchedule = rebuilt;
+          saveLocalOnly(STORE_KEYS.courseSchedule, courseSchedule);
+        }
+      } },
   ];
   try{
     let failCount = 0;
@@ -1422,6 +1496,9 @@ sites.forEach(site=>{
 // 診所固定上班日設定（預設週一、二、四、五、六，固定休週三、週日）；可在M1「🏥 診所上班日設定」卡片調整
 let clinicOperatingWeekdays = loadStore(STORE_KEYS.clinicOperatingWeekdays, null) || [1,2,4,5,6];
 let externalTeachers = loadStore(STORE_KEYS.externalTeachers, []); // [{id, name, type:'internal'|'external', staffId|null, contact, assignments:[{siteId, categories:[]}]}]
+// M3次模組：外師課程排定。課程項目預設沿用外師管理既有的6大類別作為起始清單，之後可在M3自行增刪
+let courseItems = loadStore(STORE_KEYS.courseItems, null) || TEACHER_CATEGORIES.map(name=>({ id: uid('course'), name }));
+let courseSchedule = loadStore(STORE_KEYS.courseSchedule, {}); // { 'YYYY-MM-DD': [{id, siteId, courseItemId, teacherId, start, end, note}] }
 let publishedMonths = loadStore(STORE_KEYS.publishedMonths, []); // ['2026-06', '2026-07', ...] 已發布的月份清單(YYYY-MM)
 let attendanceRecords = loadStore(STORE_KEYS.attendance, []); // [{id, staffId, date, site:'clinic'|siteId|'other', otherLabel, start, end, note}]
 
@@ -1730,6 +1807,124 @@ function toggleTeacherCategory(teacherId, siteId, cat){
 }
 
 // ===========================================================
+// M3次模組：外師課程排定
+// 課程項目（courseItems）：可自訂新增/刪除的課程名稱清單
+// 課程排定（courseSchedule）：把某個課程項目安插到某個據點/日期/時段，可選填授課外師
+// ===========================================================
+function renderCourseItemList(){
+  const container = document.getElementById('courseItemList');
+  if(!container) return;
+  if(courseItems.length===0){
+    container.innerHTML = '<div style="font-size:12px;color:var(--text-soft);">尚未新增課程項目</div>';
+  } else {
+    container.innerHTML = courseItems.map(c=>`
+      <span class="tag-chip">${c.name}<span class="x" onclick="deleteCourseItem('${c.id}')">✕</span></span>
+    `).join('');
+  }
+  populateCourseSessionSelects();
+}
+function addCourseItem(){
+  const inp = document.getElementById('newCourseItemName');
+  const name = inp.value.trim();
+  if(!name){ alert('請輸入課程項目名稱'); return; }
+  courseItems.push({ id: uid('course'), name });
+  saveStore(STORE_KEYS.courseItems, courseItems);
+  inp.value = '';
+  renderCourseItemList();
+}
+function deleteCourseItem(courseItemId){
+  const inUseCount = Object.values(courseSchedule).flat().filter(c=>c.courseItemId===courseItemId).length;
+  const msg = inUseCount>0
+    ? `此課程項目已被安插 ${inUseCount} 筆課程排定紀錄，刪除後這些紀錄也會一併移除，確定刪除？`
+    : '確定刪除此課程項目？';
+  if(!confirm(msg)) return;
+  courseItems = courseItems.filter(c=>c.id!==courseItemId);
+  Object.keys(courseSchedule).forEach(date=>{
+    courseSchedule[date] = (courseSchedule[date]||[]).filter(c=>c.courseItemId!==courseItemId);
+    if(courseSchedule[date].length===0) delete courseSchedule[date];
+  });
+  saveStore(STORE_KEYS.courseItems, courseItems);
+  saveStore(STORE_KEYS.courseSchedule, courseSchedule);
+  renderCourseItemList();
+  renderCourseSessionList();
+}
+function populateCourseSessionSelects(){
+  const siteSel = document.getElementById('courseSessionSite');
+  const itemSel = document.getElementById('courseSessionItem');
+  const teacherSel = document.getElementById('courseSessionTeacher');
+  if(!siteSel || !itemSel || !teacherSel) return;
+  siteSel.innerHTML = `<option value="clinic">🏥診所</option>` +
+    sites.map(s=>`<option value="${s.id}">📍${s.name}</option>`).join('');
+  itemSel.innerHTML = courseItems.length
+    ? courseItems.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')
+    : `<option value="">（尚無課程項目，請先新增）</option>`;
+  teacherSel.innerHTML = `<option value="">（不指定外師）</option>` +
+    externalTeachers.map(t=>`<option value="${t.id}">${t.name}${t.type==='external'?'（外部）':''}</option>`).join('');
+}
+function addCourseSession(){
+  const dateStr = document.getElementById('courseSessionDate').value;
+  const siteId = document.getElementById('courseSessionSite').value;
+  const courseItemId = document.getElementById('courseSessionItem').value;
+  const teacherId = document.getElementById('courseSessionTeacher').value;
+  const start = document.getElementById('courseSessionStart').value;
+  const end = document.getElementById('courseSessionEnd').value;
+  const note = document.getElementById('courseSessionNote').value.trim();
+  if(!dateStr){ alert('請選擇日期'); return; }
+  if(!courseItemId){ alert('請先新增並選擇課程項目'); return; }
+  if(!start || !end){ alert('請填寫上課時段'); return; }
+  if(!courseSchedule[dateStr]) courseSchedule[dateStr] = [];
+  courseSchedule[dateStr].push({ id: uid('csess'), siteId, courseItemId, teacherId, start, end, note });
+  saveStore(STORE_KEYS.courseSchedule, courseSchedule);
+  document.getElementById('courseSessionNote').value = '';
+  // 課程清單月份自動切到剛新增的這筆所在月份，方便立即看到結果
+  document.getElementById('courseListMonthPicker').value = dateStr.slice(0,7);
+  renderCourseSessionList();
+}
+function deleteCourseSession(dateStr, sessionId){
+  if(!courseSchedule[dateStr]) return;
+  courseSchedule[dateStr] = courseSchedule[dateStr].filter(c=>c.id!==sessionId);
+  if(courseSchedule[dateStr].length===0) delete courseSchedule[dateStr];
+  saveStore(STORE_KEYS.courseSchedule, courseSchedule);
+  renderCourseSessionList();
+}
+function renderCourseSessionList(){
+  const container = document.getElementById('courseSessionList');
+  const monthPicker = document.getElementById('courseListMonthPicker');
+  if(!container || !monthPicker) return;
+  if(!monthPicker.value){
+    const today = new Date();
+    monthPicker.value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+  }
+  const month = monthPicker.value;
+  const dates = Object.keys(courseSchedule).filter(d=>d.startsWith(month)).sort();
+  const rows = [];
+  dates.forEach(dateStr=>{
+    (courseSchedule[dateStr]||[]).forEach(c=>{
+      rows.push({ dateStr, ...c });
+    });
+  });
+  if(rows.length===0){
+    container.innerHTML = '<div style="text-align:center;color:var(--text-soft);font-size:12px;padding:10px;">本月尚無課程排定</div>';
+    return;
+  }
+  container.innerHTML = rows.map(r=>{
+    const courseName = (courseItems.find(c=>c.id===r.courseItemId)||{}).name || '（已刪除的課程項目）';
+    const teacherName = r.teacherId ? (externalTeachers.find(t=>t.id===r.teacherId)||{}).name : '';
+    return `
+      <div class="leave-overview-row">
+        <span class="lo-date">${r.dateStr}</span>
+        <span><span class="site-badge ${siteColorClass(r.siteId)}">${siteLabel(r.siteId)}</span></span>
+        <span><strong>${courseName}</strong>${teacherName?`　🎓${teacherName}`:''}</span>
+        <span>${r.start}–${r.end}</span>
+        ${r.note ? `<span style="color:var(--text-soft);font-size:11px;">${r.note}</span>` : ''}
+        <button class="row-del" onclick="deleteCourseSession('${r.dateStr}','${r.id}')">✕ 刪除</button>
+      </div>
+    `;
+  }).join('');
+}
+
+
+// ===========================================================
 // M2 快速時段按鈕管理
 // ===========================================================
 function renderShiftTemplates(){
@@ -1896,6 +2091,17 @@ function buildMatrixColorMap(){
 
 // 共用矩陣表格HTML建構：橫軸日期、縱軸員工，色塊呈現地點
 // onCellClick: 點格子要呼叫的JS函式名稱字串（傳入dateStr），例如 "jumpToScheduleDate" 或 "showQueryDayDetail"
+// 矩陣格子文字用：把一筆排班的起訖時間簡化成「全/上/下」標籤（以中午12:00為分界，
+// 跟M5「只排半天」檢核用同一套判斷基準），例如「岱江里全」「岱江里上」「診所下」
+function getShiftHalfLabel(start, end){
+  const MID = '12:00';
+  const startsMorning = start < MID;
+  const endsAfternoon = end > MID;
+  if(startsMorning && endsAfternoon) return '全';
+  if(startsMorning && !endsAfternoon) return '上';
+  if(!startsMorning && endsAfternoon) return '下';
+  return '全'; // 極端邊界情況（起訖剛好都是12:00）保底顯示為全
+}
 function buildMatrixTableHtml(year, month, onCellClick){
   matrixColorMap = buildMatrixColorMap();
   const daysInMonth = new Date(year, month+1, 0).getDate();
@@ -1934,8 +2140,9 @@ function buildMatrixTableHtml(year, month, onCellClick){
       }
       const cellContent = `<div class="mc-cell-inner">` + entries.map(e=>{
         const segColor = matrixColorMap[e.site] || '#999';
+        const halfLabel = getShiftHalfLabel(e.start, e.end);
         return `<div class="mc-seg" style="background:${segColor};">
-          <span class="mc-site">${siteLabelPlain(e.site)}</span><span class="mc-time">${e.start.slice(0,5)}</span>
+          <span class="mc-site">${siteLabelPlain(e.site)}${halfLabel}</span>
         </div>`;
       }).join('') + `</div>`;
       // 同一格內若涵蓋多個不同地點，每個地點各自用自己的顏色顯示（不再整格套用單一顏色），
@@ -3089,18 +3296,33 @@ const NATIONAL_HOLIDAYS_2026 = [
 function isNationalHoliday(dateStr){
   return NATIONAL_HOLIDAYS_2026.includes(dateStr);
 }
+// 取得某天某地點的「人力涵蓋」紀錄：合併①一般員工排班(schedule) ②外師課程排定(courseSchedule)，
+// 因為課程排定是獨立於員工排班的另一份資料，之前M5沒有把它算進去，導致「協會上午有排課程、
+// 下午沒排班」這種情況被誤判成「當天完全沒有安排人力」，這裡統一合併兩種來源再判斷涵蓋範圍
+function getCoverageEntriesForDate(dateStr){
+  const entries = [];
+  (schedule[dateStr]||[]).forEach(e=>entries.push({ site: e.site, start: e.start, end: e.end }));
+  (courseSchedule[dateStr]||[]).forEach(c=>entries.push({ site: c.siteId, start: c.start, end: c.end }));
+  return entries;
+}
+// 「有排班資料」的日期清單：員工排班或課程排定，只要其中一種當天有資料，就視為系統當天有在運作
+function getActiveCoverageDates(){
+  const scheduleDates = Object.keys(schedule).filter(d=>(schedule[d]||[]).length>0);
+  const courseDates = Object.keys(courseSchedule).filter(d=>(courseSchedule[d]||[]).length>0);
+  return Array.from(new Set([...scheduleDates, ...courseDates])).sort();
+}
 // 檢核據點（含診所）某天是否完全沒有安排人力：以「有排班紀錄的日期」視為系統有在運作的一天，
-// 逐一檢查診所與每個據點當天是否至少有一筆排班；完全沒有的話視為漏排（提醒管理者確認是否為
+// 逐一檢查診所與每個據點當天是否至少有一筆排班或課程；完全沒有的話視為漏排（提醒管理者確認是否為
 // 該據點/診所當天原本就沒開，或是單純漏排忘記排班）。
 // 會先排除：①國定假日（一律停課，不檢查任何據點/診所）②當天本來就不營運的星期
 // （常規據點週六日不檢查；北華村除了週二以外都不檢查；診所週三、週日不檢查）
 function scanSiteCoverageGaps(){
   const gaps = [];
-  const activeDates = Object.keys(schedule).filter(d=>(schedule[d]||[]).length>0).sort();
+  const activeDates = getActiveCoverageDates();
   activeDates.forEach(dateStr=>{
     if(isNationalHoliday(dateStr)) return; // 國定假日一律停課，不檢查
     const dow = new Date(dateStr+'T00:00:00').getDay();
-    const assignedSites = new Set((schedule[dateStr]||[]).map(e=>e.site));
+    const assignedSites = new Set(getCoverageEntriesForDate(dateStr).map(e=>e.site));
     // 診所
     if(clinicOperatingWeekdays.includes(dow) && !assignedSites.has('clinic')){
       gaps.push({ dateStr, siteId: 'clinic' });
@@ -3116,15 +3338,57 @@ function scanSiteCoverageGaps(){
   });
   return gaps;
 }
+// 檢核據點（含診所）某天是否只有上午或只有下午有人力（另一半完全空著）：
+// 只檢查「當天已經有人力紀錄（排班或課程）」的地點，完全沒有紀錄的天數交給 scanSiteCoverageGaps 處理，
+// 避免同一種缺口被重複警示兩次。以中午12:00為早上/下午的分界點。
+function checkHalfDayCoverage(entries, midpoint){
+  const morningCovered = entries.some(e=>e.start < midpoint);
+  const afternoonCovered = entries.some(e=>e.end > midpoint);
+  if(morningCovered && afternoonCovered) return null; // 早上下午都有人，沒問題
+  if(morningCovered && !afternoonCovered) return 'afternoon'; // 缺下午
+  if(!morningCovered && afternoonCovered) return 'morning'; // 缺早上
+  return null;
+}
+function scanPartialDayCoverage(){
+  const DAY_MIDPOINT = '12:00';
+  const results = [];
+  const activeDates = getActiveCoverageDates();
+  activeDates.forEach(dateStr=>{
+    if(isNationalHoliday(dateStr)) return;
+    const dow = new Date(dateStr+'T00:00:00').getDay();
+    const entries = getCoverageEntriesForDate(dateStr);
+    const bySite = {};
+    entries.forEach(e=>{
+      if(!bySite[e.site]) bySite[e.site] = [];
+      bySite[e.site].push(e);
+    });
+    // 診所
+    if(clinicOperatingWeekdays.includes(dow) && bySite['clinic'] && bySite['clinic'].length>0){
+      const missing = checkHalfDayCoverage(bySite['clinic'], DAY_MIDPOINT);
+      if(missing) results.push({ dateStr, siteId:'clinic', missing });
+    }
+    // 各社區據點
+    sites.forEach(site=>{
+      const operatingWeekdays = getSiteOperatingWeekdays(site);
+      if(!operatingWeekdays.includes(dow)) return;
+      const siteEntries = bySite[site.id];
+      if(!siteEntries || siteEntries.length===0) return;
+      const missing = checkHalfDayCoverage(siteEntries, DAY_MIDPOINT);
+      if(missing) results.push({ dateStr, siteId:site.id, missing });
+    });
+  });
+  return results;
+}
 function renderConflictOverview(){
   const conflicts = scanAllConflicts();
   const gaps = scanSiteCoverageGaps();
+  const halfDayGaps = scanPartialDayCoverage();
   const summaryEl = document.getElementById('conflictSummary');
   const listEl = document.getElementById('conflictList');
 
   const overlapCount = conflicts.filter(c=>c.reasons.includes('overlap')).length;
   const leaveCount = conflicts.filter(c=>c.reasons.includes('leave')).length;
-  const dateCount = new Set([...conflicts.map(c=>c.dateStr), ...gaps.map(g=>g.dateStr)]).size;
+  const dateCount = new Set([...conflicts.map(c=>c.dateStr), ...gaps.map(g=>g.dateStr), ...halfDayGaps.map(g=>g.dateStr)]).size;
 
   summaryEl.innerHTML = `
     <div class="conflict-stat-row">
@@ -3132,11 +3396,12 @@ function renderConflictOverview(){
       <div class="conflict-stat-card"><div class="num">${overlapCount}</div><div class="lbl">跨地點重疊</div></div>
       <div class="conflict-stat-card"><div class="num">${leaveCount}</div><div class="lbl">與請假衝突</div></div>
       <div class="conflict-stat-card"><div class="num">${gaps.length}</div><div class="lbl">據點未安排人力</div></div>
+      <div class="conflict-stat-card"><div class="num">${halfDayGaps.length}</div><div class="lbl">只排半天</div></div>
       <div class="conflict-stat-card"><div class="num">${dateCount}</div><div class="lbl">受影響日期</div></div>
     </div>
   `;
 
-  if(conflicts.length===0 && gaps.length===0){
+  if(conflicts.length===0 && gaps.length===0 && halfDayGaps.length===0){
     listEl.innerHTML = '<div class="no-conflict-box">✅ 目前沒有偵測到任何排班衝突或據點漏排</div>';
     return;
   }
@@ -3163,7 +3428,16 @@ function renderConflictOverview(){
       </div>
     </div>
   `).join('');
-  listEl.innerHTML = conflictItemsHtml + gapItemsHtml;
+  const halfDayItemsHtml = halfDayGaps.map(g=>`
+    <div class="conflict-item" onclick="jumpToScheduleDate('${g.dateStr}')">
+      <div class="ci-date">📅 ${g.dateStr}</div>
+      <div class="ci-detail">
+        <span class="site-badge ${siteColorClass(g.siteId)}">${siteLabel(g.siteId)}</span>
+        <span class="ci-reason" style="color:var(--warn);">🌗 只有${g.missing==='morning'?'下午':'上午'}有安排，${g.missing==='morning'?'上午':'下午'}空著</span>
+      </div>
+    </div>
+  `).join('');
+  listEl.innerHTML = conflictItemsHtml + gapItemsHtml + halfDayItemsHtml;
 }
 
 // ===========================================================
@@ -3895,6 +4169,32 @@ const syncBtnEl = document.getElementById('syncBtn');
 if(syncBtnEl){
   syncBtnEl.addEventListener('click', ()=>{
     pullAllFromGAS();
+  });
+}
+
+// PWA：註冊Service Worker，讓App可以加到主畫面、離線時仍能打開網頁殼
+// （實際排班資料的離線能力，是靠本來就有的localStorage本機優先機制，SW只負責網頁殼快取）
+// 「每次開啟即時更新」：
+//   ① updateViaCache:'none' → 每次都直接跟伺服器要service-worker.js本身的最新版本，
+//      不透過瀏覽器HTTP快取判斷是否有更新（瀏覽器預設最多24小時才檢查一次，這裡強制每次都查）
+//   ② 註冊完立即呼叫 reg.update()，不用等瀏覽器背景排程
+//   ③ 新版SW接手時(controllerchange)自動重新整理一次頁面，確保使用者看到的一定是最新版，
+//      不用手動下拉刷新；用sessionStorage做一次性防呆，避免異常情況下無限重整
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('service-worker.js', { updateViaCache:'none' })
+      .then(reg=>{
+        reg.update().catch(()=>{});
+      })
+      .catch(err=>{
+        console.warn('[PWA] Service Worker 註冊失敗（不影響一般網頁使用）：', err);
+      });
+  });
+  let swReloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', ()=>{
+    if(swReloaded) return;
+    swReloaded = true;
+    window.location.reload();
   });
 }
 
