@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HbA1c 6.2% 六大營養素控糖每日追蹤日誌</title>
+    <style>
+        :root {
+            --primary: #2a9d8f;
+            --primary-dark: #264653;
+            --secondary: #e9c46a;
+            --accent: #f4a261;
+            --bg: #f8f9fa;
+            --card-bg: #ffffff;
+            --text: #2b2d42;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 650px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            margin: 0 0 8px 0;
+            font-size: 1.4rem;
+        }
+
+        header p {
+            margin: 0;
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .date-picker {
+            margin-top: 15px;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 12px;
+            border-radius: 6px;
+            display: inline-block;
+        }
+
+        .date-picker input {
+            border: none;
+            background: transparent;
+            color: white;
+            font-size: 1rem;
+            font-weight: bold;
+            outline: none;
+        }
+
+        .progress-box {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        .progress-bar {
+            height: 12px;
+            background: #e0e0e0;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .section-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .section-card h2 {
+            margin-top: 0;
+            font-size: 1.1rem;
+            color: var(--primary-dark);
+            border-bottom: 2px solid var(--bg);
+            padding-bottom: 8px;
+        }
+
+        .check-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 12px;
+            cursor: pointer;
+        }
+
+        .check-item input[type="checkbox"] {
+            margin-top: 4px;
+            margin-right: 12px;
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+
+        .check-label {
+            flex: 1;
+        }
+
+        .check-title {
+            font-weight: bold;
+            display: block;
+        }
+
+        .check-desc {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        /* 營養素指南面板 */
+        .nutrient-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .nutrient-box {
+            background: #f0f7f6;
+            border-left: 4px solid var(--primary);
+            padding: 10px;
+            border-radius: 6px;
+        }
+
+        .nutrient-title {
+            font-weight: bold;
+            color: var(--primary-dark);
+            font-size: 0.95rem;
+            margin-bottom: 4px;
+        }
+
+        .nutrient-food {
+            font-size: 0.82rem;
+            color: #444;
+            line-height: 1.4;
+        }
+
+        .tag {
+            display: inline-block;
+            background: #e7f3f1;
+            color: var(--primary-dark);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin: 2px 2px 2px 0;
+        }
+
+        textarea {
+            width: 100%;
+            height: 70px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            padding: 8px;
+            box-sizing: border-box;
+            margin-top: 5px;
+            font-family: inherit;
+            resize: vertical;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: bold;
+        }
+
+        .btn-export {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-reset {
+            background: #e76f51;
+            color: white;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        @media (max-width: 480px) {
+            .nutrient-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>HbA1c 6.2% 六大營養素控糖追蹤日記</h1>
+        <p>均衡營養 ‧ 順序進食 ‧ 穩糖保胰臟</p>
+        <div class="date-picker">
+            <input type="date" id="logDate" onchange="loadDateData()">
+        </div>
+    </header>
+
+    <div class="progress-box">
+        <div>今日核心目標達成率：<strong id="progressPercent">0%</strong> (<span id="checkedCount">0</span>/7 項)</div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+    </div>
+
+    <!-- 參考指南：六大營養素控糖食物庫 -->
+    <div class="section-card">
+        <h2>🥦 六大營養素建議食物庫（控糖版）</h2>
+        <div class="nutrient-grid">
+            <div class="nutrient-box">
+                <div class="nutrient-title">1. 複合碳水 (高纖/慢釋放)</div>
+                <div class="nutrient-food">
+                    <span class="tag">糙米</span><span class="tag">燕麥</span><span class="tag">地瓜</span><span class="tag">芋頭</span><span class="tag">南瓜</span><span class="tag">黑米</span><span class="tag">紅豆</span><span class="tag">玉米</span>
+                </div>
+            </div>
+
+            <div class="nutrient-box">
+                <div class="nutrient-title">2. 優質蛋白質 (修補肌肉)</div>
+                <div class="nutrient-food">
+                    <span class="tag">雞胸肉</span><span class="tag">鮭魚/鯖魚</span><span class="tag">雞蛋</span><span class="tag">傳統豆腐</span><span class="tag">無糖豆漿</span><span class="tag">海鮮</span><span class="tag">瘦牛肉</span>
+                </div>
+            </div>
+
+            <div class="nutrient-box">
+                <div class="nutrient-title">3. 好油脂 (延緩胃排空)</div>
+                <div class="nutrient-food">
+                    <span class="tag">特級初榨橄欖油</span><span class="tag">苦茶油</span><span class="tag">無調味堅果</span><span class="tag">酪梨</span><span class="tag">芝麻</span>
+                </div>
+            </div>
+
+            <div class="nutrient-box">
+                <div class="nutrient-title">4. 維生素 (抗氧化/代謝)</div>
+                <div class="nutrient-food">
+                    <span class="tag">深綠蔬菜</span><span class="tag">甜椒</span><span class="tag">芭樂</span><span class="tag">奇異果(適量)</span><span class="tag">藍莓</span><span class="tag">菇類</span>
+                </div>
+            </div>
+
+            <div class="nutrient-box">
+                <div class="nutrient-title">5. 礦物質 (穩血糖/電解質)</div>
+                <div class="nutrient-food">
+                    <span class="tag">菠菜(鎂)</span><span class="tag">小魚乾(鈣)</span><span class="tag">海帶/紫菜</span><span class="tag">蛤蜊(鐵)</span><span class="tag">無糖優格</span>
+                </div>
+            </div>
+
+            <div class="nutrient-box">
+                <div class="nutrient-title">6. 水分 (促進葡萄糖代謝)</div>
+                <div class="nutrient-food">
+                    <span class="tag">溫白開水</span><span class="tag">無糖綠茶/烏龍茶</span><span class="tag">黑咖啡</span><span class="tag">蔬菜清湯</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 每日飲食勾稽區 -->
+    <div class="section-card">
+        <h2>🥗 飲食與營養勾稽</h2>
+        
+        <label class="check-item">
+            <input type="checkbox" class="tracker-check" id="c1" onchange="saveData()">
+            <div class="check-label">
+                <span class="check-title">正確進食順序</span>
+                <span class="check-desc">每餐皆遵循「蔬菜 $\rightarrow$ 蛋白質 $\rightarrow$ 複合碳水」順序</span>
+            </div>
+        </label>
+
+        <label class="check-item">
+            <input type="checkbox" class="tracker-check" id="c2" onchange="saveData()">
+            <div class="check-label">
+                <span class="check-title">攝取原型複合碳水</span>
+                <span class="check-desc">澱粉選擇糙米、芋頭、地瓜或燕麥（拒絕白飯/精緻麵食）</span>
+            </div>
+        </label>
+
+        <label class="check-item">
+            <input type="checkbox" class="tracker-check" id="c3" onchange="saveData()">
+            <div class="check-label">
+                <span class="check-title">完整覆蓋六大營養素</span>
+                <span class="check-desc">今日餐點均勻涵蓋碳水、蛋白質、好油、維生素、礦物質與足量水</span>
+            </div>
+        </label>
+
+        <label class="check-item">
+            <input type="checkbox" class="tracker-check" id="c4" onchange="saveData()">
+            <div class="check-label">
+                <span class="check-title">避開精緻糖與手搖飲</span>
+                <span class="check-desc">零甜點、零精緻糖、零含糖飲料（可飲用無糖茶或黑咖啡）</span>
+            </div>
+        </label>
+
+        <div style="margin-top: 12px;">
+            <span class="check-title">今日三餐與營養補充紀錄：</span>
+            <textarea id="mealLog" placeholder="例：早餐：無糖豆漿+蒸蛋+小地瓜；午餐：烤鮭魚+炒菠菜+半碗糙米飯..." oninput="saveData()"></textarea>
+        </div>
+    </div>
+
+    <!-- 運動與生活勾稽區 -->
+    <div class="section-card">
+        <h2>🏃 運動與生活勾稽</h2>
+
+        <label class="check-item">
+            <input type="checkbox" class="tracker-check" id="c5" onchange="saveData()">
+            <div class="check-label">
+                <span class="check-title">餐後散步 15–20 分鐘</span>
+                <span class="check-desc">午/晚餐後進行輕度走動，平緩餐後血糖高峰</span>
+            </div>
+        </label>
+
+        <label class="check-item">
+            <input type="checkbox" class="tracker-check" id="c6" onchange="saveData()">
+            <div class="check-label">
+                <span class="check-title">完成 30 分鐘中強度運動</span>
+                <span class="check-desc">快走、慢跑、單車或重訓（提升肌肉胰島素敏感度）</span>
+            </div>
+        </label>
+
+        <label class="check-item">
+            <input type="checkbox" class="tracker-check" id="c7" onchange="saveData()">
+            <div class="check-label">
+                <span class="check-title">喝足水分與睡足 7 小時</span>
+                <span class="check-desc">喝水量達到「體重 x 35 c.c.」，避免壓力荷爾蒙飆高</span>
+            </div>
+        </label>
+
+        <div style="margin-top: 12px;">
+            <span class="check-title">運動與作息備註：</span>
+            <textarea id="workoutLog" placeholder="例：晚上快走 30 分鐘；飲水量 2200 c.c.；睡眠 7.5 小時..." oninput="saveData()"></textarea>
+        </div>
+    </div>
+
+    <div class="btn-group">
+        <button class="btn btn-export" onclick="exportToCSV()">📊 匯出所有紀錄 (.csv)</button>
+        <button class="btn btn-reset" onclick="resetTodayData()">清空今日</button>
+    </div>
+</div>
+
+<script>
+    const dateInput = document.getElementById('logDate');
+    dateInput.value = new Date().toISOString().split('T')[0];
+
+    function loadDateData() {
+        const selectedDate = dateInput.value;
+        const savedData = JSON.parse(localStorage.getItem('hba1c_log_' + selectedDate)) || {};
+
+        for (let i = 1; i <= 7; i++) {
+            const cb = document.getElementById('c' + i);
+            cb.checked = savedData['c' + i] || false;
+        }
+
+        document.getElementById('mealLog').value = savedData.mealLog || '';
+        document.getElementById('workoutLog').value = savedData.workoutLog || '';
+
+        updateProgress();
+    }
+
+    function saveData() {
+        const selectedDate = dateInput.value;
+        const dataToSave = {};
+
+        for (let i = 1; i <= 7; i++) {
+            dataToSave['c' + i] = document.getElementById('c' + i).checked;
+        }
+
+        dataToSave.mealLog = document.getElementById('mealLog').value;
+        dataToSave.workoutLog = document.getElementById('workoutLog').value;
+
+        localStorage.setItem('hba1c_log_' + selectedDate, JSON.stringify(dataToSave));
+        updateProgress();
+    }
+
+    function updateProgress() {
+        const checkboxes = document.querySelectorAll('.tracker-check');
+        let checkedCount = 0;
+        checkboxes.forEach(cb => {
+            if (cb.checked) checkedCount++;
+        });
+
+        const percent = Math.round((checkedCount / checkboxes.length) * 100);
+        document.getElementById('progressPercent').innerText = percent + '%';
+        document.getElementById('checkedCount').innerText = checkedCount;
+        document.getElementById('progressFill').style.width = percent + '%';
+    }
+
+    function resetTodayData() {
+        if (confirm('確定要清空今天的紀錄嗎？')) {
+            const selectedDate = dateInput.value;
+            localStorage.removeItem('hba1c_log_' + selectedDate);
+            loadDateData();
+        }
+    }
+
+    // 匯出 CSV 試算表功能
+    function exportToCSV() {
+        let csvContent = "\uFEFF"; // UTF-8 BOM 防止亂碼
+        csvContent += "日期,進食順序,複合碳水,涵蓋六大營養素,避開精緻糖,餐後散步,中強度運動,水分與睡眠,達成率,飲食與營養紀錄,運動與作息紀錄\n";
+
+        let keys = Object.keys(localStorage).filter(k => k.startsWith('hba1c_log_')).sort();
+
+        if (keys.length === 0) {
+            alert('目前尚無任何歷史紀錄可供匯出！');
+            return;
+        }
+
+        keys.forEach(key => {
+            let date = key.replace('hba1c_log_', '');
+            let data = JSON.parse(localStorage.getItem(key));
+
+            let c1 = data.c1 ? "是" : "否";
+            let c2 = data.c2 ? "是" : "否";
+            let c3 = data.c3 ? "是" : "否";
+            let c4 = data.c4 ? "是" : "否";
+            let c5 = data.c5 ? "是" : "否";
+            let c6 = data.c6 ? "是" : "否";
+            let c7 = data.c7 ? "是" : "否";
+
+            let count = [data.c1, data.c2, data.c3, data.c4, data.c5, data.c6, data.c7].filter(Boolean).length;
+            let percent = Math.round((count / 7) * 100) + "%";
+
+            let meal = (data.mealLog || "").replace(/"/g, '""').replace(/\n/g, " ");
+            let workout = (data.workoutLog || "").replace(/"/g, '""').replace(/\n/g, " ");
+
+            csvContent += `"${date}","${c1}","${c2}","${c3}","${c4}","${c5}","${c6}","${c7}","${percent}","${meal}","${workout}"\n`;
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `HbA1c_六大營養素健康勾稽表_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    window.onload = loadDateData;
+</script>
+
+</body>
+</html>
