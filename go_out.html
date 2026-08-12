@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>外出請假登記簿</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --paper: #F2F3EC;
+    --paper-line: #DCDFCF;
+    --card: #FFFFFF;
+    --ink: #24332B;
+    --ink-soft: #5B6A5F;
+    --teal: #3E7C6B;
+    --teal-deep: #2C5A4C;
+    --teal-pale: #E4EEE9;
+    --coral: #BF5140;
+    --coral-pale: #F7E4DF;
+    --amber: #B5842A;
+    --amber-pale: #F5EBD4;
+    --stamp-red: #B23A32;
+    --radius: 14px;
+    --shadow: 0 2px 10px rgba(36,51,43,0.07), 0 1px 2px rgba(36,51,43,0.06);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      repeating-linear-gradient(180deg, transparent, transparent 37px, var(--paper-line) 38px),
+      var(--paper);
+    color:var(--ink);
+    font-family:'Noto Sans TC', sans-serif;
+    min-height:100vh;
+    padding:28px 16px 80px;
+  }
+  .wrap{max-width:920px; margin:0 auto;}
+
+  /* ---- Header / Ledger cover ---- */
+  header.cover{
+    background:var(--teal-deep);
+    color:#F4F6F1;
+    border-radius:var(--radius);
+    padding:22px 26px;
+    box-shadow:var(--shadow);
+    position:relative;
+    overflow:hidden;
+    margin-bottom:18px;
+  }
+  header.cover::before{
+    content:"";
+    position:absolute; inset:0;
+    background:radial-gradient(circle at 88% -10%, rgba(255,255,255,0.10), transparent 55%);
+  }
+  .cover-top{display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; position:relative;}
+  .eyebrow{font-size:12.5px; letter-spacing:.14em; color:#B9D6C8; font-weight:600;}
+  h1{
+    font-family:'Noto Serif TC', serif;
+    font-weight:900;
+    font-size:26px;
+    margin:4px 0 2px;
+    letter-spacing:.02em;
+  }
+  .sub{font-size:13px; color:#C8DED2;}
+  .date-box{
+    background:rgba(255,255,255,0.10);
+    border:1px solid rgba(255,255,255,0.22);
+    border-radius:10px;
+    padding:8px 12px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .date-box input{
+    background:transparent; border:none; color:#fff; font-family:'Noto Sans TC';
+    font-size:14px; font-weight:600; outline:none;
+  }
+  .date-box label{font-size:12px; color:#C8DED2;}
+  .export-row{ display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; position:relative; }
+  .btn-export{
+    background:rgba(255,255,255,0.10); color:#EAF2EC;
+    border:1px solid rgba(255,255,255,0.28);
+    border-radius:9px; padding:8px 14px; font-size:13px; font-weight:600;
+    font-family:'Noto Sans TC'; cursor:pointer; transition:background .15s, transform .1s;
+  }
+  .btn-export:hover{ background:rgba(255,255,255,0.20); }
+  .btn-export:active{ transform:scale(0.97); }
+  .stats{display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; position:relative;}
+  .stat{
+    background:rgba(255,255,255,0.09);
+    border:1px solid rgba(255,255,255,0.16);
+    border-radius:10px;
+    padding:9px 14px;
+    min-width:92px;
+  }
+  .stat .n{font-family:'Noto Serif TC'; font-weight:700; font-size:20px; line-height:1;}
+  .stat .l{font-size:11.5px; color:#C8DED2; margin-top:3px;}
+  .stat.alert .n{color:#F3C6BB;}
+
+  /* ---- Add form card ---- */
+  .card{
+    background:var(--card);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:20px 22px;
+    margin-bottom:18px;
+  }
+  .card h2{
+    font-family:'Noto Serif TC', serif;
+    font-size:16px; font-weight:700; margin:0 0 14px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .card h2::before{
+    content:"";
+    width:6px; height:6px; border-radius:50%;
+    background:var(--teal); display:inline-block;
+  }
+  .grid{
+    display:grid;
+    grid-template-columns: 1.1fr 1fr 1fr 1fr;
+    gap:12px;
+  }
+  @media (max-width:720px){ .grid{grid-template-columns: 1fr 1fr;} }
+  .field label{
+    display:block; font-size:12px; color:var(--ink-soft); margin-bottom:5px; font-weight:600;
+  }
+  .field input, .field select{
+    width:100%; padding:9px 10px; border-radius:9px; border:1.5px solid #DCE2DA;
+    font-family:'Noto Sans TC'; font-size:14.5px; color:var(--ink); background:#FBFCFA;
+    outline:none; transition:border-color .15s;
+  }
+  .field input:focus, .field select:focus{ border-color:var(--teal); }
+  .field.wide{grid-column: span 2;}
+  @media (max-width:720px){ .field.wide{grid-column: span 2;} }
+  .note-row{display:none; margin-top:12px;}
+  .note-row.show{display:block;}
+  .actions-row{display:flex; justify-content:flex-end; gap:10px; margin-top:16px;}
+  button{
+    font-family:'Noto Sans TC'; font-weight:600; font-size:14px;
+    border:none; border-radius:9px; padding:10px 18px; cursor:pointer;
+    transition:transform .1s, box-shadow .15s, background .15s;
+  }
+  button:active{transform:scale(0.97);}
+  .btn-primary{background:var(--teal); color:#fff;}
+  .btn-primary:hover{background:var(--teal-deep);}
+  .btn-ghost{background:transparent; color:var(--ink-soft); border:1.5px solid #DCE2DA;}
+  .btn-ghost:hover{border-color:var(--teal); color:var(--teal-deep);}
+
+  /* ---- Log list ---- */
+  .section-label{
+    font-size:12.5px; font-weight:700; color:var(--ink-soft);
+    letter-spacing:.06em; margin:22px 4px 10px; display:flex; align-items:center; gap:8px;
+  }
+  .section-label .count{
+    background:var(--teal-pale); color:var(--teal-deep); font-size:11px; font-weight:700;
+    padding:1px 8px; border-radius:20px;
+  }
+  .entry{
+    background:var(--card);
+    border-radius:12px;
+    box-shadow:var(--shadow);
+    padding:14px 16px;
+    margin-bottom:10px;
+    display:flex; align-items:center; gap:14px;
+    border-left:4px solid var(--teal);
+    position:relative;
+  }
+  .entry.overdue{ border-left-color:var(--coral); animation:pulse 2s infinite; }
+  .entry.returned{ border-left-color:#BFC8BE; opacity:.85; }
+  @keyframes pulse{
+    0%,100%{ box-shadow:var(--shadow); }
+    50%{ box-shadow:0 0 0 3px rgba(191,81,64,0.14), var(--shadow); }
+  }
+  .entry .name{
+    font-family:'Noto Serif TC'; font-weight:700; font-size:16px; min-width:78px;
+  }
+  .entry .mid{ flex:1; min-width:200px; }
+  .entry .reason{
+    font-size:12.5px; font-weight:700; padding:3px 9px; border-radius:20px;
+    background:var(--teal-pale); color:var(--teal-deep); display:inline-block; margin-bottom:5px;
+  }
+  .entry .times{ font-size:12.5px; color:var(--ink-soft); display:flex; gap:14px; flex-wrap:wrap;}
+  .entry .times b{ color:var(--ink); font-weight:600; }
+  .entry .times .warn{ color:var(--coral); font-weight:700; }
+  .entry .side{ display:flex; align-items:center; gap:8px; }
+  .stamp{
+    width:52px; height:52px; border-radius:50%;
+    border:2.5px solid var(--stamp-red); color:var(--stamp-red);
+    display:flex; align-items:center; justify-content:center; flex-direction:column;
+    font-family:'Noto Serif TC'; font-weight:900; font-size:11px;
+    transform:rotate(-8deg);
+    opacity:0; transform-origin:center;
+    animation:stampIn .35s ease-out forwards;
+    line-height:1.15;
+    flex-shrink:0;
+  }
+  .stamp span{font-size:9px; font-weight:700;}
+  @keyframes stampIn{
+    0%{opacity:0; transform:scale(1.8) rotate(-8deg);}
+    60%{opacity:1; transform:scale(0.92) rotate(-8deg);}
+    100%{opacity:1; transform:scale(1) rotate(-8deg);}
+  }
+  .icon-btn{
+    background:none; border:none; color:var(--ink-soft); cursor:pointer; padding:6px;
+    border-radius:7px; font-size:15px; line-height:1;
+  }
+  .icon-btn:hover{ background:#F0F1EB; color:var(--coral); }
+  .btn-return{
+    background:var(--amber-pale); color:#8A6317; padding:8px 14px; font-size:13px; border-radius:8px; font-weight:700; white-space:nowrap;
+  }
+  .btn-return:hover{ background:var(--amber); color:#fff; }
+
+  .empty{
+    text-align:center; padding:40px 20px; color:var(--ink-soft);
+    background:var(--card); border-radius:12px; box-shadow:var(--shadow);
+  }
+  .empty .big{font-size:32px; margin-bottom:6px;}
+
+  footer{ text-align:center; font-size:12px; color:var(--ink-soft); margin-top:28px; opacity:.7; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="cover">
+    <div class="cover-top">
+      <div>
+        <div class="eyebrow">據點日誌 · 學員動向記錄</div>
+        <h1>外出請假登記簿</h1>
+        <div class="sub">簽到後外出，請於此登記事由與時間，返回時完成銷案</div>
+      </div>
+      <div class="date-box">
+        <label for="logDate">日期</label>
+        <input type="date" id="logDate">
+      </div>
+    </div>
+    <div class="export-row">
+      <button class="btn-export" id="btnExportDay">📄 匯出本日試算表</button>
+      <button class="btn-export" id="btnExportAll">🗂 匯出全部紀錄</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="n" id="statTotal">0</div><div class="l">今日登記人次</div></div>
+      <div class="stat alert"><div class="n" id="statOut">0</div><div class="l">目前外出中</div></div>
+      <div class="stat"><div class="n" id="statBack">0</div><div class="l">已完成返回</div></div>
+      <div class="stat alert"><div class="n" id="statOverdue">0</div><div class="l">超過預計時間</div></div>
+    </div>
+  </header>
+
+  <div class="card">
+    <h2>新增外出登記</h2>
+    <div class="grid">
+      <div class="field">
+        <label for="fName">學員姓名</label>
+        <input type="text" id="fName" placeholder="例：陳○○">
+      </div>
+      <div class="field">
+        <label for="fReason">外出事由</label>
+        <select id="fReason">
+          <option value="如廁">如廁</option>
+          <option value="就醫">就醫</option>
+          <option value="接送">接送 / 家屬帶離</option>
+          <option value="用餐">用餐 / 買東西</option>
+          <option value="其他">其他（請說明）</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="fOutTime">外出時間</label>
+        <input type="time" id="fOutTime">
+      </div>
+      <div class="field">
+        <label for="fExpect">預計返回時間（選填）</label>
+        <input type="time" id="fExpect">
+      </div>
+      <div class="field wide note-row" id="noteRow">
+        <label for="fNote">請說明事由 / 陪同人員 / 備註</label>
+        <input type="text" id="fNote" placeholder="例：由女兒陪同外出買藥">
+      </div>
+    </div>
+    <div class="actions-row">
+      <button class="btn-ghost" id="btnUseNow">外出時間設為現在</button>
+      <button class="btn-primary" id="btnAdd">登記外出</button>
+    </div>
+  </div>
+
+  <div id="listArea"></div>
+
+  <footer>本頁資料僅儲存於本機瀏覽器（localStorage），關閉分頁後仍會保留 · 請定期於現場核對紙本</footer>
+</div>
+
+<script>
+(function(){
+  const STORE_KEY = 'outingLogEntries_v1';
+  const nameEl = document.getElementById('fName');
+  const reasonEl = document.getElementById('fReason');
+  const outTimeEl = document.getElementById('fOutTime');
+  const expectEl = document.getElementById('fExpect');
+  const noteEl = document.getElementById('fNote');
+  const noteRow = document.getElementById('noteRow');
+  const dateEl = document.getElementById('logDate');
+  const listArea = document.getElementById('listArea');
+
+  function pad(n){ return n.toString().padStart(2,'0'); }
+  function todayStr(){
+    const d = new Date();
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  }
+  function nowTimeStr(){
+    const d = new Date();
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  dateEl.value = todayStr();
+  outTimeEl.value = nowTimeStr();
+
+  reasonEl.addEventListener('change', () => {
+    noteRow.classList.toggle('show', reasonEl.value === '其他');
+  });
+
+  document.getElementById('btnUseNow').addEventListener('click', () => {
+    outTimeEl.value = nowTimeStr();
+  });
+
+  function loadAll(){
+    try{
+      const raw = localStorage.getItem(STORE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    }catch(e){ return []; }
+  }
+  function saveAll(entries){
+    localStorage.setItem(STORE_KEY, JSON.stringify(entries));
+  }
+
+  let entries = loadAll();
+  let justReturnedId = null;
+
+  function genId(){
+    return 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+  }
+
+  document.getElementById('btnAdd').addEventListener('click', () => {
+    const name = nameEl.value.trim();
+    if(!name){
+      nameEl.focus();
+      nameEl.style.borderColor = 'var(--coral)';
+      setTimeout(()=> nameEl.style.borderColor = '', 900);
+      return;
+    }
+    const entry = {
+      id: genId(),
+      date: dateEl.value || todayStr(),
+      name,
+      reason: reasonEl.value,
+      note: noteEl.value.trim(),
+      outTime: outTimeEl.value || nowTimeStr(),
+      expectReturn: expectEl.value || '',
+      actualReturn: ''
+    };
+    entries.unshift(entry);
+    saveAll(entries);
+    nameEl.value = '';
+    noteEl.value = '';
+    expectEl.value = '';
+    outTimeEl.value = nowTimeStr();
+    reasonEl.value = '如廁';
+    noteRow.classList.remove('show');
+    render();
+    nameEl.focus();
+  });
+
+  function markReturn(id){
+    const e = entries.find(x => x.id === id);
+    if(!e) return;
+    e.actualReturn = nowTimeStr();
+    justReturnedId = id;
+    saveAll(entries);
+    render();
+    setTimeout(()=>{ justReturnedId = null; }, 50);
+  }
+
+  function deleteEntry(id){
+    entries = entries.filter(x => x.id !== id);
+    saveAll(entries);
+    render();
+  }
+
+  function timeToMinutes(t){
+    if(!t) return null;
+    const [h,m] = t.split(':').map(Number);
+    return h*60+m;
+  }
+
+  function isOverdue(e){
+    if(e.actualReturn || !e.expectReturn) return false;
+    const nowMin = timeToMinutes(nowTimeStr());
+    const expMin = timeToMinutes(e.expectReturn);
+    return nowMin > expMin;
+  }
+
+  function render(){
+    const selDate = dateEl.value || todayStr();
+    const dayEntries = entries.filter(e => e.date === selDate);
+
+    const outNow = dayEntries.filter(e => !e.actualReturn);
+    const back = dayEntries.filter(e => e.actualReturn);
+    const overdue = outNow.filter(isOverdue);
+
+    document.getElementById('statTotal').textContent = dayEntries.length;
+    document.getElementById('statOut').textContent = outNow.length;
+    document.getElementById('statBack').textContent = back.length;
+    document.getElementById('statOverdue').textContent = overdue.length;
+
+    if(dayEntries.length === 0){
+      listArea.innerHTML = `<div class="empty"><div class="big">📋</div>目前這天還沒有外出登記紀錄</div>`;
+      return;
+    }
+
+    const sorted = [...outNow, ...back];
+    let html = '';
+
+    if(outNow.length){
+      html += `<div class="section-label">外出中 <span class="count">${outNow.length}</span></div>`;
+      html += outNow.map(e => renderEntry(e)).join('');
+    }
+    if(back.length){
+      html += `<div class="section-label">已返回 <span class="count">${back.length}</span></div>`;
+      html += back.map(e => renderEntry(e)).join('');
+    }
+    listArea.innerHTML = html;
+
+    // bind buttons
+    listArea.querySelectorAll('[data-return]').forEach(btn=>{
+      btn.addEventListener('click', ()=> markReturn(btn.getAttribute('data-return')));
+    });
+    listArea.querySelectorAll('[data-del]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        if(confirm('確定要刪除這筆登記嗎？')) deleteEntry(btn.getAttribute('data-del'));
+      });
+    });
+  }
+
+  function renderEntry(e){
+    const overdueFlag = isOverdue(e);
+    const cls = e.actualReturn ? 'returned' : (overdueFlag ? 'overdue' : '');
+    const reasonLabel = e.reason === '其他' && e.note ? `其他：${escapeHtml(e.note)}` : e.reason;
+    const noteExtra = (e.reason !== '其他' && e.note) ? ` <span style="color:var(--ink-soft);font-weight:400;">（${escapeHtml(e.note)}）</span>` : '';
+
+    let timesHtml = `外出 <b>${e.outTime}</b>`;
+    if(e.expectReturn) timesHtml += ` &nbsp;|&nbsp; 預計 <b class="${overdueFlag?'warn':''}">${e.expectReturn}</b>`;
+    if(e.actualReturn) timesHtml += ` &nbsp;|&nbsp; 返回 <b>${e.actualReturn}</b>`;
+    else if(overdueFlag) timesHtml += ` &nbsp;|&nbsp; <span class="warn">⚠ 已超過預計時間</span>`;
+
+    const sideHtml = e.actualReturn
+      ? `<div class="stamp">已銷案<span>${e.actualReturn}</span></div>`
+      : `<button class="btn-return" data-return="${e.id}">登記返回</button>`;
+
+    return `
+      <div class="entry ${cls}">
+        <div class="name">${escapeHtml(e.name)}</div>
+        <div class="mid">
+          <div class="reason">${escapeHtml(reasonLabel)}</div>${noteExtra}
+          <div class="times">${timesHtml}</div>
+        </div>
+        <div class="side">
+          ${sideHtml}
+          <button class="icon-btn" data-del="${e.id}" title="刪除">✕</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function escapeHtml(str){
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  function statusLabel(e){
+    if(e.actualReturn) return '已返回';
+    return isOverdue(e) ? '外出中（已逾時）' : '外出中';
+  }
+
+  function toRows(list){
+    return list.map(e => ({
+      '日期': e.date,
+      '學員姓名': e.name,
+      '外出事由': e.reason,
+      '備註': e.note || '',
+      '外出時間': e.outTime || '',
+      '預計返回時間': e.expectReturn || '',
+      '實際返回時間': e.actualReturn || '',
+      '狀態': statusLabel(e)
+    }));
+  }
+
+  function downloadXlsx(rows, filename, sheetName){
+    if(!rows.length){
+      alert('目前沒有資料可以匯出。');
+      return;
+    }
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [
+      {wch:12},{wch:12},{wch:14},{wch:24},{wch:10},{wch:12},{wch:12},{wch:14}
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    XLSX.writeFile(wb, filename);
+  }
+
+  document.getElementById('btnExportDay').addEventListener('click', () => {
+    const selDate = dateEl.value || todayStr();
+    const dayEntries = entries.filter(e => e.date === selDate)
+      .sort((a,b) => (a.outTime || '').localeCompare(b.outTime || ''));
+    downloadXlsx(toRows(dayEntries), `外出登記_${selDate}.xlsx`, selDate);
+  });
+
+  document.getElementById('btnExportAll').addEventListener('click', () => {
+    const all = [...entries].sort((a,b) => {
+      if(a.date !== b.date) return a.date.localeCompare(b.date);
+      return (a.outTime || '').localeCompare(b.outTime || '');
+    });
+    downloadXlsx(toRows(all), `外出登記_全部紀錄.xlsx`, '外出登記');
+  });
+
+  dateEl.addEventListener('change', render);
+
+  setInterval(render, 30000); // refresh overdue highlighting
+  render();
+})();
+</script>
+</body>
+</html>
