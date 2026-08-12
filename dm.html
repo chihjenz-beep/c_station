@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HbA1c 6.2% 六大營養素控糖每日追蹤日誌</title>
+    <!-- 引入 SheetJS 函式庫，支援直接匯出真正的 .xlsx 試算表 -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         :root {
             --primary: #2a9d8f;
@@ -242,7 +244,7 @@
         </div>
     </div>
 
-    <!-- 參考指南：六大營養素控糖食物庫 -->
+    <!-- 六大營養素參考指南 -->
     <div class="section-card">
         <h2>🥦 六大營養素建議食物庫（控糖版）</h2>
         <div class="nutrient-grid">
@@ -290,7 +292,7 @@
         </div>
     </div>
 
-    <!-- 每日飲食勾稽區 -->
+    <!-- 飲食勾稽區 -->
     <div class="section-card">
         <h2>🥗 飲食與營養勾稽</h2>
         
@@ -298,7 +300,7 @@
             <input type="checkbox" class="tracker-check" id="c1" onchange="saveData()">
             <div class="check-label">
                 <span class="check-title">正確進食順序</span>
-                <span class="check-desc">每餐皆遵循「蔬菜 $\rightarrow$ 蛋白質 $\rightarrow$ 複合碳水」順序</span>
+                <span class="check-desc">每餐皆遵循「蔬菜 → 蛋白質 → 複合碳水」順序</span>
             </div>
         </label>
 
@@ -332,7 +334,7 @@
         </div>
     </div>
 
-    <!-- 運動與生活勾稽區 -->
+    <!-- 運動與作息勾稽區 -->
     <div class="section-card">
         <h2>🏃 運動與生活勾稽</h2>
 
@@ -367,7 +369,7 @@
     </div>
 
     <div class="btn-group">
-        <button class="btn btn-export" onclick="exportToCSV()">📊 匯出所有紀錄 (.csv)</button>
+        <button class="btn btn-export" onclick="exportToXLSX()">📊 匯出 Excel 試算表 (.xlsx)</button>
         <button class="btn btn-reset" onclick="resetTodayData()">清空今日</button>
     </div>
 </div>
@@ -427,17 +429,17 @@
         }
     }
 
-    // 匯出 CSV 試算表功能
-    function exportToCSV() {
-        let csvContent = "\uFEFF"; // UTF-8 BOM 防止亂碼
-        csvContent += "日期,進食順序,複合碳水,涵蓋六大營養素,避開精緻糖,餐後散步,中強度運動,水分與睡眠,達成率,飲食與營養紀錄,運動與作息紀錄\n";
-
+    function exportToXLSX() {
         let keys = Object.keys(localStorage).filter(k => k.startsWith('hba1c_log_')).sort();
 
         if (keys.length === 0) {
             alert('目前尚無任何歷史紀錄可供匯出！');
             return;
         }
+
+        let excelData = [
+            ["日期", "進食順序", "複合碳水", "涵蓋六大營養素", "避開精緻糖", "餐後散步", "中強度運動", "水分與睡眠", "達成率", "飲食與營養紀錄", "運動與作息紀錄"]
+        ];
 
         keys.forEach(key => {
             let date = key.replace('hba1c_log_', '');
@@ -454,20 +456,25 @@
             let count = [data.c1, data.c2, data.c3, data.c4, data.c5, data.c6, data.c7].filter(Boolean).length;
             let percent = Math.round((count / 7) * 100) + "%";
 
-            let meal = (data.mealLog || "").replace(/"/g, '""').replace(/\n/g, " ");
-            let workout = (data.workoutLog || "").replace(/"/g, '""').replace(/\n/g, " ");
-
-            csvContent += `"${date}","${c1}","${c2}","${c3}","${c4}","${c5}","${c6}","${c7}","${percent}","${meal}","${workout}"\n`;
+            excelData.push([
+                date, c1, c2, c3, c4, c5, c6, c7, percent,
+                data.mealLog || "",
+                data.workoutLog || ""
+            ]);
         });
 
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute("download", `HbA1c_六大營養素健康勾稽表_${new Date().toISOString().split('T')[0]}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        let ws = XLSX.utils.aoa_to_sheet(excelData);
+
+        ws['!cols'] = [
+            { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 15 },
+            { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 12 },
+            { wch: 8 },  { wch: 35 }, { wch: 25 }
+        ];
+
+        let wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "每日控糖追蹤");
+
+        XLSX.writeFile(wb, `HbA1c_健康勾稽紀錄表_${new Date().toISOString().split('T')[0]}.xlsx`);
     }
 
     window.onload = loadDateData;
