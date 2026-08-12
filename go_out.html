@@ -133,6 +133,28 @@
   .field input:focus, .field select:focus{ border-color:var(--teal); }
   .field.wide{grid-column: span 2;}
   @media (max-width:720px){ .field.wide{grid-column: span 2;} }
+
+  .name-dropdown{
+    display:none;
+    position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:20;
+    background:#FFFDF8; border:1.5px solid #E7DFC9; border-radius:14px;
+    box-shadow:0 10px 26px rgba(36,51,43,0.14);
+    max-height:230px; overflow-y:auto;
+    padding:12px;
+    flex-wrap:wrap;
+    gap:9px;
+  }
+  .name-dropdown.show{ display:flex; }
+  .name-dropdown .opt{
+    padding:6px 14px; font-size:12.5px; font-weight:500; cursor:pointer; color:#4A453A;
+    background:#fff; border:1px solid #DDD3B8; border-radius:999px;
+    white-space:nowrap; transition:background .12s, border-color .12s;
+  }
+  .name-dropdown .opt:hover, .name-dropdown .opt.active{
+    background:var(--teal-pale); border-color:var(--teal); color:var(--teal-deep);
+  }
+  .name-dropdown .opt mark{ background:#FCE9C9; color:inherit; border-radius:2px; }
+  .name-dropdown .empty-opt{ padding:6px 4px; font-size:12.5px; color:var(--ink-soft); width:100%; }
   .note-row{display:none; margin-top:12px;}
   .note-row.show{display:block;}
   .actions-row{display:flex; justify-content:flex-end; gap:10px; margin-top:16px;}
@@ -250,9 +272,10 @@
   <div class="card">
     <h2>新增外出登記</h2>
     <div class="grid">
-      <div class="field">
+      <div class="field" style="position:relative;">
         <label for="fName">學員姓名</label>
-        <input type="text" id="fName" placeholder="例：陳○○">
+        <input type="text" id="fName" placeholder="點選或輸入姓名搜尋" autocomplete="off">
+        <div class="name-dropdown" id="nameDropdown"></div>
       </div>
       <div class="field">
         <label for="fReason">外出事由</label>
@@ -291,6 +314,14 @@
 <script>
 (function(){
   const STORE_KEY = 'outingLogEntries_v1';
+
+  const STUDENT_LIST = [
+    '蔡陳淑女','李萌雲','邱琇荷',
+    '蔡陳素娥','張陳秝溱','蕭劉素蘭','蔡黃秀枝','葛翁秀蘭','蔡春菊',
+    '蔡呂戀娥','蔡陳秀絨','蔡邱金蓮',
+    '林蔡秀春','王蔡淑連','蔡燕雪','陳葉秋絨','蔡朱桃美'
+  ];
+
   const nameEl = document.getElementById('fName');
   const reasonEl = document.getElementById('fReason');
   const outTimeEl = document.getElementById('fOutTime');
@@ -312,6 +343,86 @@
 
   dateEl.value = todayStr();
   outTimeEl.value = nowTimeStr();
+
+  // ---- name dropdown ----
+  const nameDropdown = document.getElementById('nameDropdown');
+  let activeIdx = -1;
+
+  function escapeHtml(str){
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  function highlightMatch(name, q){
+    if(!q) return escapeHtml(name);
+    const idx = name.indexOf(q);
+    if(idx === -1) return escapeHtml(name);
+    return escapeHtml(name.slice(0,idx)) + '<mark>' + escapeHtml(name.slice(idx, idx+q.length)) + '</mark>' + escapeHtml(name.slice(idx+q.length));
+  }
+
+  function renderNameDropdown(){
+    const q = nameEl.value.trim();
+    const matches = q ? STUDENT_LIST.filter(n => n.includes(q)) : STUDENT_LIST;
+    activeIdx = -1;
+    if(!matches.length){
+      nameDropdown.innerHTML = `<div class="empty-opt">找不到符合的學員，將直接使用您輸入的姓名</div>`;
+    }else{
+      nameDropdown.innerHTML = matches.map(n =>
+        `<div class="opt" data-name="${escapeHtml(n)}">${highlightMatch(n, q)}</div>`
+      ).join('');
+    }
+    nameDropdown.classList.add('show');
+  }
+
+  function closeNameDropdown(){
+    nameDropdown.classList.remove('show');
+    activeIdx = -1;
+  }
+
+  nameEl.addEventListener('focus', renderNameDropdown);
+  nameEl.addEventListener('click', renderNameDropdown);
+  nameEl.addEventListener('input', renderNameDropdown);
+
+  nameEl.addEventListener('keydown', (ev) => {
+    const opts = Array.from(nameDropdown.querySelectorAll('.opt'));
+    if(!nameDropdown.classList.contains('show') || !opts.length) return;
+    if(ev.key === 'ArrowDown'){
+      ev.preventDefault();
+      activeIdx = Math.min(activeIdx+1, opts.length-1);
+      opts.forEach((o,i)=>o.classList.toggle('active', i===activeIdx));
+      opts[activeIdx].scrollIntoView({block:'nearest'});
+    }else if(ev.key === 'ArrowUp'){
+      ev.preventDefault();
+      activeIdx = Math.max(activeIdx-1, 0);
+      opts.forEach((o,i)=>o.classList.toggle('active', i===activeIdx));
+      opts[activeIdx].scrollIntoView({block:'nearest'});
+    }else if(ev.key === 'Enter'){
+      if(activeIdx >= 0){
+        ev.preventDefault();
+        nameEl.value = opts[activeIdx].getAttribute('data-name');
+        closeNameDropdown();
+      }else{
+        closeNameDropdown();
+      }
+    }else if(ev.key === 'Escape'){
+      closeNameDropdown();
+    }
+  });
+
+  nameDropdown.addEventListener('mousedown', (ev) => {
+    const opt = ev.target.closest('.opt');
+    if(!opt) return;
+    nameEl.value = opt.getAttribute('data-name');
+    closeNameDropdown();
+  });
+
+  document.addEventListener('click', (ev) => {
+    if(!ev.target.closest('.field') || (!nameDropdown.contains(ev.target) && ev.target !== nameEl)){
+      closeNameDropdown();
+    }
+  });
+  // ---- end name dropdown ----
 
   reasonEl.addEventListener('change', () => {
     noteRow.classList.toggle('show', reasonEl.value === '其他');
@@ -467,12 +578,6 @@
         </div>
       </div>
     `;
-  }
-
-  function escapeHtml(str){
-    const d = document.createElement('div');
-    d.textContent = str;
-    return d.innerHTML;
   }
 
   function statusLabel(e){
