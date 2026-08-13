@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>新版平安長照醫療體系排班系統｜簡報</title>
+<style>
+  :root{
+    --navy:#122c42;
+    --navy-2:#1b4c64;
+    --teal:#2b8990;
+    --teal-soft:#dff2f2;
+    --mint:#65b89e;
+    --mint-soft:#e2f4ee;
+    --orange:#e29a53;
+    --orange-soft:#fff0df;
+    --red:#ca5a5c;
+    --red-soft:#fff0f0;
+    --ink:#203746;
+    --muted:#748994;
+    --line:#dbe7eb;
+    --paper:#ffffff;
+    --cloud:#f4f8f9;
+    --shadow:0 24px 70px rgba(9,35,52,.18);
+    --radius:22px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%;background:#0d2437;color:var(--ink);font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif}
+  body{overflow:hidden}
+  button{font:inherit}
+  .presentation{position:relative;width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;background:
+    radial-gradient(circle at 12% 10%,rgba(53,149,151,.22),transparent 28%),
+    radial-gradient(circle at 91% 88%,rgba(226,154,83,.16),transparent 30%),
+    linear-gradient(135deg,#0d2437 0%,#163c54 52%,#102b42 100%);}
+  .presentation::before{content:"";position:absolute;inset:0;opacity:.08;background-image:linear-gradient(rgba(255,255,255,.8) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.8) 1px,transparent 1px);background-size:32px 32px;pointer-events:none}
+  .stage{position:relative;width:min(94vw,1440px);height:min(94vh,810px);aspect-ratio:16/9}
+  .slide{position:absolute;inset:0;display:none;overflow:hidden;background:var(--paper);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .slide.active{display:flex;animation:enter .42s ease both}
+  @keyframes enter{from{opacity:0;transform:translateX(22px) scale(.985)}to{opacity:1;transform:none}}
+  .slide::after{content:"";position:absolute;inset:0;pointer-events:none;border:1px solid rgba(255,255,255,.72);border-radius:var(--radius)}
+  .slide-inner{position:relative;width:100%;height:100%;padding:58px 68px 52px;display:flex;flex-direction:column;z-index:1}
+  .eyebrow{display:flex;align-items:center;gap:12px;color:var(--teal);font-size:14px;letter-spacing:.16em;font-weight:800;text-transform:uppercase}
+  .eyebrow::before{content:"";display:inline-block;width:38px;height:4px;border-radius:10px;background:var(--orange)}
+  h1,h2,h3,p{margin:0}
+  h1{font-size:clamp(36px,4.25vw,72px);line-height:1.08;letter-spacing:-.05em;color:var(--navy);font-weight:900}
+  h2{font-size:clamp(28px,3.2vw,52px);line-height:1.12;letter-spacing:-.045em;color:var(--navy);font-weight:900}
+  h3{font-size:18px;line-height:1.3;color:var(--navy);font-weight:850}
+  .subtitle{margin-top:20px;font-size:clamp(17px,1.6vw,24px);line-height:1.55;color:var(--muted);font-weight:550}
+  .small{font-size:13px;line-height:1.7;color:var(--muted)}
+  .fine{font-size:11px;color:#91a3ac;letter-spacing:.08em}
+  .cover{background:linear-gradient(115deg,#f9fcfc 0%,#eef7f7 54%,#e2f2f1 100%)}
+  .cover .slide-inner{justify-content:center;padding:72px 84px}
+  .cover .eyebrow{color:var(--teal)}
+  .cover h1{max-width:830px;margin-top:28px}
+  .cover .subtitle{max-width:700px}
+  .cover-meta{display:flex;gap:24px;align-items:center;margin-top:40px;color:var(--navy-2);font-weight:700;font-size:14px}
+  .cover-meta span{display:inline-flex;align-items:center;gap:8px}
+  .cover-meta span::before{content:"";width:8px;height:8px;background:var(--orange);border-radius:50%}
+  .cover-visual{position:absolute;right:4.5%;top:13%;width:39%;height:74%;border-radius:40px;background:linear-gradient(145deg,#12364d,#267d83);box-shadow:0 25px 65px rgba(23,70,87,.28);overflow:hidden}
+  .cover-visual::before{content:"";position:absolute;inset:-30% -20%;background:radial-gradient(circle at 65% 30%,rgba(255,255,255,.21),transparent 26%),linear-gradient(130deg,transparent 42%,rgba(255,255,255,.08) 42%,rgba(255,255,255,.08) 43%,transparent 43%);transform:rotate(-14deg)}
+  .cover-visual .window{position:absolute;left:9%;right:9%;top:13%;bottom:11%;border:1px solid rgba(255,255,255,.22);border-radius:20px;background:rgba(255,255,255,.095);backdrop-filter:blur(6px);padding:18px}
+  .window-top{display:flex;justify-content:space-between;align-items:center;color:#fff;font-size:11px;margin-bottom:15px}
+  .window-top .dots{display:flex;gap:5px}.window-top i{width:7px;height:7px;border-radius:50%;background:#f3c172}.window-top i:nth-child(2){background:#77c6a6}.window-top i:nth-child(3){background:#c9e1e2}
+  .mini-title{font-size:18px;font-weight:800;color:#fff;margin-bottom:14px}
+  .mini-row{display:grid;grid-template-columns:36px 1fr 1fr 1fr;gap:5px;margin-bottom:5px}
+  .mini-row span{height:27px;border-radius:6px;background:rgba(255,255,255,.12)}
+  .mini-row .date{background:rgba(255,255,255,.08);color:#d8edef;font-size:9px;display:flex;align-items:center;justify-content:center}
+  .mini-row .clinic{background:#76c4cd}.mini-row .site{background:#62b794}.mini-row .leave{background:#e6a965}
+  .cover-orb{position:absolute;width:170px;height:170px;border-radius:50%;right:31%;bottom:3%;background:radial-gradient(circle at 34% 28%,#fff4dc,#e5a25e 55%,#bf7139);opacity:.88;filter:blur(.1px);box-shadow:0 15px 50px rgba(212,132,60,.22)}
+  .cover-footer{position:absolute;bottom:35px;left:84px;right:84px;display:flex;justify-content:space-between;align-items:center}
+  .brand-mark{display:flex;gap:10px;align-items:center;color:var(--navy);font-size:14px;font-weight:800}.brand-mark b{display:grid;place-items:center;width:30px;height:30px;border-radius:10px;background:var(--navy);color:#fff;font-size:12px}
+  .page-number{position:absolute;right:28px;bottom:23px;color:#9aaeb6;font-size:12px;font-weight:800;letter-spacing:.1em}
+  .content-head{display:flex;justify-content:space-between;align-items:flex-start;gap:30px;margin-bottom:30px}
+  .content-head .head-copy{max-width:820px}.content-head h2{margin-top:15px}.head-note{max-width:260px;text-align:right;padding-top:22px;color:var(--muted);font-size:13px;line-height:1.65}
+  .accent-line{width:78px;height:5px;border-radius:20px;background:linear-gradient(90deg,var(--orange),#f2c77e);margin-top:22px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:22px;flex:1;min-height:0}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;flex:1;min-height:0}
+  .panel{background:var(--cloud);border:1px solid var(--line);border-radius:18px;padding:24px;position:relative;overflow:hidden}
+  .panel.white{background:#fff}.panel.teal{background:linear-gradient(145deg,#e1f4f2,#f7fbfb);border-color:#b7dede}.panel.orange{background:linear-gradient(145deg,#fff2e2,#fffaf3);border-color:#efd2aa}.panel.navy{background:linear-gradient(145deg,#173c54,#215d6c);border-color:transparent;color:#fff}.panel.navy h3,.panel.navy p,.panel.navy .small{color:#fff}.panel.navy .small{opacity:.78}
+  .panel-kicker{display:flex;align-items:center;justify-content:space-between;color:var(--teal);font-size:11px;letter-spacing:.12em;font-weight:850;text-transform:uppercase;margin-bottom:12px}.panel.navy .panel-kicker{color:#a9dfe0}
+  .icon-box{width:44px;height:44px;border-radius:14px;background:var(--teal-soft);display:grid;place-items:center;color:var(--teal);font-size:21px;margin-bottom:17px}.icon-box.orange{background:var(--orange-soft);color:#c97936}.icon-box.mint{background:var(--mint-soft);color:#3b936f}.icon-box.red{background:var(--red-soft);color:var(--red)}.panel.navy .icon-box{background:rgba(255,255,255,.14);color:#fff}
+  .bullet-list{list-style:none;margin:16px 0 0;padding:0;display:grid;gap:13px}.bullet-list li{position:relative;padding-left:20px;color:#526b77;font-size:14px;line-height:1.65}.bullet-list li::before{content:"";position:absolute;left:0;top:.7em;width:7px;height:7px;border-radius:50%;background:var(--orange)}.panel.navy .bullet-list li{color:rgba(255,255,255,.82)}
+  .stat-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin-top:auto;padding-top:20px}.stat{padding:16px;border-radius:14px;background:#fff;border:1px solid var(--line)}.stat strong{display:block;font-size:27px;line-height:1;color:var(--navy);letter-spacing:-.05em}.stat span{display:block;margin-top:6px;font-size:11px;color:var(--muted);line-height:1.4}.stat.orange{background:var(--orange-soft);border-color:#efd0a9}.stat.mint{background:var(--mint-soft);border-color:#b8dfd0}
+  .risk-flow{display:flex;align-items:stretch;gap:12px;margin-top:18px}.risk-step{flex:1;padding:18px 14px;border-radius:15px;background:#fff;border:1px solid var(--line);position:relative}.risk-step:not(:last-child)::after{content:"→";position:absolute;right:-18px;top:50%;transform:translateY(-50%);color:var(--orange);font-size:22px;font-weight:900;z-index:2}.risk-step .num{font-size:12px;color:var(--orange);font-weight:900;letter-spacing:.1em}.risk-step h3{font-size:15px;margin-top:7px}.risk-step p{font-size:12px;color:var(--muted);line-height:1.55;margin-top:7px}
+  .module-map{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:2px}.module{min-height:88px;padding:14px;border-radius:15px;border:1px solid var(--line);background:#fff;display:flex;flex-direction:column;justify-content:space-between;transition:transform .2s}.module:hover{transform:translateY(-3px)}.module .m-code{font-size:11px;font-weight:900;letter-spacing:.1em;color:var(--teal)}.module strong{font-size:15px;color:var(--navy);margin-top:9px}.module small{font-size:11px;color:var(--muted);line-height:1.4}.module.featured{background:linear-gradient(145deg,#e1f5f2,#fff);border-color:#9ed2cb}.module.alert{background:linear-gradient(145deg,#fff0ef,#fff);border-color:#edb9b6}.module.gold{background:linear-gradient(145deg,#fff1df,#fff);border-color:#edcca8}
+  .flowline{display:flex;align-items:center;gap:0;margin:34px 0 28px}.flow-node{flex:1;text-align:center;position:relative}.flow-node:not(:last-child)::after{content:"";position:absolute;right:-6px;top:29px;width:12px;height:2px;background:#bad1d6}.flow-node:not(:last-child)::before{content:"";position:absolute;right:-8px;top:25px;border-left:7px solid #bad1d6;border-top:5px solid transparent;border-bottom:5px solid transparent}.flow-icon{width:58px;height:58px;margin:0 auto 12px;border-radius:18px;display:grid;place-items:center;font-size:24px;background:var(--teal-soft);color:var(--teal);border:1px solid #b9dfe0}.flow-node:nth-child(2) .flow-icon{background:var(--orange-soft);color:#c87c39;border-color:#efd0a7}.flow-node:nth-child(3) .flow-icon{background:var(--red-soft);color:var(--red);border-color:#ebbcba}.flow-node:nth-child(4) .flow-icon{background:var(--mint-soft);color:#3c9871;border-color:#b8dfd0}.flow-node:nth-child(5) .flow-icon{background:#e9eefb;color:#5d70bd;border-color:#c8d0ee}.flow-node strong{display:block;color:var(--navy);font-size:14px}.flow-node small{display:block;margin-top:5px;color:var(--muted);font-size:11px}
+  .calendar{height:100%;display:flex;flex-direction:column}.calendar-top{display:flex;justify-content:space-between;align-items:center;padding:12px 15px;border-radius:13px;background:var(--navy);color:#fff}.calendar-top strong{font-size:15px}.calendar-top span{font-size:11px;color:#b9dbde}.calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:10px;flex:1}.calendar-grid .dow{font-size:10px;color:var(--muted);text-align:center;padding:4px}.day{border:1px solid var(--line);border-radius:8px;padding:6px;min-height:64px;background:#fff;font-size:10px;color:#738894}.day.muted{opacity:.45}.day.today{border:2px solid var(--orange);padding:5px}.day .n{font-weight:900;color:var(--navy);margin-bottom:5px}.tag{display:block;border-radius:5px;padding:3px 4px;margin-top:3px;font-size:8px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tag.teal{background:var(--teal-soft);color:var(--teal)}.tag.mint{background:var(--mint-soft);color:#378b6b}.tag.red{background:var(--red-soft);color:var(--red)}
+  .matrix-wrap{height:100%;display:flex;flex-direction:column}.matrix{display:grid;grid-template-columns:90px repeat(7,1fr);border:1px solid var(--line);border-radius:13px;overflow:hidden;background:#fff;margin-top:15px;flex:1}.matrix > div{min-height:58px;padding:7px 5px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);font-size:9px}.matrix .head{background:#eaf5f6;color:var(--navy);font-weight:900;text-align:center}.matrix .name{background:#f7fafb;color:var(--navy);font-weight:900;display:flex;align-items:center}.cell{display:flex;flex-direction:column;gap:2px}.cell i{display:block;border-radius:5px;padding:4px 2px;color:#fff;text-align:center;font-style:normal;font-weight:800;font-size:8px}.cell i.c{background:#4598a5}.cell i.s{background:#50a783}.cell i.o{background:#dfa05f}
+  .warning-board{display:grid;grid-template-columns:1.15fr .85fr;gap:18px;flex:1;min-height:0}.warning-list{display:grid;gap:10px;align-content:start}.warning-item{display:flex;gap:13px;align-items:flex-start;padding:15px;border-radius:14px;background:#fff;border:1px solid var(--line)}.warning-item .badge-dot{flex:0 0 auto;width:12px;height:12px;margin-top:4px;border-radius:50%;background:var(--red);box-shadow:0 0 0 5px var(--red-soft)}.warning-item.warn .badge-dot{background:var(--orange);box-shadow:0 0 0 5px var(--orange-soft)}.warning-item.ok .badge-dot{background:var(--mint);box-shadow:0 0 0 5px var(--mint-soft)}.warning-item strong{font-size:14px;color:var(--navy)}.warning-item p{font-size:12px;line-height:1.55;color:var(--muted);margin-top:4px}.scan-card{padding:25px;border-radius:20px;background:linear-gradient(150deg,#183b52,#24757b);color:#fff;display:flex;flex-direction:column;justify-content:space-between}.scan-card h3{color:#fff;font-size:22px}.scan-card .scan-number{font-size:76px;font-weight:900;line-height:1;letter-spacing:-.08em;color:#fff}.scan-card .scan-label{color:#bfe0df;font-size:12px}.scan-bar{height:10px;border-radius:10px;background:rgba(255,255,255,.14);overflow:hidden;margin:18px 0}.scan-bar span{display:block;width:88%;height:100%;background:linear-gradient(90deg,#71c9ad,#edb168);border-radius:inherit}
+  .role-table{width:100%;border-collapse:separate;border-spacing:0;overflow:hidden;border:1px solid var(--line);border-radius:15px;background:#fff}.role-table th,.role-table td{padding:16px 18px;text-align:left;border-bottom:1px solid var(--line);font-size:13px}.role-table th{background:#eaf5f6;color:var(--navy);font-size:11px;letter-spacing:.1em}.role-table tr:last-child td{border-bottom:0}.role-table td:first-child{font-weight:900;color:var(--navy)}.role-table .pill{display:inline-flex;padding:6px 10px;border-radius:999px;font-size:11px;font-weight:800;margin:2px 3px 2px 0;background:var(--teal-soft);color:var(--teal)}.role-table .pill.orange{background:var(--orange-soft);color:#ad6e32}
+  .design-board{display:grid;grid-template-columns:1.08fr .92fr;gap:20px;flex:1;min-height:0}.design-list{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-content:start}.design-item{padding:16px;border:1px solid var(--line);border-radius:15px;background:#fff}.design-item .swatch{width:38px;height:10px;border-radius:10px;margin-bottom:12px;background:var(--teal)}.design-item:nth-child(2) .swatch{background:var(--orange)}.design-item:nth-child(3) .swatch{background:var(--mint)}.design-item:nth-child(4) .swatch{background:var(--red)}.design-item strong{display:block;color:var(--navy);font-size:14px}.design-item p{font-size:12px;line-height:1.55;color:var(--muted);margin-top:6px}.ui-sample{position:relative;overflow:hidden;border-radius:20px;background:linear-gradient(145deg,#12364d,#297f84);padding:18px;color:#fff;min-height:320px}.ui-sample .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.ui-sample .top strong{font-size:13px}.ui-sample .top span{font-size:10px;color:#c0dfe1}.sample-card{background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.2);border-radius:13px;padding:14px;margin-bottom:10px}.sample-card .line{display:flex;justify-content:space-between;gap:10px;font-size:11px;margin-bottom:10px}.sample-card .line:last-child{margin-bottom:0}.sample-card .line b{font-size:13px}.sample-input{height:30px;border-radius:8px;background:#fff;color:#69818a;display:flex;align-items:center;padding:0 9px;font-size:10px}.sample-button{display:inline-flex;border-radius:8px;background:#e3a05b;color:#fff;padding:7px 10px;font-size:10px;font-weight:800}.sample-tag{display:inline-flex;border-radius:999px;background:#dff2f2;color:#277784;padding:5px 8px;font-size:9px;font-weight:800}
+  .benefit-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;align-items:stretch;flex:1}.benefit{padding:18px 14px;border-radius:16px;background:#fff;border:1px solid var(--line);display:flex;flex-direction:column}.benefit .big{font-size:34px;font-weight:900;line-height:1;color:var(--orange);margin-bottom:20px}.benefit:nth-child(2) .big{color:var(--red)}.benefit:nth-child(3) .big{color:var(--teal)}.benefit:nth-child(4) .big{color:#6484c1}.benefit:nth-child(5) .big{color:var(--mint)}.benefit h3{font-size:15px}.benefit p{font-size:12px;line-height:1.6;color:var(--muted);margin-top:9px}.benefit .bar{height:5px;border-radius:10px;background:#edf3f4;margin-top:auto}.benefit .bar span{display:block;width:82%;height:100%;border-radius:inherit;background:var(--orange)}.benefit:nth-child(2) .bar span{width:74%;background:var(--red)}.benefit:nth-child(3) .bar span{width:90%;background:var(--teal)}.benefit:nth-child(4) .bar span{width:68%;background:#6484c1}.benefit:nth-child(5) .bar span{width:58%;background:var(--mint)}
+  .roadmap{display:grid;grid-template-columns:repeat(4,1fr);gap:15px;flex:1;align-items:stretch}.road{position:relative;padding:20px 17px;border-radius:17px;background:#fff;border:1px solid var(--line);overflow:hidden}.road::before{content:"";position:absolute;top:0;left:0;right:0;height:5px;background:var(--teal)}.road:nth-child(2)::before{background:var(--orange)}.road:nth-child(3)::before{background:var(--red)}.road:nth-child(4)::before{background:var(--mint)}.road .step{font-size:11px;letter-spacing:.12em;color:var(--muted);font-weight:900}.road h3{margin-top:26px;font-size:17px}.road p{font-size:12px;line-height:1.65;color:var(--muted);margin-top:10px}.closing-quote{margin-top:28px;padding:20px 24px;border-radius:17px;background:linear-gradient(120deg,#e0f3f1,#fff4e5);border:1px solid #c7e0dc;color:var(--navy);font-size:20px;font-weight:850;line-height:1.45}
+  .controls{position:fixed;left:50%;bottom:19px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;z-index:10;background:rgba(11,31,47,.72);border:1px solid rgba(255,255,255,.13);padding:9px 12px;border-radius:999px;box-shadow:0 10px 28px rgba(0,0,0,.2);backdrop-filter:blur(12px)}
+  .controls button{width:34px;height:34px;border:0;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.12);color:#fff;cursor:pointer;transition:all .18s}.controls button:hover{background:rgba(255,255,255,.25);transform:translateY(-1px)}.controls button:disabled{opacity:.35;cursor:not-allowed;transform:none}.counter{min-width:68px;text-align:center;color:#fff;font-size:12px;font-weight:800;letter-spacing:.12em}.dots{display:flex;gap:5px;margin:0 4px}.dots button{width:7px;height:7px;padding:0;background:rgba(255,255,255,.32)}.dots button.active{width:22px;border-radius:10px;background:var(--orange)}.fullscreen{position:fixed;right:20px;bottom:20px;width:38px;height:38px;border:1px solid rgba(255,255,255,.18);border-radius:50%;background:rgba(11,31,47,.7);color:#fff;cursor:pointer;z-index:10}
+  .speaker-note{position:fixed;top:18px;left:22px;color:rgba(255,255,255,.56);font-size:11px;letter-spacing:.08em;z-index:4}.speaker-note kbd{padding:3px 6px;border:1px solid rgba(255,255,255,.2);border-radius:5px;color:#fff;background:rgba(255,255,255,.09)}
+  @media(max-width:1050px){.slide-inner{padding:42px 48px 42px}.cover .slide-inner{padding:52px}.cover-visual{right:3%;width:37%}.benefit-grid{gap:8px}.benefit{padding:14px 11px}.benefit .big{font-size:27px}.panel{padding:18px}.module-map{gap:8px}.module{min-height:80px;padding:11px}}
+  @media(max-width:760px){body{overflow:auto}.presentation{min-height:100vh;height:auto;padding:12px 0 72px}.stage{width:calc(100vw - 20px);height:auto;aspect-ratio:auto;min-height:calc(100vh - 100px)}.slide{position:relative;inset:auto;min-height:calc(100vh - 100px);border-radius:18px}.slide:not(.active){display:none}.slide-inner{padding:34px 24px 42px}.cover .slide-inner{padding:40px 26px}.cover h1{max-width:72%;font-size:38px}.cover .subtitle{max-width:70%;font-size:16px}.cover-visual{width:42%;right:2%;top:18%;height:58%;border-radius:24px}.cover-footer{left:26px;right:26px;bottom:22px}.content-head{margin-bottom:22px}.content-head h2{font-size:31px}.head-note{display:none}.grid-2,.grid-3,.warning-board,.design-board{grid-template-columns:1fr;gap:12px}.grid-2 .panel,.grid-3 .panel{min-height:180px}.module-map{grid-template-columns:repeat(2,1fr)}.flowline{overflow-x:auto;padding-bottom:8px}.flow-node{min-width:125px}.flow-node:not(:last-child)::after,.flow-node:not(:last-child)::before{display:none}.calendar-grid{min-height:390px}.matrix{min-width:630px}.matrix-wrap{overflow:auto}.role-table{font-size:12px}.role-table th,.role-table td{padding:12px 10px}.benefit-grid{grid-template-columns:repeat(2,1fr);gap:10px}.benefit:last-child{grid-column:span 2}.roadmap{grid-template-columns:1fr 1fr;gap:10px}.closing-quote{font-size:17px}.controls{bottom:11px}.fullscreen{right:11px;bottom:11px}.speaker-note{display:none}}
+  @media print{body{overflow:visible;background:#fff}.presentation{display:block;background:#fff;padding:0}.stage{width:100%;height:auto}.slide{display:flex!important;position:relative;page-break-after:always;min-height:100vh;border-radius:0;box-shadow:none}.controls,.fullscreen,.speaker-note{display:none}}
+</style>
+</head>
+<body>
+<div class="presentation" id="presentation">
+  <div class="speaker-note"><kbd>←</kbd> <kbd>→</kbd> 切換投影片　<kbd>F</kbd> 全螢幕</div>
+  <main class="stage" id="stage">
+    <section class="slide cover active" data-title="封面">
+      <div class="slide-inner">
+        <div class="eyebrow">平安家園多元關懷協會　/　DIGITAL WORKFLOW</div>
+        <h1>新版平安長照醫療體系排班系統</h1>
+        <p class="subtitle">從排班設定到人力協作的整合式管理介面</p>
+        <div class="cover-meta"><span>診所與 C 據點</span><span>系統特色與設計亮點</span></div>
+        <div class="cover-footer"><div class="brand-mark"><b>PB</b> 平安排班管理平台</div><div class="fine">SHOWCASE / 2026</div></div>
+      </div>
+      <div class="cover-visual" aria-hidden="true">
+        <div class="window">
+          <div class="window-top"><span class="dots"><i></i><i></i><i></i></span><span>排班總覽　2026.08</span></div>
+          <div class="mini-title">本月人力配置</div>
+          <div class="mini-row"><span></span><span></span><span></span><span></span></div>
+          <div class="mini-row"><span class="date">01</span><span class="clinic"></span><span class="site"></span><span></span></div>
+          <div class="mini-row"><span class="date">02</span><span></span><span class="site"></span><span class="clinic"></span></div>
+          <div class="mini-row"><span class="date">03</span><span class="leave"></span><span></span><span class="site"></span></div>
+          <div class="mini-row"><span class="date">04</span><span class="clinic"></span><span></span><span class="site"></span></div>
+          <div class="mini-row"><span class="date">05</span><span></span><span class="clinic"></span><span class="site"></span></div>
+          <div class="mini-row"><span class="date">06</span><span class="site"></span><span class="leave"></span><span></span></div>
+        </div>
+        <div class="cover-orb"></div>
+      </div>
+      <span class="page-number">00 / 11</span>
+    </section>
+
+    <section class="slide" data-title="需求背景">
+      <div class="slide-inner">
+        <div class="content-head"><div class="head-copy"><div class="eyebrow">01 / WHY NOW</div><h2>排班管理需要的不只是月曆</h2><div class="accent-line"></div></div><div class="head-note">當據點、人員、時段與臨時支援同時增加，真正的問題不是「有沒有排班」，而是能否快速看懂並驗證。</div></div>
+        <div class="grid-2">
+          <div class="panel navy"><div class="panel-kicker">THE REALITY</div><div class="icon-box">⌁</div><h3>多據點、多角色、多種工作情境</h3><ul class="bullet-list"><li>同一位員工可能在診所、不同據點或不同時段執行任務。</li><li>請假、外師課程與支援出勤若分散記錄，容易形成資訊落差。</li><li>主管需要同時掌握人力位置、工作時間與據點缺口。</li></ul></div>
+          <div class="panel teal"><div class="panel-kicker">THE TARGET</div><div class="icon-box orange">◎</div><h3>把人工協調轉成可視化流程</h3><div class="risk-flow"><div class="risk-step"><div class="num">01</div><h3>集中</h3><p>所有排班相關資料放在同一個工作入口。</p></div><div class="risk-step"><div class="num">02</div><h3>檢核</h3><p>在發布前先找出重疊、請假與人力缺口。</p></div><div class="risk-step"><div class="num">03</div><h3>追蹤</h3><p>讓班表、支援與工時都留下可查紀錄。</p></div></div><div class="stat-strip"><div class="stat"><strong>01</strong><span>單一排班入口</span></div><div class="stat orange"><strong>09</strong><span>完整管理模組</span></div><div class="stat mint"><strong>∞</strong><span>可持續擴充</span></div></div></div>
+        </div>
+      </div><span class="page-number">01 / 11</span>
+    </section>
+
+    <section class="slide" data-title="九大模組">
+      <div class="slide-inner">
+        <div class="content-head"><div class="head-copy"><div class="eyebrow">02 / SYSTEM MAP</div><h2>九大模組串起完整排班流程</h2><div class="accent-line"></div></div><div class="head-note">不是把功能堆在一起，而是用一條清楚的工作鏈，串起設定、排班、檢核、發布、回報與分析。</div></div>
+        <div class="grid-2">
+          <div class="panel white"><div class="panel-kicker">END-TO-END WORKFLOW</div><div class="flowline"><div class="flow-node"><div class="flow-icon">⚙</div><strong>設定</strong><small>M1・M2</small></div><div class="flow-node"><div class="flow-icon">▦</div><strong>排班</strong><small>M3・M4</small></div><div class="flow-node"><div class="flow-icon">!</div><strong>檢核</strong><small>M5</small></div><div class="flow-node"><div class="flow-icon">✓</div><strong>發布</strong><small>M7</small></div><div class="flow-node"><div class="flow-icon">↗</div><strong>分析</strong><small>M8・M9</small></div></div><p class="small">從基礎資料開始，到正式發布與事後分析，每一個階段都有對應的工作入口，讓排班工作不再依賴零散表單與個人記憶。</p></div>
+          <div class="panel teal"><div class="panel-kicker">NINE MODULES</div><div class="module-map"><div class="module featured"><span class="m-code">M1</span><strong>員工管理</strong><small>人員、據點、外師、規則</small></div><div class="module gold"><span class="m-code">M2</span><strong>班別設定</strong><small>快速時段模板</small></div><div class="module featured"><span class="m-code">M3</span><strong>月曆排班</strong><small>月、週、矩陣</small></div><div class="module gold"><span class="m-code">M4</span><strong>請假排休</strong><small>登記與鎖定</small></div><div class="module alert"><span class="m-code">M5</span><strong>衝突偵測</strong><small>重疊與人力缺口</small></div><div class="module"><span class="m-code">M6</span><strong>自動建議</strong><small>下一階段擴充</small></div><div class="module featured"><span class="m-code">M7</span><strong>發布查詢</strong><small>版本一致</small></div><div class="module"><span class="m-code">M8</span><strong>報表</strong><small>班次與工時</small></div><div class="module gold"><span class="m-code">M9</span><strong>支援填報</strong><small>實際出勤</small></div></div></div>
+        </div>
+      </div><span class="page-number">02 / 11</span>
+    </section>
+
+    <section class="slide" data-title="基礎設定">
+      <div class="slide-inner">
+        <div class="content-head"><div class="head-copy"><div class="eyebrow">03 / FOUNDATION</div><h2>先把人員、據點與規則設定完整</h2><div class="accent-line"></div></div><div class="head-note">基礎設定越清楚，後續的排班、衝突檢查與報表就越可靠。</div></div>
+        <div class="grid-3">
+          <div class="panel white"><div class="icon-box">♙</div><h3>員工與可排地點</h3><ul class="bullet-list"><li>維護員工名單與啟用狀態。</li><li>區分診所、據點或兩者皆可。</li><li>讓排班選單只呈現可用人員。</li></ul></div>
+          <div class="panel teal"><div class="icon-box mint">⌂</div><h3>據點與角色配置</h3><ul class="bullet-list"><li>設定主責人員與延緩老師。</li><li>可為每個據點指定營運星期。</li><li>支援不同據點的實際運作條件。</li></ul></div>
+          <div class="panel orange"><div class="icon-box orange">✦</div><h3>外師與班別模板</h3><ul class="bullet-list"><li>外師可連結多據點與授課類別。</li><li>快速時段按鈕可重複套用。</li><li>時間與地點拆開，保留調度彈性。</li></ul></div>
+        </div>
+        <div class="panel white" style="margin-top:18px;display:flex;align-items:center;justify-content:space-between;gap:20px"><div><div class="panel-kicker">DESIGN LANGUAGE</div><h3>用標籤、膠囊按鈕與狀態色，把管理規則變成可讀的介面元素。</h3></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end"><span class="sample-tag">診所</span><span class="sample-tag" style="background:var(--mint-soft);color:#368b6b">據點</span><span class="sample-tag" style="background:var(--orange-soft);color:#ac6d32">提醒</span><span class="sample-tag" style="background:var(--red-soft);color:var(--red)">衝突</span></div></div>
+      </div><span class="page-number">03 / 11</span>
+    </section>
+
+    <section class="slide" data-title="月曆排班">
+      <div class="slide-inner">
+        <div class="content-head"><div class="head-copy"><div class="eyebrow">04 / PLAN VISUALLY</div><h2>M3 讓排班從資料變成可視化決策</h2><div class="accent-line"></div></div><div class="head-note">同一套資料，依照不同任務切換月視圖、週視圖與矩陣總覽。</div></div>
+        <div class="grid-2">
+          <div class="panel white calendar"><div class="panel-kicker">MONTH VIEW / WEEK VIEW</div><div class="calendar-top"><strong>2026 年 8 月</strong><span>診所・據點・衝突</span></div><div class="calendar-grid"><div class="dow">日</div><div class="dow">一</div><div class="dow">二</div><div class="dow">三</div><div class="dow">四</div><div class="dow">五</div><div class="dow">六</div><div class="day muted"><div class="n">26</div></div><div class="day muted"><div class="n">27</div></div><div class="day muted"><div class="n">28</div></div><div class="day muted"><div class="n">29</div></div><div class="day muted"><div class="n">30</div></div><div class="day muted"><div class="n">31</div></div><div class="day"><div class="n">1</div><span class="tag teal">診所 08:00</span></div><div class="day"><div class="n">2</div><span class="tag mint">江山里</span></div><div class="day"><div class="n">3</div><span class="tag teal">診所</span><span class="tag mint">振寮里</span></div><div class="day today"><div class="n">4</div><span class="tag red">衝突 1</span></div><div class="day"><div class="n">5</div><span class="tag mint">永安里</span></div><div class="day"><div class="n">6</div><span class="tag teal">診所</span></div><div class="day"><div class="n">7</div><span class="tag mint">興中里</span></div><div class="day"><div class="n">8</div><span class="tag teal">診所</span></div><div class="day"><div class="n">9</div></div><div class="day"><div class="n">10</div><span class="tag mint">岱江里</span></div><div class="day"><div class="n">11</div><span class="tag teal">診所</span></div><div class="day"><div class="n">12</div><span class="tag mint">岑海里</span></div><div class="day"><div class="n">13</div><span class="tag teal">診所</span></div></div></div>
+          <div class="panel teal matrix-wrap"><div class="panel-kicker">MATRIX OVERVIEW</div><h3>一眼盤點「誰在何時何地」</h3><div class="matrix"><div class="head">姓名</div><div class="head">1 一</div><div class="head">2 二</div><div class="head">3 三</div><div class="head">4 四</div><div class="head">5 五</div><div class="head">6 六</div><div class="name">高麗君</div><div class="cell"><i class="c">診所上</i></div><div class="cell"><i class="s">江山里全</i></div><div class="cell"><i class="c">診所下</i><i class="s">振寮里</i></div><div class="cell"><i class="o">請假</i></div><div></div><div class="cell"><i class="s">永安里</i></div><div class="name">翁美慧</div><div class="cell"><i class="s">興中里</i></div><div class="cell"><i class="c">診所全</i></div><div></div><div class="cell"><i class="s">岱江里</i></div><div class="cell"><i class="c">診所上</i></div><div class="cell"><i class="s">岑海里</i></div></div><p class="small" style="margin-top:12px">支援批量排班、月份複製與課程安插，讓高頻率操作更有效率。</p></div>
+        </div>
+      </div><span class="page-number">04 / 11</span>
+    </section>
+
+    <section class="slide" data-title="衝突偵測">
+      <div class="slide-inner">
+        <div class="content-head"><div class="head-copy"><div class="eyebrow">05 / CONTROL THE RISK</div><h2>在衝突發生前先看見風險</h2><div class="accent-line"></div></div><div class="head-note">M4 的請假規則與 M5 的排班檢核共同守住發布前的最後一道防線。</div></div>
+        <div class="warning-board">
+          <div class="warning-list"><div class="warning-item"><span class="badge-dot"></span><div><strong>同人同時段跨地點重疊</strong><p>檢查同一位員工是否在不同地點被安排重疊時段。</p></div></div><div class="warning-item"><span class="badge-dot"></span><div><strong>請假／排休卻仍被排班</strong><p>將請假資料與排班資料放在同一個日期脈絡中比對。</p></div></div><div class="warning-item warn"><span class="badge-dot"></span><div><strong>據點當天完全沒有安排人力</strong><p>依各據點與診所的營運星期，識別未涵蓋日期。</p></div></div><div class="warning-item warn"><span class="badge-dot"></span><div><strong>只排上午或下午的半天缺口</strong><p>以中午 12:00 為界，提醒另一半時段可能沒有支援。</p></div></div><div class="warning-item ok"><span class="badge-dot"></span><div><strong>點擊衝突即可回到當日處理</strong><p>縮短從「發現問題」到「修正班表」的操作路徑。</p></div></div></div>
+          <div class="scan-card"><div><div class="panel-kicker">SCAN RESULT</div><h3>發布前的風險掃描</h3></div><div><div class="scan-number">04</div><div class="scan-label">種主要風險情境</div><div class="scan-bar"><span></span></div><div class="scan-label">紅色＝衝突　橘色＝提醒　綠色＝正常</div></div></div>
+        </div>
+      </div><span class="page-number">05 / 11</span>
+    </section>
+
+    <section class="slide" data-title="發布與報表">
+      <div class="slide-inner">
+        <div class="content-head"><div class="head-copy"><div class="eyebrow">06 / RELEASE & INSIGHT</div><h2>發布、查詢與報表讓資訊真正流動</h2><div class="accent-line"></div></div><div class="head-note">同一份正式班表，管理者用來發布與分析，員工用來查詢與確認。</div></div>
+        <div class="flowline" style="margin-top:6px"><div class="flow-node"><div class="flow-icon">▣</div><strong>管理者編排</strong><small>完成班表與檢核</small></div><div class="flow-node"><div class="flow-icon">✓</div><strong>按月發布</strong><small>控管正式版本</small></div><div class="flow-node"><div class="flow-icon">⌕</div><strong>員工查詢</strong><small>矩陣或列表檢視</small></div><div class="flow-node"><div class="flow-icon">▤</div><strong>報表分析</strong><small>班次、工時、據點</small></div></div>
+        <div class="grid-3" style="margin-top:16px"><div class="panel white"><div class="icon-box">▣</div><h3>發布機制</h3><p class="small" style="margin-top:12px">以月份為單位發布，未發布月份不進入員工查詢區，維持資訊版本一致。</p><div class="stat-strip"><div class="stat mint"><strong>月</strong><span>清楚的發布單位</span></div></div></div><div class="panel teal"><div class="icon-box mint">⌕</div><h3>員工查詢</h3><p class="small" style="margin-top:12px">全體班表可用矩陣或列表方式呈現，快速確認人員與日期安排。</p><div class="stat-strip"><div class="stat"><strong>2</strong><span>種查詢視圖</span></div></div></div><div class="panel orange"><div class="icon-box orange">▤</div><h3>報表統計</h3><p class="small" style="margin-top:12px">整合班次、排班工時、加班工時與據點人力分布，支援主管盤點。</p><div class="stat-strip"><div class="stat"><strong>4+</strong><span>種管理指標</span></div></div></div></div>
+      </div><span class="page-number">06 / 11</span>
+    </section>
+
+    <section class="slide" data-title="支援填報">
+      <div class="slide-inner">
+        <div class="content-head"><div class="head-copy"><div class="eyebrow">07 / REAL ATTENDANCE</div><h2>M9 補上「實際出勤」這一塊資料</h2><div class="accent-line"></div></div><div class="head-note">排班表記錄預定工作，支援填報補充實際發生的支援與加班，兩者各自清楚、最後再整合。</div></div>
+        <div class="grid-2">
+          <div class="panel white"><div class="panel-kicker">ATTENDANCE RECORD</div><div class="ui-sample" style="min-height:330px"><div class="top"><strong>支援填報登記</strong><span>所有欄位可追蹤</span></div><div class="sample-card"><div class="line"><span>人員</span><b>高麗君</b></div><div class="sample-input">日期　2026-08-04</div></div><div class="sample-card"><div class="line"><span>地點</span><span class="sample-tag">📍 江山里</span></div><div class="line"><span>時段</span><b>08:00　至　17:00</b></div></div><div style="display:flex;justify-content:space-between;align-items:center"><span class="sample-tag" style="background:rgba(255,255,255,.15);color:#d8eeee">📷 2 張照片</span><span class="sample-button">登記支援紀錄</span></div></div></div>
+          <div class="panel teal"><div class="panel-kicker">WHY IT MATTERS</div><div class="icon-box mint">↗</div><h3>讓「預定」與「實際」形成完整紀錄</h3><ul class="bullet-list"><li>可記錄人員、日期、地點、起訖時間與備註。</li><li>支援跨地點分別填寫，符合現場調度情境。</li><li>可附加照片，保留現場紀錄與後續查核資訊。</li><li>依人員與日期區間篩選，直接統計支援總工時。</li></ul></div>
+        </div>
+      </div><span class="page-number">07 / 11</span>
+    </section>
+
+    <section class="slide" data-title="角色權限">
+      <div class="slide-inner">
+        <div class="content-head"><div class="head-copy"><div class="eyebrow">08 / RIGHT SCOPE</div><h2>依角色提供剛剛好的操作範圍</h2><div class="accent-line"></div></div><div class="head-note">同一套資料邏輯，依不同使用者的工作任務，提供不同的操作視野。</div></div>
+        <div class="grid-2"><div class="panel white"><div class="panel-kicker">ROLE-BASED EXPERIENCE</div><table class="role-table"><thead><tr><th>使用角色</th><th>主要可見功能</th><th>使用目的</th></tr></thead><tbody><tr><td>管理者</td><td><span class="pill">M1–M9 全部模組</span></td><td>維護、排班、檢核、發布、報表與回報</td></tr><tr><td>一般員工</td><td><span class="pill orange">M4 請假</span><span class="pill orange">M7 查詢</span><span class="pill orange">M9 填報</span></td><td>完成與自身工作直接相關的操作</td></tr></tbody></table></div><div class="panel navy"><div class="panel-kicker">THE PRINCIPLE</div><div class="icon-box">◐</div><h3>不讓資訊干擾工作</h3><p class="small" style="margin-top:14px">管理者保有完整的營運視野；員工則只看到請假、查詢與支援填報等必要入口。</p><div style="margin-top:27px;display:grid;gap:12px"><div style="padding:14px;border-radius:13px;background:rgba(255,255,255,.12)"><strong style="display:block;color:#fff;font-size:13px">降低誤操作</strong><span class="small">不需要的功能不出現在工作路徑中。</span></div><div style="padding:14px;border-radius:13px;background:rgba(255,255,255,.12)"><strong style="display:block;color:#fff;font-size:13px">維持資料一致</strong><span class="small">不同角色仍使用同一套資料與規則。</span></div></div></div></div>
+      </div><span class="page-number">08 / 11</span>
+    </section>
+
+    <section class="slide" data-title="新版美編">
+      <div class="slide-inner">
+        <div class="content-head"><div class="head-copy"><div class="eyebrow">09 / NEW VISUAL SYSTEM</div><h2>新版美編：把複雜功能變成清楚的工作介面</h2><div class="accent-line"></div></div><div class="head-note">視覺改版不是單純換顏色，而是建立適合長時間使用的醫療管理介面語言。</div></div>
+        <div class="design-board"><div class="design-list"><div class="design-item"><div class="swatch"></div><strong>醫療系統色彩</strong><p>深藍、青綠與柔和橘金，建立專業、穩定且具辨識度的主視覺。</p></div><div class="design-item"><div class="swatch"></div><strong>卡片式分層</strong><p>以圓角、留白與陰影拆分管理任務，提升資訊閱讀層次。</p></div><div class="design-item"><div class="swatch"></div><strong>狀態色一致化</strong><p>藍色代表診所、青綠代表據點、橘色代表提醒、紅色代表衝突。</p></div><div class="design-item"><div class="swatch"></div><strong>響應式互動</strong><p>桌面版多欄配置，手機版單欄收斂，並保留頁籤與表格的可操作性。</p></div></div><div class="ui-sample"><div class="top"><strong>排班總覽 / UI LANGUAGE</strong><span>calm · clear · actionable</span></div><div class="sample-card"><div class="line"><b>員工清單</b><span class="sample-tag">22 位</span></div><div class="line"><span class="sample-input" style="flex:1">搜尋員工或據點</span><span class="sample-button">新增</span></div></div><div class="sample-card"><div class="line"><b>狀態提示</b><span class="sample-tag" style="background:#fff0df;color:#a8692f">需要確認</span></div><div class="line"><span style="font-size:11px;color:#d7eeee">本日有 1 筆時段重疊</span><span class="sample-button" style="background:#ca5a5c">檢視</span></div></div><div class="sample-card"><div class="line"><span class="sample-tag">診所</span><span class="sample-tag" style="background:#e2f4ee;color:#398c6d">據點</span><span class="sample-tag" style="background:#fff0df;color:#a8692f">提醒</span><span class="sample-tag" style="background:#fff0f0;color:#b84e50">衝突</span></div></div></div></div>
+      </div><span class="page-number">09 / 11</span>
+    </section>
+
+    <section class="slide" data-title="核心效益">
+      <div class="slide-inner">
+        <div class="content-head"><div class="head-copy"><div class="eyebrow">10 / THE PAYOFF</div><h2>改版後的核心效益：少找資料，多做管理</h2><div class="accent-line"></div></div><div class="head-note">新版系統將分散、依賴記憶的協調流程，提升為可視化且可追蹤的人力管理流程。</div></div>
+        <div class="benefit-grid"><div class="benefit"><div class="big">01</div><h3>提升排班效率</h3><p>快速時段、批量排班與月份複製，減少重複輸入。</p><div class="bar"><span></span></div></div><div class="benefit"><div class="big">02</div><h3>降低排班風險</h3><p>請假鎖定、重疊檢查與人力缺口提醒，提早發現問題。</p><div class="bar"><span></span></div></div><div class="benefit"><div class="big">03</div><h3>強化資訊透明</h3><p>發布機制、員工查詢與矩陣總覽，維持一致的正式班表。</p><div class="bar"><span></span></div></div><div class="benefit"><div class="big">04</div><h3>累積管理資料</h3><p>班次、工時、加班與據點分布可被統計分析。</p><div class="bar"><span></span></div></div><div class="benefit"><div class="big">05</div><h3>保留擴充空間</h3><p>M6 自動排班建議可在既有資料基礎上持續發展。</p><div class="bar"><span></span></div></div></div>
+      </div><span class="page-number">10 / 11</span>
+    </section>
+
+    <section class="slide" data-title="落地路徑">
+      <div class="slide-inner">
+        <div class="content-head"><div class="head-copy"><div class="eyebrow">11 / NEXT STEP</div><h2>從新版介面走向穩定營運</h2><div class="accent-line"></div></div><div class="head-note">下一階段的重點不是再增加功能，而是讓資料、流程與使用習慣真正落地。</div></div>
+        <div class="roadmap"><div class="road"><div class="step">STEP 01</div><h3>資料確認</h3><p>確認員工、據點、外師、班別模板與營運星期的初始資料正確。</p></div><div class="road"><div class="step">STEP 02</div><h3>流程試跑</h3><p>以一個月份演練設定、排班、請假、衝突檢查、發布與查詢。</p></div><div class="road"><div class="step">STEP 03</div><h3>角色培訓</h3><p>為管理者與一般員工提供不同操作說明，建立清楚責任。</p></div><div class="road"><div class="step">STEP 04</div><h3>持續優化</h3><p>依使用回饋調整報表、排班規則與 M6 自動建議功能。</p></div></div>
+        <div class="closing-quote">新版排班系統的價值，在於把每一次排班、請假、支援與檢核，累積成更可靠的人力管理能力。</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:24px"><div class="brand-mark"><b>PB</b> 平安排班管理平台</div><div style="display:flex;gap:10px"><span class="sample-tag">看得見</span><span class="sample-tag" style="background:var(--orange-soft);color:#a66931">檢查得到</span><span class="sample-tag" style="background:var(--mint-soft);color:#398b6b">用得起來</span></div></div>
+      </div><span class="page-number">11 / 11</span>
+    </section>
+  </main>
+  <div class="controls" aria-label="投影片導覽"><button id="prev" aria-label="上一頁">‹</button><div class="counter" id="counter">00 / 11</div><div class="dots" id="dots"></div><button id="next" aria-label="下一頁">›</button></div>
+  <button class="fullscreen" id="fullscreen" aria-label="全螢幕">⛶</button>
+</div>
+<script>
+(() => {
+  const slides = [...document.querySelectorAll('.slide')];
+  const counter = document.getElementById('counter');
+  const dots = document.getElementById('dots');
+  const prev = document.getElementById('prev');
+  const next = document.getElementById('next');
+  const fullscreen = document.getElementById('fullscreen');
+  let current = 0;
+  const pad = n => String(n).padStart(2,'0');
+  slides.forEach((slide, index) => {
+    const dot = document.createElement('button');
+    dot.type = 'button';
+    dot.title = slide.dataset.title || `第 ${index + 1} 頁`;
+    dot.setAttribute('aria-label', dot.title);
+    dot.addEventListener('click', () => show(index));
+    dots.appendChild(dot);
+  });
+  function show(index, direction) {
+    current = Math.max(0, Math.min(slides.length - 1, index));
+    slides.forEach((slide, i) => slide.classList.toggle('active', i === current));
+    [...dots.children].forEach((dot, i) => dot.classList.toggle('active', i === current));
+    counter.textContent = `${pad(current)} / ${pad(slides.length - 1)}`;
+    prev.disabled = current === 0;
+    next.disabled = current === slides.length - 1;
+    document.title = `${slides[current].dataset.title || '簡報'}｜新版平安長照醫療體系排班系統`;
+    if(direction) document.getElementById('stage').setAttribute('data-direction', direction);
+  }
+  function move(delta){ show(current + delta, delta > 0 ? 'next' : 'prev'); }
+  prev.addEventListener('click', () => move(-1));
+  next.addEventListener('click', () => move(1));
+  document.addEventListener('keydown', e => {
+    if(['ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();move(1)}
+    if(['ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();move(-1)}
+    if(e.key === 'Home'){e.preventDefault();show(0)}
+    if(e.key === 'End'){e.preventDefault();show(slides.length - 1)}
+    if(e.key.toLowerCase() === 'f') toggleFullscreen();
+  });
+  let touchStart = null;
+  document.addEventListener('touchstart', e => {touchStart = e.changedTouches[0].clientX}, {passive:true});
+  document.addEventListener('touchend', e => {if(touchStart === null)return; const dx=e.changedTouches[0].clientX-touchStart; if(Math.abs(dx)>45)move(dx<0?1:-1); touchStart=null}, {passive:true});
+  function toggleFullscreen(){
+    if(!document.fullscreenElement){document.documentElement.requestFullscreen?.()}else{document.exitFullscreen?.()}
+  }
+  fullscreen.addEventListener('click', toggleFullscreen);
+  show(0);
+})();
+</script>
+</body>
+</html>
