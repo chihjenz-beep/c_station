@@ -1820,6 +1820,11 @@ document.getElementById('tabBar').addEventListener('click', (e)=>{
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('panel-'+btn.dataset.panel).classList.add('active');
+  // M3 內容在頁面初始渲染後才可能被切換顯示；每次進入時補填下拉選單，避免空白 select 看似無反應
+  if(btn.dataset.panel === 'm3'){
+    renderCourseItemList();
+    renderCourseSessionList();
+  }
 });
 
 // ===========================================================
@@ -4663,6 +4668,8 @@ function renderAllAfterSync(){
     toggleTeacherInput();
     renderTeachers();
     renderShiftTemplates();
+    // M3 外師課程排定：初始化課程項目與三個下拉選單
+    renderCourseItemList();
     renderCalendar(); // 內部會自動依calMode分流到矩陣或月曆渲染
     renderConflictOverview();
   }
