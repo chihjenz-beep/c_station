@@ -424,6 +424,28 @@
     background:var(--warn-bg);border:1px solid var(--warn);border-radius:8px;
     padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--warn);font-weight:600;
   }
+  .publish-course-check{
+    margin:0 0 14px;padding:12px;border:1px solid #cbdfe1;border-radius:12px;
+    background:linear-gradient(135deg,#f5fbfb,#eef7f7);
+  }
+  .publish-course-check-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+  .publish-course-check-title{font-size:13px;font-weight:800;color:var(--brown-dark);}
+  .publish-course-export-actions{display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+  .publish-course-export-actions .btn{padding:5px 9px;font-size:11px;}
+  .publish-course-check-meta{font-size:11px;color:var(--text-soft);}
+  .publish-course-check-summary{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
+  .publish-course-stat{font-size:11px;padding:4px 8px;border-radius:999px;background:#fff;border:1px solid #cbdfe1;color:var(--text-soft);}
+  .publish-course-stat.ok{background:var(--station-bg);border-color:#8fcab4;color:var(--station);font-weight:700;}
+  .publish-course-stat.warn{background:var(--warn-bg);border-color:#e5b56f;color:var(--warn);font-weight:700;}
+  .publish-course-site-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:6px;}
+  .publish-course-site-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 9px;border-radius:8px;background:#fff;border:1px solid #dce8ec;font-size:11px;}
+  .publish-course-site-row .pcs-name{font-weight:700;color:var(--brown-dark);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .publish-course-site-row .pcs-status{white-space:nowrap;font-weight:700;}
+  .publish-course-site-row.is-scheduled .pcs-status{color:var(--station);}
+  .publish-course-site-row.is-missing{background:#fffaf1;border-color:#e5c58e;}
+  .publish-course-site-row.is-missing .pcs-status{color:var(--warn);}
+  .publish-course-site-row .pcs-detail{display:block;color:var(--text-soft);font-size:10px;font-weight:400;margin-top:2px;}
+  .publish-course-check-empty{padding:10px;text-align:center;color:var(--text-soft);font-size:12px;background:#fff;border-radius:8px;border:1px dashed #cbdfe1;}
 
   /* ===== M8 styles ===== */
   .report-table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;}
@@ -1187,10 +1209,11 @@
         以「月」為單位發布，發布後該月才會出現在下方員工查詢區；未發布的月份員工查詢不到。
       </div>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
-        <input type="month" id="publishMonthPicker">
+        <input type="month" id="publishMonthPicker" onchange="renderPublishCourseCheck()">
         <button class="btn gold" id="publishBtn" onclick="togglePublishMonth()">發布此月</button>
         <span id="publishStatusHint" style="font-size:12px;color:var(--text-soft);"></span>
       </div>
+      <div id="publishCourseCheck" class="publish-course-check"></div>
       <div id="publishedMonthList"></div>
     </div>
 
@@ -2118,6 +2141,7 @@ function deleteCourseItem(courseItemId){
   saveStore(STORE_KEYS.courseSchedule, courseSchedule);
   renderCourseItemList();
   renderCourseSessionList();
+  renderPublishCourseCheck();
 }
 function populateCourseSessionSelects(){
   const siteSel = document.getElementById('courseSessionSite');
@@ -2150,6 +2174,7 @@ function addCourseSession(){
   // 課程清單月份自動切到剛新增的這筆所在月份，方便立即看到結果
   document.getElementById('courseListMonthPicker').value = dateStr.slice(0,7);
   renderCourseSessionList();
+  renderPublishCourseCheck();
 }
 function deleteCourseSession(dateStr, sessionId){
   if(!courseSchedule[dateStr]) return;
@@ -2157,6 +2182,7 @@ function deleteCourseSession(dateStr, sessionId){
   if(courseSchedule[dateStr].length===0) delete courseSchedule[dateStr];
   saveStore(STORE_KEYS.courseSchedule, courseSchedule);
   renderCourseSessionList();
+  renderPublishCourseCheck();
 }
 function renderCourseSessionList(){
   const container = document.getElementById('courseSessionList');
@@ -3761,6 +3787,188 @@ function renderConflictOverview(){
 // ===========================================================
 // M7 班表發布管理 + 員工查詢
 // ===========================================================
+function getPublishCourseExportData(){
+  const picker = document.getElementById('publishMonthPicker');
+  let month = picker?.value || '';
+  if(!month){
+    const today = new Date();
+    month = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+  }
+  const siteList = [{ id:'clinic', name:'診所' }].concat(
+    sites.map(s=>({ id:s.id, name:s.name }))
+  );
+  const bySite = {};
+  siteList.forEach(site=>{ bySite[site.id] = []; });
+  Object.keys(courseSchedule).forEach(dateStr=>{
+    if(!dateStr.startsWith(month)) return;
+    (courseSchedule[dateStr]||[]).forEach(session=>{
+      if(!bySite[session.siteId]) bySite[session.siteId] = [];
+      bySite[session.siteId].push({ dateStr, ...session });
+    });
+  });
+  const rows = [];
+  let scheduledSiteCount = 0;
+  siteList.forEach(site=>{
+    const sessions = bySite[site.id] || [];
+    if(sessions.length>0){
+      scheduledSiteCount++;
+      sessions.forEach(session=>{
+        const itemName = (courseItems.find(item=>item.id===session.courseItemId)||{}).name || '未命名課程';
+        const teacherName = session.teacherId ? (externalTeachers.find(t=>t.id===session.teacherId)||{}).name : '未指定外師';
+        rows.push({
+          month,
+          siteName:site.name,
+          status:'已排定',
+          date:session.dateStr,
+          courseName:itemName,
+          teacherName,
+          start:session.start || '',
+          end:session.end || '',
+          note:session.note || '',
+          siteCourseCount:sessions.length
+        });
+      });
+    } else {
+      rows.push({
+        month,
+        siteName:site.name,
+        status:'未排定',
+        date:'',
+        courseName:'',
+        teacherName:'',
+        start:'',
+        end:'',
+        note:'本月尚無課程排定',
+        siteCourseCount:0
+      });
+    }
+  });
+  return {
+    month,
+    rows,
+    totalSessions:Object.values(bySite).reduce((sum,list)=>sum+list.length,0),
+    scheduledSiteCount,
+    missingSiteCount:siteList.length-scheduledSiteCount,
+    siteCount:siteList.length
+  };
+}
+function csvCell(value){
+  return `"${String(value ?? '').replace(/"/g,'""')}"`;
+}
+function exportPublishCourseCSV(){
+  const data = getPublishCourseExportData();
+  const headers = ['月份','據點','排定狀態','課程日期','課程名稱','外師','開始時間','結束時間','備註','該據點當月課程堂數'];
+  const lines = [headers, ...data.rows.map(row=>[
+    row.month,row.siteName,row.status,row.date,row.courseName,row.teacherName,
+    row.start,row.end,row.note,row.siteCourseCount
+  ])].map(row=>row.map(csvCell).join(','));
+  const blob = new Blob([`\ufeff${lines.join('\r\n')}`], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `外師課程排定總表_${data.month}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+function printPublishCourseReport(){
+  const data = getPublishCourseExportData();
+  const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+  const tableRows = data.rows.map(row=>`<tr class="${row.status==='未排定'?'missing':''}">
+    <td>${escapeHtml(row.siteName)}</td>
+    <td>${escapeHtml(row.status)}</td>
+    <td>${escapeHtml(row.date)}</td>
+    <td>${escapeHtml(row.courseName)}</td>
+    <td>${escapeHtml(row.teacherName)}</td>
+    <td>${escapeHtml(row.start)}</td>
+    <td>${escapeHtml(row.end)}</td>
+    <td>${escapeHtml(row.note)}</td>
+  </tr>`).join('');
+  const printWindow = window.open('', '_blank', 'width=1200,height=800');
+  if(!printWindow){
+    alert('瀏覽器阻擋了列印視窗，請允許此頁面開啟彈出視窗後再試一次。');
+    return;
+  }
+  printWindow.document.write(`<!doctype html><html lang="zh-Hant"><head><meta charset="UTF-8"><title>外師課程排定總表_${escapeHtml(data.month)}</title><style>
+    @page{size:A4 landscape;margin:12mm;}
+    *{box-sizing:border-box;} body{font-family:"Noto Sans TC","Microsoft JhengHei",Arial,sans-serif;color:#24333d;margin:0;font-size:11px;}
+    h1{font-size:20px;margin:0 0 5px;color:#254d5b;} .meta{color:#657680;margin-bottom:12px;}
+    .summary{display:flex;gap:8px;margin-bottom:12px;}.summary span{padding:5px 9px;border:1px solid #cbdfe1;border-radius:999px;background:#f5fbfb;}.summary .warn{background:#fff5df;border-color:#e5b56f;color:#9b6725;}
+    table{width:100%;border-collapse:collapse;table-layout:fixed;} th{background:#dceff0;color:#254d5b;text-align:left;padding:6px;border:1px solid #bfd5d8;} td{padding:5px 6px;border:1px solid #d7e1e3;vertical-align:top;word-break:break-word;} tr.missing td{background:#fff8e9;color:#8a652e;} th:nth-child(1){width:12%;} th:nth-child(2){width:10%;} th:nth-child(3){width:12%;} th:nth-child(4){width:17%;} th:nth-child(5){width:14%;} th:nth-child(6){width:9%;} th:nth-child(7){width:9%;} th:nth-child(8){width:17%;}
+    .foot{margin-top:10px;color:#71818a;font-size:10px;}
+  </style></head><body>
+    <h1>外師課程排定總表｜${escapeHtml(data.month)}</h1>
+    <div class="meta">匯出時間：${escapeHtml(new Date().toLocaleString('zh-TW'))}</div>
+    <div class="summary"><span>課程總堂數：${data.totalSessions}</span><span>已排定據點：${data.scheduledSiteCount}</span><span class="warn">未排定據點：${data.missingSiteCount}</span><span>檢查範圍：${data.siteCount} 個據點</span></div>
+    <table><thead><tr><th>據點</th><th>排定狀態</th><th>課程日期</th><th>課程名稱</th><th>外師</th><th>開始時間</th><th>結束時間</th><th>備註</th></tr></thead><tbody>${tableRows}</tbody></table>
+    <div class="foot">此報表依排班系統當下所選月份產生；「未排定」代表該據點於該月份沒有外師課程資料。</div>
+  </body></html>`);
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(()=>printWindow.print(), 250);
+}
+function renderPublishCourseCheck(){
+  const container = document.getElementById('publishCourseCheck');
+  const picker = document.getElementById('publishMonthPicker');
+  if(!container || !picker) return;
+  if(!picker.value){
+    const today = new Date();
+    picker.value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+  }
+  const month = picker.value;
+  const siteList = [{ id:'clinic', label:'🏥 診所' }].concat(
+    sites.map(s=>({ id:s.id, label:`📍 ${s.name}` }))
+  );
+  const monthSessions = [];
+  Object.keys(courseSchedule).forEach(dateStr=>{
+    if(!dateStr.startsWith(month)) return;
+    (courseSchedule[dateStr]||[]).forEach(session=>{
+      monthSessions.push({ dateStr, ...session });
+    });
+  });
+  const bySite = {};
+  siteList.forEach(site=>{ bySite[site.id] = []; });
+  monthSessions.forEach(session=>{
+    if(!bySite[session.siteId]) bySite[session.siteId] = [];
+    bySite[session.siteId].push(session);
+  });
+  const scheduledCount = siteList.filter(site=>(bySite[site.id]||[]).length>0).length;
+  const missingCount = siteList.length - scheduledCount;
+  const totalCount = monthSessions.length;
+  const statusSummary = `
+    <div class="publish-course-check-summary">
+      <span class="publish-course-stat">📅 ${month}</span>
+      <span class="publish-course-stat">共 ${totalCount} 堂課程</span>
+      <span class="publish-course-stat ok">✓ 已排定 ${scheduledCount} 個據點</span>
+      <span class="publish-course-stat ${missingCount?'warn':'ok'}">${missingCount?'⚠':'✓'} 未排定 ${missingCount} 個據點</span>
+    </div>`;
+  const siteRows = siteList.map(site=>{
+    const sessions = bySite[site.id]||[];
+    const isScheduled = sessions.length>0;
+    const details = sessions.slice(0,3).map(session=>{
+      const itemName = (courseItems.find(item=>item.id===session.courseItemId)||{}).name || '未命名課程';
+      const teacherName = session.teacherId ? (externalTeachers.find(t=>t.id===session.teacherId)||{}).name : '';
+      return `${session.dateStr.slice(5)} ${itemName}${teacherName?`／${teacherName}`:'／未指定外師'}`;
+    }).join('；');
+    const extra = sessions.length>3 ? `；另 ${sessions.length-3} 堂` : '';
+    return `<div class="publish-course-site-row ${isScheduled?'is-scheduled':'is-missing'}">
+      <div class="pcs-name" title="${site.label}">${site.label}<span class="pcs-detail">${isScheduled ? details+extra : '本月尚無課程排定'}</span></div>
+      <span class="pcs-status">${isScheduled ? `✓ ${sessions.length} 堂` : '⚠ 未排定'}</span>
+    </div>`;
+  }).join('');
+  container.innerHTML = `
+    <div class="publish-course-check-head">
+      <span class="publish-course-check-title">🎓 發布前外師課程檢查</span>
+      <div class="publish-course-export-actions">
+        <button class="btn outline" onclick="exportPublishCourseCSV()">⬇ Excel（CSV）</button>
+        <button class="btn outline" onclick="printPublishCourseReport()">🖨 PDF／列印</button>
+        <span class="publish-course-check-meta">僅供發布前確認，不會阻擋發布</span>
+      </div>
+    </div>
+    ${statusSummary}
+    <div class="publish-course-site-grid">${siteRows || '<div class="publish-course-check-empty">尚無可檢查的據點</div>'}</div>`;
+}
 function renderPublishedMonthList(){
   const container = document.getElementById('publishedMonthList');
   if(!container) return; // 員工模式下「班表發布管理」卡片已從DOM移除，此函式不需要執行
@@ -3784,6 +3992,7 @@ function togglePublishMonth(){
   publishedMonths.push(month);
   saveStore(STORE_KEYS.publishedMonths, publishedMonths);
   renderPublishedMonthList();
+  renderPublishCourseCheck();
   document.getElementById('publishStatusHint').textContent = `${month} 已發布`;
 }
 function unpublishMonth(month){
@@ -3791,6 +4000,7 @@ function unpublishMonth(month){
   publishedMonths = publishedMonths.filter(m=>m!==month);
   saveStore(STORE_KEYS.publishedMonths, publishedMonths);
   renderPublishedMonthList();
+  renderPublishCourseCheck();
 }
 
 let queryView = 'calendar'; // 'calendar' | 'list'
@@ -4465,6 +4675,7 @@ function renderAllAfterSync(){
   renderM4LockBanner();
   updateM4ScheduleHint();
   renderPublishedMonthList();
+  renderPublishCourseCheck();
   populateM9Selects();
   renderAttendanceOverview();
   if(document.getElementById('queryMonthPicker') && document.getElementById('queryMonthPicker').value){
