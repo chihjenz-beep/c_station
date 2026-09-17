@@ -184,14 +184,22 @@
   .assign-line .site-tag{font-weight:600;color:var(--brown);min-width:60px;}
 
   /* ===== M2 styles ===== */
-  .tpl-card{
-    display:flex;align-items:center;justify-content:space-between;gap:10px;
-    border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:6px;background:#fffefb;
+  #shiftTplList{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;
   }
-  .tpl-card .tpl-info{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-  .tpl-card .tpl-name{font-weight:700;color:var(--brown-dark);font-size:13px;min-width:70px;}
-  .tpl-card .tpl-time{font-size:12px;color:var(--text-soft);}
-  .tpl-card input[type="time"]{font-size:12px;padding:5px 6px;width:90px;}
+  .tpl-card{
+    display:flex;flex-direction:column;gap:8px;
+    border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:0;background:#fffefb;
+  }
+  .tpl-card .tpl-top{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .tpl-card .tpl-top .row-del{font-size:11px;padding:2px 6px;white-space:nowrap;}
+  .tpl-card .tpl-info{display:flex;align-items:center;gap:6px;}
+  .tpl-card .tpl-name{font-weight:700;color:var(--brown-dark);font-size:13px;}
+  .tpl-card .tpl-time{font-size:12px;color:var(--text-soft);flex:0 0 auto;}
+  .tpl-card input[type="time"]{font-size:12px;padding:5px 4px;width:0;flex:1 1 0;min-width:0;}
+  @media (max-width:380px){
+    #shiftTplList{grid-template-columns:1fr;}
+  }
   input[type="time"]{
     border:1px solid var(--border);border-radius:8px;padding:8px 10px;
     font-size:13px;font-family:inherit;background:var(--paper);color:var(--text);
@@ -621,7 +629,7 @@
   .assign-block{border-top-color:#dbe7eb;}
   .quick-btn,.quick-btn-row .qbtn{background:#fff4e7;color:#a6642d;border:1px solid #edc58f;border-radius:999px;transition:all .16s ease;}
   .quick-btn:hover,.quick-btn-row .qbtn:hover{background:#ffe8ca;border-color:#df9d51;transform:translateY(-1px);}
-  .tpl-card input[type="time"]{min-height:34px;padding:5px 8px;}
+  .tpl-card input[type="time"]{min-height:34px;padding:5px 4px;}
   .cal-grid{gap:6px;}
   .cal-weekday{padding:6px 0;color:#6e8994;font-size:11px;letter-spacing:.08em;}
   .cal-cell{background:rgba(255,255,255,.88);border:1px solid #dce8ec;border-radius:10px;min-height:88px;padding:7px;gap:4px;transition:background .16s ease,border-color .16s ease,transform .16s ease;}
@@ -2233,13 +2241,15 @@ function renderShiftTemplates(){
   const container = document.getElementById('shiftTplList');
   container.innerHTML = shiftTemplates.map(t=>`
     <div class="tpl-card">
-      <div class="tpl-info">
+      <div class="tpl-top">
         <span class="tpl-name">${t.name}</span>
+        <button class="row-del" onclick="deleteShiftTemplate('${t.id}')">✕ 刪除</button>
+      </div>
+      <div class="tpl-info">
         <input type="time" value="${t.start}" onchange="updateTplTime('${t.id}','start',this.value)">
         <span class="tpl-time">至</span>
         <input type="time" value="${t.end}" onchange="updateTplTime('${t.id}','end',this.value)">
       </div>
-      <button class="row-del" onclick="deleteShiftTemplate('${t.id}')">✕ 刪除</button>
     </div>
   `).join('');
   renderTplPreviewBtns();
