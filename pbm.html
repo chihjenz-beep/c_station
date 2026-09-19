@@ -752,10 +752,11 @@
   .conflict-inline-sites .site-badge.station{background:var(--station-bg);color:var(--station);}
   .conflict-day-hint{font-size:10px;color:#a98282;text-align:right;margin-top:4px;}
   /* ===== M3 排班：左側彈丸選單 + 右側月曆 ===== */
-  .sched-split{display:grid;grid-template-columns:minmax(300px,5fr) minmax(0,7fr);gap:16px;align-items:start;}
+  .sched-split{display:grid;grid-template-columns:minmax(280px,4fr) minmax(0,7fr);gap:16px;align-items:start;}
+  .sched-split > *{min-width:0;}
   .sched-split.matrix-mode{grid-template-columns:1fr;}
   .sched-split.matrix-mode .sched-palette{display:none;}
-  .sched-main{min-width:0;}
+  .sched-main{min-width:0;max-width:100%;}
   .sched-palette{
     position:sticky;top:112px;max-height:calc(100vh - 132px);overflow-y:auto;
     background:linear-gradient(180deg,#f8fcfd,#f2f8f9);border:1px solid #dbe7eb;border-radius:14px;padding:0 12px 14px;
@@ -809,9 +810,57 @@
     box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:92vw;line-height:1.5;
   }
   .sched-toast button{background:none;border:none;color:#ffd58a;font-weight:700;cursor:pointer;font-size:12px;white-space:nowrap;}
-  @media(max-width:900px){
-    .sched-split{grid-template-columns:1fr;}
+  /* 螢幕不夠寬時（月曆每格會窄到放不下姓名與地點）：彈丸選單改放月曆上方，月曆吃滿整排寬度 */
+  @media(max-width:1100px){
+    .sched-split{grid-template-columns:minmax(0,1fr);}
     .sched-palette{position:static;max-height:56vh;}
+  }
+  /* ===== M3 月曆表格優化 ===== */
+  /* 7 欄一律等寬：用 minmax(0,1fr) 讓欄位不被內容撐開（原本 1fr 會被 nowrap 的標籤撐出不等寬並超出容器） */
+  .cal-grid,.cal-grid.week-mode{grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;}
+  .cal-weekday:nth-child(1),.cal-weekday:nth-child(7){color:#c0766b;}
+  .cal-cell{min-width:0;min-height:104px;padding:6px 6px 7px;overflow:hidden;background:#fff;gap:3px;}
+  .cal-grid.week-mode .cal-cell{min-height:190px;}
+  .cal-cell.weekend{background:#f6fafb;}
+  .cal-cell.other-month{opacity:.38;}
+  .cal-head{display:flex;align-items:center;justify-content:space-between;min-height:20px;margin-bottom:1px;}
+  .cal-cell .cal-daynum{font-size:12px;line-height:1;}
+  .cal-cell.today .cal-daynum{background:var(--gold);color:#fff;border-radius:999px;min-width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;padding:0 6px;}
+  .cal-count{font-size:10px;color:#8fa4ac;background:#eef4f6;border-radius:999px;padding:1px 6px;line-height:1.4;}
+  .cal-cell.has-conflict .cal-count{background:var(--danger-bg);color:var(--danger);}
+  .entry-tag{display:flex;align-items:center;gap:4px;min-width:0;font-size:10.5px;line-height:1.35;padding:2px 6px;}
+  .entry-tag .et-name{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700;}
+  .entry-tag .et-site{flex:0 0 auto;white-space:nowrap;opacity:.92;}
+  .entry-more{font-size:10px;padding-left:2px;}
+  .cal-legend{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:11px;color:var(--text-soft);margin-bottom:10px;}
+  .cal-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;}
+  .cal-legend .lg-half{color:#8fa4ac;}
+  @media(max-width:620px){
+    .cal-grid,.cal-grid.week-mode{gap:3px;}
+    .cal-cell{min-height:72px;padding:4px;}
+    .entry-tag{font-size:8.5px;padding:1px 3px;gap:2px;}
+    .cal-count{display:none;}
+  }
+  /* ===== M3 月曆表格：欄寬固定等分 + 依格子寬度自動切換標籤排版 ===== */
+  /* 欄寬：7 欄一律等寬（minmax(0,1fr)），格子內容再長也只會截斷、不會把欄位撐寬或讓月曆超出容器 */
+  .cal-grid,.cal-grid.week-mode{width:100%;grid-template-columns:repeat(7,minmax(0,1fr));}
+  .cal-weekday{background:#f1f7f8;border-radius:8px;padding:6px 0;}
+  .cal-cell{container-type:inline-size;container-name:calcell;min-height:112px;}
+  .cal-cell.today{background:#fffaf0;}
+  .cal-cell:hover{box-shadow:0 4px 12px rgba(35,96,122,.10);}
+  /* 格子較窄時（左側彈丸選單佔掉一半寬度時常見）：姓名獨立一行、地點與上/下排在下一行，姓名不再被截成「高…」 */
+  @container calcell (max-width:118px){
+    .entry-tag{flex-direction:column;align-items:flex-start;gap:0;padding:2px 5px;line-height:1.3;}
+    .entry-tag .et-name{max-width:100%;font-size:11px;}
+    .entry-tag .et-site{max-width:100%;overflow:hidden;text-overflow:ellipsis;font-size:9.5px;font-weight:500;}
+  }
+  /* 手機等極窄格子：只留姓名（地點以標籤顏色區分診所／據點，點進日期可看完整地點與時段） */
+  @container calcell (max-width:64px){
+    .cal-count{display:none;}
+    .entry-tag{padding:2px 3px;}
+    .entry-tag .et-name{font-size:10px;}
+    .entry-tag .et-site{display:none;}
+    .entry-more{font-size:9px;padding-left:0;}
   }
   /* ===== 據點指派：卡片由左而右、由上而下排列（多欄格線，窄螢幕自動變單欄） ===== */
   #siteList{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr));gap:10px;grid-auto-flow:row;}
@@ -999,13 +1048,17 @@
         <div class="sched-main">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
           <button class="btn outline" onclick="navCal(-1)">‹ 上一個</button>
-          <div id="calTitle" style="font-weight:700;color:var(--brown-dark);font-size:15px;"></div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div id="calTitle" style="font-weight:700;color:var(--brown-dark);font-size:15px;"></div>
+            <button class="btn outline" style="padding:4px 10px;font-size:11px;" onclick="goCalToday()">今天</button>
+          </div>
           <button class="btn outline" onclick="navCal(1)">下一個 ›</button>
         </div>
-        <div id="calLegendNormal" style="display:flex;gap:10px;font-size:11px;color:var(--text-soft);margin-bottom:8px;flex-wrap:wrap;">
-          <span><span class="badge clinic">■</span> 診所</span>
-          <span><span class="badge station">■</span> 據點</span>
-          <span><span class="badge danger">■</span> 衝突</span>
+        <div id="calLegendNormal" class="cal-legend">
+          <span><i style="background:var(--clinic);"></i>診所</span>
+          <span><i style="background:var(--station);"></i>據點</span>
+          <span><i style="background:var(--danger);"></i>衝突</span>
+          <span class="lg-half">地點後標示：上＝上午　下＝下午　全＝全天</span>
         </div>
         <div id="calGrid" class="cal-grid"></div>
         <div id="matrixContainer" style="display:none;"></div>
@@ -2736,7 +2789,9 @@ function renderCalendar(){
     const firstDay = new Date(y,m,1);
     const startOffset = firstDay.getDay();
     const gridStart = new Date(y,m,1-startOffset);
-    for(let i=0;i<42;i++){
+    const daysInMonth = new Date(y,m+1,0).getDate();
+    const weekRows = Math.ceil((startOffset+daysInMonth)/7); // 只畫需要的週數（5 或 6 列），避免多一整列灰色空白
+    for(let i=0;i<weekRows*7;i++){
       const d = new Date(gridStart); d.setDate(gridStart.getDate()+i);
       cells.push({date:d, otherMonth: d.getMonth()!==m});
     }
@@ -2761,17 +2816,19 @@ function renderCalendar(){
     const conflictIdx = detectConflicts(dateStr);
     const hasConflict = conflictIdx.size>0;
     const isToday = dateStr===todayStr();
-    const maxShow = calMode==='week' ? 6 : 2;
-    let tagsHtml = entries.slice(0,maxShow).map(e=>{
+    const maxShow = calMode==='week' ? 8 : 3;
+    const shown = entries.slice().sort((a,b)=> a.start.localeCompare(b.start) || a.end.localeCompare(b.end));
+    let tagsHtml = shown.slice(0,maxShow).map(e=>{
       const isConf = conflictIdx.has(e._idx);
       const cls = isConf ? 'conflict' : siteColorClass(e.site);
       // 地點後面標註上/下/全（以中午12:00為分界，與矩陣總覽、M5 同一套判斷），例如「清禾上」「見龍里下」
-      const label = getStaffName(e.staffId)+' '+siteLabel(e.site)+getShiftHalfLabel(e.start, e.end);
-      return `<div class="entry-tag ${cls}" title="${e.start}–${e.end}">${label}</div>`;
+      const siteTxt = siteLabel(e.site)+getShiftHalfLabel(e.start, e.end);
+      return `<div class="entry-tag ${cls}" title="${getStaffName(e.staffId)}　${siteTxt}　${e.start}–${e.end}"><span class="et-name">${getStaffName(e.staffId)}</span><span class="et-site">${siteTxt}</span></div>`;
     }).join('');
     let moreHtml = entries.length>maxShow ? `<div class="entry-more">+${entries.length-maxShow} 更多</div>` : '';
-    html += `<div class="cal-cell ${c.otherMonth?'other-month':''} ${isToday?'today':''} ${hasConflict?'has-conflict':''}" data-date="${dateStr}" onclick="onCalCellClick('${dateStr}')">
-      <div class="cal-daynum">${c.date.getDate()}</div>
+    const dow = c.date.getDay();
+    html += `<div class="cal-cell ${c.otherMonth?'other-month':''} ${isToday?'today':''} ${hasConflict?'has-conflict':''} ${(dow===0||dow===6)?'weekend':''}" data-date="${dateStr}" onclick="onCalCellClick('${dateStr}')">
+      <div class="cal-head"><span class="cal-daynum">${c.date.getDate()}</span>${entries.length?`<span class="cal-count">${entries.length}</span>`:''}</div>
       ${tagsHtml}${moreHtml}
     </div>`;
   });
@@ -2782,6 +2839,7 @@ let selectedLeaveType = LEAVE_TYPES[0];
 let selectedLeaveStaffPending = null;
 
 // 從其他模組（如M5）跳轉到M3指定日期的排班彈窗
+function goCalToday(){ calRefDate = new Date(); renderCalendar(); }
 function jumpToScheduleDate(dateStr){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
