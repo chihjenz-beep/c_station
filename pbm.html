@@ -632,6 +632,7 @@
   .assign-block{border-top-color:#dbe7eb;}
   .quick-btn,.quick-btn-row .qbtn{background:#fff4e7;color:#a6642d;border:1px solid #edc58f;border-radius:999px;transition:all .16s ease;}
   .quick-btn:hover,.quick-btn-row .qbtn:hover{background:#ffe8ca;border-color:#df9d51;transform:translateY(-1px);}
+  .quick-btn-row .qbtn.selected{background:var(--gold);color:#fff;border-color:var(--gold);font-weight:700;}
   .tpl-card input[type="time"]{min-height:34px;padding:5px 4px;}
   .cal-grid{gap:6px;}
   .cal-weekday{padding:6px 0;color:#6e8994;font-size:11px;letter-spacing:.08em;}
@@ -750,6 +751,22 @@
   .conflict-inline-sites .site-badge{font-size:10px;padding:3px 8px;border-radius:999px;background:var(--clinic-bg);color:var(--clinic);}
   .conflict-inline-sites .site-badge.station{background:var(--station-bg);color:var(--station);}
   .conflict-day-hint{font-size:10px;color:#a98282;text-align:right;margin-top:4px;}
+  /* ===== 診所臨時休診 ===== */
+  .closure-block{margin-top:16px;padding-top:14px;border-top:1px dashed var(--border);}
+  .closure-block .closure-title{font-size:13px;font-weight:700;color:var(--brown-dark);margin-bottom:4px;}
+  .closure-block .closure-desc{font-size:12px;color:var(--text-soft);margin-bottom:10px;line-height:1.6;}
+  .closure-form{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  .closure-form select,.closure-form input[type="date"]{min-height:36px;}
+  .closure-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;}
+  .closure-chip{
+    display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:5px 10px;border-radius:999px;
+    background:var(--warn-bg);color:var(--warn);border:1px solid #edc58f;
+  }
+  .closure-chip.past{background:#f1f5f6;color:#8798a0;border-color:#d8e3e7;}
+  .closure-chip .x{cursor:pointer;font-weight:700;opacity:.6;}
+  .closure-chip .x:hover{opacity:1;}
+  .closure-empty{font-size:12px;color:var(--text-soft);margin-top:10px;}
+  .closure-past-toggle{background:none;border:none;color:var(--brown);font-size:12px;cursor:pointer;text-decoration:underline;padding:0;margin-top:8px;}
 </style>
 </head>
 <body>
@@ -796,11 +813,23 @@
     </div>
 
     <div class="card">
-      <h2>🏥 診所上班日設定</h2>
-      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">設定診所固定的每週上班日，供M5衝突偵測模組稽核「當天完全沒有安排人力」使用</div>
-      <div class="site-role-row" style="margin-top:0;">
-        <span class="role-label">上班日</span>
-        <div class="tag-list" id="clinicWeekdayList"></div>
+      <h2>🏥 診所上班日設定 <span class="badge clinic">平安／清禾</span></h2>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">平安、清禾兩間診所各自設定固定的每週上班日，供M5衝突偵測模組稽核「當天完全沒有安排人力」使用（與下方「據點指派」中的診所上班日為同一份資料，改一邊兩邊同步）</div>
+      <div id="clinicWeekdayList"></div>
+      <div class="closure-block">
+        <div class="closure-title">🚫 臨時休診（單日上午／下午）</div>
+        <div class="closure-desc">因應營運彈性，可隨時將某間診所某一天的上午或下午（或全天）設為休診。M5 衝突偵測會據此略過該時段的「未安排人力／只排半天」提醒，並在休診時段仍有排班時另行提醒。</div>
+        <div class="closure-form">
+          <select id="closureClinic"></select>
+          <input type="date" id="closureDate">
+          <select id="closureHalf">
+            <option value="am">上午休診</option>
+            <option value="pm">下午休診</option>
+            <option value="all">全天休診</option>
+          </select>
+          <button class="btn" onclick="addClinicClosure()">＋ 設為休診</button>
+        </div>
+        <div id="closureList"></div>
       </div>
     </div>
 
@@ -948,13 +977,13 @@
         <div class="modal-add-form" id="schedAddForm">
           <div class="form-line">
             <label>人員</label>
-            <select id="formStaffSel" onchange="updateScheduleFormAvailability()"></select>
+            <select id="formStaffSel" style="display:none;" onchange="updateScheduleFormAvailability()"></select>
+            <div class="quick-btn-row" id="formStaffBtns"></div>
           </div>
           <div class="form-line">
             <label>地點</label>
-            <select id="formSiteSel">
-              <option value="clinic">🏥 診所</option>
-            </select>
+            <select id="formSiteSel" style="display:none;"></select>
+            <div class="quick-btn-row" id="formSiteBtns"></div>
           </div>
           <div class="form-line">
             <label>時段</label>
@@ -1194,7 +1223,7 @@
         <span class="badge danger">衝突②</span> 已登記請假/排休卻被排班　
         <span class="badge" style="background:var(--warn);color:#fff;">提醒③</span> 據點當天完全沒有安排人力　
         <span class="badge" style="background:var(--warn);color:#fff;">提醒④</span> 據點當天只排了上午或下午（另一半空著）<br>
-        （提醒③④已排除國定假日，以及各據點/診所在「M1 員工管理」設定的營運星期，例如北華村僅設定週二、診所固定休週三與週日；可到M1調整。提醒④以中午12:00為上午/下午分界）<br>
+        （提醒③④已排除國定假日，以及各據點/診所在「M1 員工管理」設定的營運星期，例如北華村僅設定週二、平安與清禾各自的固定休診日；可到M1調整。提醒④以中午12:00為上午/下午分界）<br>
         點擊任一筆可直接跳轉到當日排班彈窗處理。
       </div>
       <div id="conflictSummary" style="margin-bottom:10px;"></div>
@@ -1323,9 +1352,7 @@
       </div>
       <div class="form-line">
         <label>地點</label>
-        <select id="m9SiteSel" style="flex:1;" onchange="toggleM9OtherInput()">
-          <option value="clinic">🏥 診所</option>
-        </select>
+        <select id="m9SiteSel" style="flex:1;" onchange="toggleM9OtherInput()"></select>
       </div>
       <div class="form-line" id="m9OtherRow" style="display:none;">
         <label></label>
@@ -1425,6 +1452,7 @@ const STORE_KEYS = {
   publishedMonths: 'sched_publishedMonths',
   attendance: 'sched_attendance',
   clinicOperatingWeekdays: 'sched_clinicOperatingWeekdays',
+  clinicClosures: 'sched_clinicClosures',
   courseItems: 'sched_courseItems',
   courseSchedule: 'sched_courseSchedule'
 };
@@ -1608,6 +1636,7 @@ async function pullAllFromGAS(){
               site.operatingWeekdays = site.name==='北華村' ? [2] : [1,2,3,4,5];
             }
           });
+          ensureClinicSites(); // 雲端資料不含 isClinic，拉回後依固定 id 補回診所旗標
           saveLocalOnly(STORE_KEYS.sites, sites);
         }
       } },
@@ -1798,8 +1827,37 @@ sites.forEach(site=>{
     site.operatingWeekdays = site.name==='北華村' ? [2] : [1,2,3,4,5];
   }
 });
-// 診所固定上班日設定（預設週一、二、四、五、六，固定休週三、週日）；可在M1「🏥 診所上班日設定」卡片調整
+// 診所預設上班日（週一、二、四、五、六）：僅作為平安、清禾尚無資料時的起始值；實際設定改存在各自的 site.operatingWeekdays，於M1「🏥 診所上班日設定」卡片分別調整
 let clinicOperatingWeekdays = loadStore(STORE_KEYS.clinicOperatingWeekdays, null) || [1,2,4,5,6];
+// 診所拆分為「平安」「清禾」兩間不同診所，比照一般據點納入 sites 統一管理
+// （可各自設定營運星期、主責/延緩人員），不再使用單一寫死的「診所」地點。
+// 若舊資料尚未包含這兩筆，於此自動補上（放在清單最前面，並沿用原本診所的營運星期作為起始值）。
+// 兩間診所以固定 id 辨識：雲端同步的據點資料不含 isClinic 欄位，拉回後需靠 id 補回旗標，
+// 否則診所會被當成一般據點，且下次載入時又會重複補上兩筆。
+const CLINIC_SITE_DEFS = [
+  { id:'clinic_pingan', name:'平安' },
+  { id:'clinic_qinghe', name:'清禾' }
+];
+function ensureClinicSites(){
+  const missing = [];
+  CLINIC_SITE_DEFS.forEach(def=>{
+    const found = sites.find(s=>s.id===def.id);
+    if(found){
+      found.isClinic = true;
+      if(!found.operatingWeekdays || !found.operatingWeekdays.length) found.operatingWeekdays = [...clinicOperatingWeekdays];
+    } else {
+      missing.push({ id:def.id, name:def.name, isClinic:true, mainStaffIds:[], reliefStaffIds:[], operatingWeekdays:[...clinicOperatingWeekdays] });
+    }
+  });
+  if(missing.length) sites.unshift(...missing.reverse()); // 補在清單最前面，沿用原本診所的營運星期作為起始值
+}
+ensureClinicSites();
+// 診所臨時休診紀錄：[{id, siteId, date:'YYYY-MM-DD', half:'am'|'pm'}]；上午/下午以中午12:00為分界（與M5一致）。
+// 目前僅存本機（尚未在 SYNC_MAP 註冊對應的 GAS action），換裝置不會帶著走。
+let clinicClosures = loadStore(STORE_KEYS.clinicClosures, []);
+function isClinicHalfClosed(siteId, dateStr, half){
+  return clinicClosures.some(c=>c.siteId===siteId && c.date===dateStr && c.half===half);
+}
 let externalTeachers = loadStore(STORE_KEYS.externalTeachers, []); // [{id, name, type:'internal'|'external', staffId|null, contact, assignments:[{siteId, categories:[]}]}]
 // M3次模組：外師課程排定。課程項目預設沿用外師管理既有的6大類別作為起始清單，之後可在M3自行增刪
 let courseItems = loadStore(STORE_KEYS.courseItems, null) || TEACHER_CATEGORIES.map(name=>({ id: uid('course'), name }));
@@ -1821,6 +1879,11 @@ function getStaffName(id){
 function getSiteName(id){
   const s = sites.find(x=>x.id===id);
   return s ? s.name : '（已刪除）';
+}
+// 判斷某個地點id是否為診所類地點（平安、清禾），用於統計報表的「診所/據點」分類
+function isClinicSite(id){
+  const s = sites.find(x=>x.id===id);
+  return !!(s && s.isClinic);
 }
 
 // ===== 頁籤切換 =====
@@ -1908,7 +1971,7 @@ function renderSites(){
   container.innerHTML = sites.map(site=>`
     <div class="site-card">
       <div class="site-head">
-        <span class="site-name">📍 ${site.name}</span>
+        <span class="site-name">${site.isClinic?'🏥':'📍'} ${site.name}</span>
         <button class="row-del" onclick="deleteSite('${site.id}')">✕ 刪除據點</button>
       </div>
       <div class="site-role-row">
@@ -1954,25 +2017,86 @@ function toggleSiteOperatingDay(siteId, dow){
   }
   saveStore(STORE_KEYS.sites, sites);
   renderSites();
+  renderClinicWeekdays(); // 診所卡片與據點指派共用同一份資料，兩邊一起刷新
   if(typeof renderConflictOverview==='function') renderConflictOverview();
 }
+// 診所上班日卡片：平安、清禾各一列，直接讀寫各自 site.operatingWeekdays（與M5檢核、據點指派同一份資料）
 function renderClinicWeekdays(){
   const container = document.getElementById('clinicWeekdayList');
   if(!container) return;
   const WEEKDAY_LABELS = ['日','一','二','三','四','五','六'];
-  container.innerHTML = WEEKDAY_LABELS.map((label, dow)=>{
-    const active = clinicOperatingWeekdays.includes(dow);
-    return `<span class="weekday-toggle ${active?'active':''}" onclick="toggleClinicOperatingDay(${dow})">${label}</span>`;
+  container.innerHTML = CLINIC_SITE_DEFS.map((def, i)=>{
+    const site = sites.find(s=>s.id===def.id);
+    if(!site) return '';
+    return `
+      <div class="site-role-row" style="${i===0?'margin-top:0;':''}">
+        <span class="role-label">${site.name}</span>
+        <div class="tag-list">
+          ${WEEKDAY_LABELS.map((label, dow)=>{
+            const active = (site.operatingWeekdays||[]).includes(dow);
+            return `<span class="weekday-toggle ${active?'active':''}" onclick="toggleSiteOperatingDay('${site.id}',${dow})">${label}</span>`;
+          }).join('')}
+        </div>
+      </div>`;
   }).join('');
 }
-function toggleClinicOperatingDay(dow){
-  if(clinicOperatingWeekdays.includes(dow)){
-    clinicOperatingWeekdays = clinicOperatingWeekdays.filter(d=>d!==dow);
-  } else {
-    clinicOperatingWeekdays.push(dow);
+let showPastClosures = false;
+function renderClinicClosures(){
+  const sel = document.getElementById('closureClinic');
+  const dateInp = document.getElementById('closureDate');
+  const listEl = document.getElementById('closureList');
+  if(!sel || !listEl) return;
+  if(!sel.options.length){
+    sel.innerHTML = CLINIC_SITE_DEFS.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
   }
-  saveStore(STORE_KEYS.clinicOperatingWeekdays, clinicOperatingWeekdays);
-  renderClinicWeekdays();
+  if(dateInp && !dateInp.value) dateInp.value = todayStr();
+  // 同一診所同一天上午+下午都休診 → 合併顯示為「全天休診」
+  const groups = {};
+  clinicClosures.forEach(c=>{
+    const key = c.siteId+'|'+c.date;
+    if(!groups[key]) groups[key] = { siteId:c.siteId, date:c.date, halves:[], ids:[] };
+    groups[key].halves.push(c.half);
+    groups[key].ids.push(c.id);
+  });
+  const today = todayStr();
+  const all = Object.values(groups).sort((a,b)=> a.date.localeCompare(b.date) || a.siteId.localeCompare(b.siteId));
+  const upcoming = all.filter(g=>g.date>=today);
+  const past = all.filter(g=>g.date<today).reverse();
+  const WD = ['日','一','二','三','四','五','六'];
+  const chip = (g, isPast)=>{
+    const d = new Date(g.date+'T00:00:00');
+    const label = (d.getMonth()+1)+'/'+d.getDate()+'（'+WD[d.getDay()]+'）';
+    const what = g.halves.length>=2 ? '全天休診' : (g.halves[0]==='am' ? '上午休診' : '下午休診');
+    return `<span class="closure-chip ${isPast?'past':''}">${label} ${getSiteName(g.siteId)} ${what}<span class="x" title="取消休診" onclick="removeClinicClosure('${g.ids.join(',')}')">✕</span></span>`;
+  };
+  let html = upcoming.length
+    ? `<div class="closure-list">${upcoming.map(g=>chip(g,false)).join('')}</div>`
+    : `<div class="closure-empty">目前沒有即將到來的臨時休診</div>`;
+  if(past.length){
+    html += `<button class="closure-past-toggle" onclick="togglePastClosures()">${showPastClosures?'隱藏':'顯示'}已過去的休診（${past.length}）</button>`;
+    if(showPastClosures) html += `<div class="closure-list">${past.map(g=>chip(g,true)).join('')}</div>`;
+  }
+  listEl.innerHTML = html;
+}
+function togglePastClosures(){ showPastClosures = !showPastClosures; renderClinicClosures(); }
+function addClinicClosure(){
+  const siteId = document.getElementById('closureClinic').value;
+  const date = document.getElementById('closureDate').value;
+  const mode = document.getElementById('closureHalf').value; // am | pm | all
+  if(!siteId || !date){ alert('請選擇診所與日期'); return; }
+  const halves = mode==='all' ? ['am','pm'] : [mode];
+  halves.forEach(h=>{
+    if(!isClinicHalfClosed(siteId, date, h)) clinicClosures.push({ id: uid('cls'), siteId, date, half:h });
+  });
+  saveLocalOnly(STORE_KEYS.clinicClosures, clinicClosures);
+  renderClinicClosures();
+  if(typeof renderConflictOverview==='function') renderConflictOverview();
+}
+function removeClinicClosure(idsCsv){
+  const ids = idsCsv.split(',');
+  clinicClosures = clinicClosures.filter(c=>!ids.includes(c.id));
+  saveLocalOnly(STORE_KEYS.clinicClosures, clinicClosures);
+  renderClinicClosures();
   if(typeof renderConflictOverview==='function') renderConflictOverview();
 }
 function addSiteRole(siteId, role, staffId){
@@ -2164,8 +2288,7 @@ function populateCourseSessionSelects(){
   const itemSel = document.getElementById('courseSessionItem');
   const teacherSel = document.getElementById('courseSessionTeacher');
   if(!siteSel || !itemSel || !teacherSel) return;
-  siteSel.innerHTML = `<option value="clinic">🏥診所</option>` +
-    sites.map(s=>`<option value="${s.id}">📍${s.name}</option>`).join('');
+  siteSel.innerHTML = sites.map(s=>`<option value="${s.id}">${s.isClinic?'🏥':'📍'}${s.name}</option>`).join('');
   itemSel.innerHTML = courseItems.length
     ? courseItems.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')
     : `<option value="">（尚無課程項目，請先新增）</option>`;
@@ -2371,15 +2494,16 @@ function navCal(dir){
 }
 
 function siteColorClass(site){
-  return site==='clinic' ? '' : 'station';
+  const s = sites.find(x=>x.id===site);
+  return (s && s.isClinic) ? '' : 'station';
 }
 function siteLabel(siteOrId){
-  if(siteOrId==='clinic') return '🏥診所';
-  return '📍'+getSiteName(siteOrId);
+  const s = sites.find(x=>x.id===siteOrId);
+  const icon = (s && s.isClinic) ? '🏥' : '📍';
+  return icon+getSiteName(siteOrId);
 }
 // CSV/純文字輸出用：不含emoji前綴的地點名稱，避免emoji在不同編碼環境下顯示異常
 function siteLabelPlain(siteOrId){
-  if(siteOrId==='clinic') return '診所';
   return getSiteName(siteOrId);
 }
 
@@ -2391,12 +2515,11 @@ const MATRIX_COLOR_PALETTE = [
   '#B85042','#5C7A6E','#3A7BD5','#C98A2E','#8C3A8C','#2E8B7E','#B5651D','#5B6EE1',
   '#A13D63','#3D8361','#C44536','#4A6FA5','#9C6644','#577590','#BC6C25','#6A4C93','#1B998B','#7A8450'
 ];
-let matrixColorMap = null; // siteKey('clinic'|siteId) -> color，第一次渲染時建立並固定
+let matrixColorMap = null; // siteKey(siteId) -> color，第一次渲染時建立並固定
 
 function buildMatrixColorMap(){
   const map = {};
   let idx = 0;
-  map['clinic'] = MATRIX_COLOR_PALETTE[idx % MATRIX_COLOR_PALETTE.length]; idx++;
   sites.forEach(s=>{
     map[s.id] = MATRIX_COLOR_PALETTE[idx % MATRIX_COLOR_PALETTE.length];
     idx++;
@@ -2531,8 +2654,9 @@ function renderCalendar(){
     let tagsHtml = entries.slice(0,maxShow).map(e=>{
       const isConf = conflictIdx.has(e._idx);
       const cls = isConf ? 'conflict' : siteColorClass(e.site);
-      const label = getStaffName(e.staffId)+' '+siteLabel(e.site);
-      return `<div class="entry-tag ${cls}">${label}</div>`;
+      // 地點後面標註上/下/全（以中午12:00為分界，與矩陣總覽、M5 同一套判斷），例如「清禾上」「見龍里下」
+      const label = getStaffName(e.staffId)+' '+siteLabel(e.site)+getShiftHalfLabel(e.start, e.end);
+      return `<div class="entry-tag ${cls}" title="${e.start}–${e.end}">${label}</div>`;
     }).join('');
     let moreHtml = entries.length>maxShow ? `<div class="entry-more">+${entries.length-maxShow} 更多</div>` : '';
     html += `<div class="cal-cell ${c.otherMonth?'other-month':''} ${isToday?'today':''} ${hasConflict?'has-conflict':''}" onclick="openSchedModal('${dateStr}')">
@@ -2587,6 +2711,19 @@ function closeSchedModal(e){
 function populateFormStaffSelect(){
   const sel = document.getElementById('formStaffSel');
   sel.innerHTML = staff.filter(s=>s.active).map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+  renderFormStaffBtns();
+}
+function renderFormStaffBtns(){
+  const container = document.getElementById('formStaffBtns');
+  const sel = document.getElementById('formStaffSel');
+  container.innerHTML = staff.filter(s=>s.active).map(s=>
+    `<span class="qbtn ${s.id===sel.value?'selected':''}" onclick="selectFormStaff('${s.id}')">${s.name}</span>`
+  ).join('');
+}
+function selectFormStaff(id){
+  document.getElementById('formStaffSel').value = id;
+  renderFormStaffBtns();
+  updateScheduleFormAvailability();
 }
 function populateLeaveStaffSelect(){
   const sel = document.getElementById('leaveStaffSel');
@@ -2594,8 +2731,19 @@ function populateLeaveStaffSelect(){
 }
 function populateFormSiteSelect(){
   const sel = document.getElementById('formSiteSel');
-  sel.innerHTML = '<option value="clinic">🏥 診所</option>' +
-    sites.map(s=>`<option value="${s.id}">📍 ${s.name}</option>`).join('');
+  sel.innerHTML = sites.map(s=>`<option value="${s.id}">${s.isClinic?'🏥':'📍'} ${s.name}</option>`).join('');
+  renderFormSiteBtns();
+}
+function renderFormSiteBtns(){
+  const container = document.getElementById('formSiteBtns');
+  const sel = document.getElementById('formSiteSel');
+  container.innerHTML = sites.map(s=>
+    `<span class="qbtn ${s.id===sel.value?'selected':''}" onclick="selectFormSite('${s.id}')">${s.isClinic?'🏥':'📍'} ${s.name}</span>`
+  ).join('');
+}
+function selectFormSite(id){
+  document.getElementById('formSiteSel').value = id;
+  renderFormSiteBtns();
 }
 function renderFormQuickBtns(){
   const container = document.getElementById('formQuickBtns');
@@ -2852,14 +3000,14 @@ function toggleBulkStaff(staffId){
   else bulkSelectedStaffIds.push(staffId);
   populateBulkStaffChecklist();
 }
-let bulkSelectedSite = 'clinic'; // 批量排班目前選定的地點(單選)
+let bulkSelectedSite = sites[0] ? sites[0].id : null; // 批量排班目前選定的地點(單選)
 function populateBulkSiteSelect(){
   renderBulkSiteChecklist();
 }
 function renderBulkSiteChecklist(){
   const container = document.getElementById('bulkSiteChecklist');
   if(!container) return;
-  const opts = [{ id:'clinic', name:'🏥 診所' }, ...sites.map(s=>({ id:s.id, name:'📍 '+s.name }))];
+  const opts = sites.map(s=>({ id:s.id, name:(s.isClinic?'🏥 ':'📍 ')+s.name }));
   container.innerHTML = opts.map(o=>
     `<span class="bulk-staff-chip ${bulkSelectedSite===o.id?'selected':''}" onclick="selectBulkSite('${o.id}')">${o.name}</span>`
   ).join('');
@@ -3151,7 +3299,7 @@ function renderCopyTargetSiteList(){
     container.innerHTML = '';
     return;
   }
-  const siteOpts = [{ id:'__keep__', name:'維持原地點不變' }, { id:'clinic', name:'🏥 診所' }, ...sites.map(s=>({ id:s.id, name:'📍 '+s.name }))];
+  const siteOpts = [{ id:'__keep__', name:'維持原地點不變' }, ...sites.map(s=>({ id:s.id, name:(s.isClinic?'🏥 ':'📍 ')+s.name }))];
   container.innerHTML = copyTargetStaffIds.map(id=>{
     const current = copyTargetSites[id] || '__keep__';
     const chipsHtml = siteOpts.map(o=>
@@ -3586,8 +3734,8 @@ function scanAllConflicts(){
 // ===========================================================
 // 據點營運日規則 + 國定假日名單（用於M5「據點漏排」檢核，避免把
 // 「本來就沒開課」的日子誤判成漏排）
-// 據點與診所的營運星期改為在M1模組介面設定（site.operatingWeekdays／
-// clinicOperatingWeekdays），不再寫死於程式碼中；這裡只保留一個
+// 據點與診所（平安、清禾）的營運星期改為在M1模組介面設定（site.operatingWeekdays），
+// 不再寫死於程式碼中；這裡只保留一個
 // 保底預設值，供尚未設定過的舊資料使用。
 // ===========================================================
 const DEFAULT_SITE_OPERATING_WEEKDAYS = [1,2,3,4,5]; // 保底預設：週一至週五
@@ -3634,7 +3782,7 @@ function getActiveCoverageDates(){
 // 逐一檢查診所與每個據點當天是否至少有一筆排班或課程；完全沒有的話視為漏排（提醒管理者確認是否為
 // 該據點/診所當天原本就沒開，或是單純漏排忘記排班）。
 // 會先排除：①國定假日（一律停課，不檢查任何據點/診所）②當天本來就不營運的星期
-// （常規據點週六日不檢查；北華村除了週二以外都不檢查；診所週三、週日不檢查）
+// （常規據點週六日不檢查；北華村除了週二以外都不檢查；平安、清禾依各自設定的上班日檢查）
 function scanSiteCoverageGaps(){
   const gaps = [];
   const activeDates = getActiveCoverageDates();
@@ -3642,14 +3790,11 @@ function scanSiteCoverageGaps(){
     if(isNationalHoliday(dateStr)) return; // 國定假日一律停課，不檢查
     const dow = new Date(dateStr+'T00:00:00').getDay();
     const assignedSites = new Set(getCoverageEntriesForDate(dateStr).map(e=>e.site));
-    // 診所
-    if(clinicOperatingWeekdays.includes(dow) && !assignedSites.has('clinic')){
-      gaps.push({ dateStr, siteId: 'clinic' });
-    }
-    // 各社區據點
+    // 各社區據點（含平安、清禾兩間診所，已比照一般據點納入sites統一管理）
     sites.forEach(site=>{
       const operatingWeekdays = getSiteOperatingWeekdays(site);
       if(!operatingWeekdays.includes(dow)) return; // 該據點今天本來就不上課，不檢查
+      if(isClinicHalfClosed(site.id, dateStr, 'am') && isClinicHalfClosed(site.id, dateStr, 'pm')) return; // 臨時全天休診，不檢查
       if(!assignedSites.has(site.id)){
         gaps.push({ dateStr, siteId: site.id });
       }
@@ -3681,20 +3826,28 @@ function scanPartialDayCoverage(){
       if(!bySite[e.site]) bySite[e.site] = [];
       bySite[e.site].push(e);
     });
-    // 診所
-    if(clinicOperatingWeekdays.includes(dow) && bySite['clinic'] && bySite['clinic'].length>0){
-      const missing = checkHalfDayCoverage(bySite['clinic'], DAY_MIDPOINT);
-      if(missing) results.push({ dateStr, siteId:'clinic', missing });
-    }
-    // 各社區據點
+    // 各社區據點（含平安、清禾兩間診所，已比照一般據點納入sites統一管理）
     sites.forEach(site=>{
       const operatingWeekdays = getSiteOperatingWeekdays(site);
       if(!operatingWeekdays.includes(dow)) return;
       const siteEntries = bySite[site.id];
       if(!siteEntries || siteEntries.length===0) return;
       const missing = checkHalfDayCoverage(siteEntries, DAY_MIDPOINT);
-      if(missing) results.push({ dateStr, siteId:site.id, missing });
+      // 缺的那半天若已被設為臨時休診，屬預期內的空著，不列入提醒
+      if(missing && !isClinicHalfClosed(site.id, dateStr, missing==='morning'?'am':'pm')) results.push({ dateStr, siteId:site.id, missing });
     });
+  });
+  return results;
+}
+// 檢核診所臨時休診的時段是否仍有排班或課程（以中午12:00為上午/下午分界）
+function scanClosedClinicScheduled(){
+  const results = [];
+  const MID = '12:00';
+  clinicClosures.forEach(c=>{
+    const hit = getCoverageEntriesForDate(c.date).some(e=>
+      e.site===c.siteId && (c.half==='am' ? e.start < MID : e.end > MID)
+    );
+    if(hit) results.push({ dateStr:c.date, siteId:c.siteId, half:c.half });
   });
   return results;
 }
@@ -3702,12 +3855,13 @@ function renderConflictOverview(){
   const conflicts = scanAllConflicts();
   const gaps = scanSiteCoverageGaps();
   const halfDayGaps = scanPartialDayCoverage();
+  const closedScheduled = scanClosedClinicScheduled();
   const summaryEl = document.getElementById('conflictSummary');
   const listEl = document.getElementById('conflictList');
 
   const overlapCount = conflicts.filter(c=>c.reasons.includes('overlap')).length;
   const leaveCount = conflicts.filter(c=>c.reasons.includes('leave')).length;
-  const dateCount = new Set([...conflicts.map(c=>c.dateStr), ...gaps.map(g=>g.dateStr), ...halfDayGaps.map(g=>g.dateStr)]).size;
+  const dateCount = new Set([...conflicts.map(c=>c.dateStr), ...gaps.map(g=>g.dateStr), ...halfDayGaps.map(g=>g.dateStr), ...closedScheduled.map(g=>g.dateStr)]).size;
 
   summaryEl.innerHTML = `
     <div class="conflict-stat-row">
@@ -3720,7 +3874,7 @@ function renderConflictOverview(){
     </div>
   `;
 
-  if(conflicts.length===0 && gaps.length===0 && halfDayGaps.length===0){
+  if(conflicts.length===0 && gaps.length===0 && halfDayGaps.length===0 && closedScheduled.length===0){
     listEl.innerHTML = '<div class="no-conflict-box">✅ 目前沒有偵測到任何排班衝突或據點漏排</div>';
     return;
   }
@@ -3762,11 +3916,18 @@ function renderConflictOverview(){
     });
   });
 
+  closedScheduled.forEach(g=>{
+    const group = ensureDayGroup(g.dateStr);
+    addDaySite(group, g.siteId);
+    group.rows.push({ kind:'closed', siteId:g.siteId, reason:`已設為${g.half==='am'?'上午':'下午'}休診，但該時段仍有排班或課程` });
+  });
+
   const dayCardsHtml = Object.keys(dayGroups).sort().map(dateStr=>{
     const group = dayGroups[dateStr];
     const gapRows = group.rows.filter(row=>row.kind==='gap');
     const halfRows = group.rows.filter(row=>row.kind==='half');
     const conflictRows = group.rows.filter(row=>row.kind==='conflict');
+    const closedRows = group.rows.filter(row=>row.kind==='closed');
     const compactSiteLabels = rows => rows.map(row=>
       `<span class="site-badge ${siteColorClass(row.siteId)}">${siteLabel(row.siteId)}</span>`
     ).join('');
@@ -3793,7 +3954,17 @@ function renderConflictOverview(){
         <div class="conflict-inline-sites">${compactSiteLabels(rows)}</div>
       </div>
     `).join('') : '';
-    const rowsHtml = gapHtml + halfHtml + conflictRowsHtml;
+    const closedHtml = closedRows.length ? Object.values(closedRows.reduce((groups,row)=>{
+      if(!groups[row.reason]) groups[row.reason] = [];
+      groups[row.reason].push(row);
+      return groups;
+    },{})).map(rows=>`
+      <div class="conflict-day-inline half">
+        <span class="ci-reason">🚫 ${rows[0].reason}</span>
+        <div class="conflict-inline-sites">${compactSiteLabels(rows)}</div>
+      </div>
+    `).join('') : '';
+    const rowsHtml = gapHtml + halfHtml + closedHtml + conflictRowsHtml;
     return `<div class="conflict-day-card" onclick="jumpToScheduleDate('${dateStr}')">
       <div class="conflict-day-head">
         <div class="ci-date">📅 ${dateStr}</div>
@@ -3816,9 +3987,7 @@ function getPublishCourseExportData(){
     const today = new Date();
     month = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
   }
-  const siteList = [{ id:'clinic', name:'診所' }].concat(
-    sites.map(s=>({ id:s.id, name:s.name }))
-  );
+  const siteList = sites.map(s=>({ id:s.id, name:s.name }));
   const bySite = {};
   siteList.forEach(site=>{ bySite[site.id] = []; });
   Object.keys(courseSchedule).forEach(dateStr=>{
@@ -3939,9 +4108,7 @@ function renderPublishCourseCheck(){
     picker.value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
   }
   const month = picker.value;
-  const siteList = [{ id:'clinic', label:'🏥 診所' }].concat(
-    sites.map(s=>({ id:s.id, label:`📍 ${s.name}` }))
-  );
+  const siteList = sites.map(s=>({ id:s.id, label:`${s.isClinic?'🏥':'📍'} ${s.name}` }));
   const monthSessions = [];
   Object.keys(courseSchedule).forEach(dateStr=>{
     if(!dateStr.startsWith(month)) return;
@@ -4298,7 +4465,7 @@ function runReport(){
 
   entries.forEach(e=>{
     if(!byStaff[e.staffId]) byStaff[e.staffId] = { clinicCount:0, stationCount:0 };
-    if(e.site === 'clinic') byStaff[e.staffId].clinicCount++;
+    if(isClinicSite(e.site)) byStaff[e.staffId].clinicCount++;
     else byStaff[e.staffId].stationCount++;
 
     if(!hoursByStaff[e.staffId]) hoursByStaff[e.staffId] = 0;
@@ -4472,8 +4639,7 @@ function populateM9Selects(){
   if(!staffSel) return;
   staffSel.innerHTML = staff.filter(s=>s.active).map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
   const siteSel = document.getElementById('m9SiteSel');
-  siteSel.innerHTML = '<option value="clinic">🏥 診所</option>' +
-    sites.map(s=>`<option value="${s.id}">📍 ${s.name}</option>`).join('') +
+  siteSel.innerHTML = sites.map(s=>`<option value="${s.id}">${s.isClinic?'🏥':'📍'} ${s.name}</option>`).join('') +
     '<option value="other">🚗 其他／公務出差</option>';
   populateM9FilterStaffSelect();
 }
@@ -4681,6 +4847,7 @@ function renderAllAfterSync(){
     renderStaffTable();
     renderSites();
     renderClinicWeekdays();
+    renderClinicClosures();
     populateTeacherStaffSelect();
     toggleTeacherInput();
     renderTeachers();
