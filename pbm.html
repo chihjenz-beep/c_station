@@ -751,6 +751,68 @@
   .conflict-inline-sites .site-badge{font-size:10px;padding:3px 8px;border-radius:999px;background:var(--clinic-bg);color:var(--clinic);}
   .conflict-inline-sites .site-badge.station{background:var(--station-bg);color:var(--station);}
   .conflict-day-hint{font-size:10px;color:#a98282;text-align:right;margin-top:4px;}
+  /* ===== M3 排班：左側彈丸選單 + 右側月曆 ===== */
+  .sched-split{display:grid;grid-template-columns:minmax(300px,5fr) minmax(0,7fr);gap:16px;align-items:start;}
+  .sched-split.matrix-mode{grid-template-columns:1fr;}
+  .sched-split.matrix-mode .sched-palette{display:none;}
+  .sched-main{min-width:0;}
+  .sched-palette{
+    position:sticky;top:112px;max-height:calc(100vh - 132px);overflow-y:auto;
+    background:linear-gradient(180deg,#f8fcfd,#f2f8f9);border:1px solid #dbe7eb;border-radius:14px;padding:0 12px 14px;
+  }
+  .pal-tray{position:sticky;top:0;z-index:3;background:#f8fcfd;padding:12px 0 10px;border-bottom:1px dashed #cfe0e5;}
+  .pal-tray-title{font-size:13px;font-weight:700;color:var(--brown-dark);margin-bottom:8px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;}
+  .pal-tray-hint{font-size:10.5px;font-weight:400;color:var(--text-soft);}
+  .combo-chip{
+    display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;padding:10px 12px;border-radius:12px;
+    border:2px dashed #c9d8dd;background:#fff;color:#8798a0;font-size:12.5px;line-height:1.5;
+    touch-action:none;user-select:none;-webkit-user-select:none;
+  }
+  .combo-chip.ready{border:2px solid var(--gold);background:#fffaf0;color:var(--brown-dark);cursor:grab;font-weight:600;box-shadow:0 4px 12px rgba(227,155,84,.2);}
+  .combo-chip.ready:active{cursor:grabbing;}
+  .combo-chip .cc-sep{opacity:.45;font-weight:400;}
+  .combo-chip .cc-empty{font-weight:400;opacity:.75;}
+  .combo-chip .cc-grip{font-size:15px;opacity:.55;}
+  .pal-tray-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
+  .pal-tray-actions .btn.gold{padding:5px 10px;font-size:11px;}
+  .pal-section{margin-top:14px;}
+  .pal-title{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:700;color:var(--brown-dark);margin-bottom:7px;}
+  .pal-title small{font-weight:400;color:var(--text-soft);}
+  .pal-links button{background:none;border:none;color:var(--brown);font-size:11px;cursor:pointer;text-decoration:underline;padding:0 0 0 8px;}
+  .pal-grid{display:flex;flex-wrap:wrap;gap:6px;}
+  .pal-group-label{flex:0 0 100%;font-size:10.5px;color:var(--text-soft);margin-top:2px;}
+  .pal-pill{
+    font-size:12px;padding:5px 11px;border-radius:999px;border:1px solid #d7e3e7;background:#fff;color:#4c6570;
+    cursor:pointer;user-select:none;-webkit-user-select:none;transition:background .12s ease,border-color .12s ease,color .12s ease;
+  }
+  .pal-pill:hover{border-color:#8eb9c1;}
+  .pal-pill small{opacity:.7;font-size:10px;margin-left:3px;}
+  .pal-pill.clinic{background:var(--clinic-bg);color:var(--clinic);border-color:#bfe0e6;}
+  .pal-pill.station{background:var(--station-bg);color:var(--station);border-color:#c5e3d0;}
+  .pal-pill.time{background:#fff8ea;color:#9a6a22;border-color:#f0d9a8;}
+  .pal-pill.selected{background:var(--brown);color:#fff;border-color:var(--brown);font-weight:700;}
+  .pal-pill.clinic.selected{background:var(--clinic);border-color:var(--clinic);color:#fff;}
+  .pal-pill.station.selected{background:var(--station);border-color:var(--station);color:#fff;}
+  .pal-pill.time.selected{background:var(--gold);border-color:var(--gold);color:#fff;}
+  .pal-time-inputs{display:flex;gap:8px;align-items:center;margin-top:8px;font-size:12px;color:var(--text-soft);}
+  .pal-ghost{
+    position:fixed;z-index:300;pointer-events:none;padding:8px 12px;border-radius:12px;background:#fffaf0;
+    border:2px solid var(--gold);box-shadow:0 10px 24px rgba(0,0,0,.22);font-size:12px;font-weight:700;color:var(--brown-dark);
+    white-space:nowrap;max-width:80vw;overflow:hidden;text-overflow:ellipsis;
+  }
+  body.sched-dragging{user-select:none;-webkit-user-select:none;cursor:grabbing;}
+  .cal-cell.drop-hover{background:#fff4d8 !important;border-color:var(--gold) !important;box-shadow:inset 0 0 0 2px var(--gold) !important;}
+  .cal-grid.place-mode .cal-cell{cursor:copy;}
+  .sched-toast{
+    position:fixed;left:50%;bottom:58px;transform:translateX(-50%);z-index:250;background:#24404b;color:#fff;
+    padding:10px 14px;border-radius:12px;font-size:12px;display:none;gap:12px;align-items:center;
+    box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:92vw;line-height:1.5;
+  }
+  .sched-toast button{background:none;border:none;color:#ffd58a;font-weight:700;cursor:pointer;font-size:12px;white-space:nowrap;}
+  @media(max-width:900px){
+    .sched-split{grid-template-columns:1fr;}
+    .sched-palette{position:static;max-height:56vh;}
+  }
   /* ===== 據點指派：卡片由左而右、由上而下排列（多欄格線，窄螢幕自動變單欄） ===== */
   #siteList{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr));gap:10px;grid-auto-flow:row;}
   #siteList .site-card{margin-bottom:0;min-width:0;}
@@ -905,18 +967,50 @@
           <button class="btn outline" id="viewModeMatrixBtn" onclick="setCalView('matrix')">矩陣總覽</button>
         </div>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-        <button class="btn outline" onclick="navCal(-1)">‹ 上一個</button>
-        <div id="calTitle" style="font-weight:700;color:var(--brown-dark);font-size:15px;"></div>
-        <button class="btn outline" onclick="navCal(1)">下一個 ›</button>
+      <div class="sched-split" id="schedSplit">
+        <aside class="sched-palette" id="schedPalette">
+          <div class="pal-tray">
+            <div class="pal-tray-title">🧩 排班組合 <span class="pal-tray-hint">① 點選下方彈丸　② 拖曳此組合到右側日期</span></div>
+            <div class="combo-chip" id="schedComboChip"></div>
+            <div class="pal-tray-actions">
+              <button class="btn outline" style="padding:5px 10px;font-size:11px;" onclick="clearSchedPick()">清除選擇</button>
+              <button class="btn outline" id="palPlaceBtn" style="padding:5px 10px;font-size:11px;" onclick="togglePlaceMode()">👆 點日期放置：關</button>
+            </div>
+          </div>
+          <div class="pal-section">
+            <div class="pal-title"><span>👥 員工 <small id="palStaffCount"></small></span>
+              <span class="pal-links"><button onclick="selectAllPalStaff()">全選</button><button onclick="clearPalStaff()">清除</button></span></div>
+            <div class="pal-grid" id="palStaff"></div>
+          </div>
+          <div class="pal-section">
+            <div class="pal-title"><span>📍 地點</span></div>
+            <div class="pal-grid" id="palSites"></div>
+          </div>
+          <div class="pal-section">
+            <div class="pal-title"><span>🕘 時段</span></div>
+            <div class="pal-grid" id="palTimes"></div>
+            <div class="pal-time-inputs">
+              <input type="time" id="palStart" onchange="onPalTimeInput()">
+              <span>至</span>
+              <input type="time" id="palEnd" onchange="onPalTimeInput()">
+            </div>
+          </div>
+        </aside>
+        <div class="sched-main">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <button class="btn outline" onclick="navCal(-1)">‹ 上一個</button>
+          <div id="calTitle" style="font-weight:700;color:var(--brown-dark);font-size:15px;"></div>
+          <button class="btn outline" onclick="navCal(1)">下一個 ›</button>
+        </div>
+        <div id="calLegendNormal" style="display:flex;gap:10px;font-size:11px;color:var(--text-soft);margin-bottom:8px;flex-wrap:wrap;">
+          <span><span class="badge clinic">■</span> 診所</span>
+          <span><span class="badge station">■</span> 據點</span>
+          <span><span class="badge danger">■</span> 衝突</span>
+        </div>
+        <div id="calGrid" class="cal-grid"></div>
+        <div id="matrixContainer" style="display:none;"></div>
+        </div>
       </div>
-      <div id="calLegendNormal" style="display:flex;gap:10px;font-size:11px;color:var(--text-soft);margin-bottom:8px;flex-wrap:wrap;">
-        <span><span class="badge clinic">■</span> 診所</span>
-        <span><span class="badge station">■</span> 據點</span>
-        <span><span class="badge danger">■</span> 衝突</span>
-      </div>
-      <div id="calGrid" class="cal-grid"></div>
-      <div id="matrixContainer" style="display:none;"></div>
     </div>
 
     <div class="card">
@@ -1901,6 +1995,7 @@ document.getElementById('tabBar').addEventListener('click', (e)=>{
   if(btn.dataset.panel === 'm3'){
     renderCourseItemList();
     renderCourseSessionList();
+    renderSchedPalette(); // 員工／據點／時段可能在M1、M2被修改，進入M3時重建彈丸清單
   }
 });
 
@@ -2474,6 +2569,8 @@ function setCalView(mode){
   const calGrid = document.getElementById('calGrid');
   const matrixContainer = document.getElementById('matrixContainer');
   const legendNormal = document.getElementById('calLegendNormal');
+  const splitEl = document.getElementById('schedSplit');
+  if(splitEl) splitEl.classList.toggle('matrix-mode', mode==='matrix'); // 矩陣總覽需要整排寬度，隱藏左側彈丸選單
   if(mode==='matrix'){
     calGrid.style.display = 'none';
     matrixContainer.style.display = '';
@@ -2644,7 +2741,7 @@ function renderCalendar(){
     }
   }
 
-  grid.className = 'cal-grid'+(calMode==='week'?' week-mode':'');
+  grid.className = 'cal-grid'+(calMode==='week'?' week-mode':'')+(schedPick.placeMode?' place-mode':'');
   let html = weekdayNames.map(w=>`<div class="cal-weekday">${w}</div>`).join('');
 
   cells.forEach(c=>{
@@ -2662,7 +2759,7 @@ function renderCalendar(){
       return `<div class="entry-tag ${cls}" title="${e.start}–${e.end}">${label}</div>`;
     }).join('');
     let moreHtml = entries.length>maxShow ? `<div class="entry-more">+${entries.length-maxShow} 更多</div>` : '';
-    html += `<div class="cal-cell ${c.otherMonth?'other-month':''} ${isToday?'today':''} ${hasConflict?'has-conflict':''}" onclick="openSchedModal('${dateStr}')">
+    html += `<div class="cal-cell ${c.otherMonth?'other-month':''} ${isToday?'today':''} ${hasConflict?'has-conflict':''}" data-date="${dateStr}" onclick="onCalCellClick('${dateStr}')">
       <div class="cal-daynum">${c.date.getDate()}</div>
       ${tagsHtml}${moreHtml}
     </div>`;
@@ -2954,6 +3051,234 @@ function deleteScheduleEntry(idx){
   renderCalendar();
   if(typeof renderConflictOverview==='function') renderConflictOverview();
 }
+
+// ===========================================================
+// M3 排班：左側彈丸選單（員工／地點／時段）→ 組合 → 拖曳到右側月曆日期
+// 員工可多選（一次為多人排同一地點與時段），地點、時段各單選；選好後上方「組合」變成可拖曳的彈丸。
+// 拖曳使用 Pointer Events，滑鼠與觸控都能用；另提供「點日期放置」模式作為手機備案。
+// ===========================================================
+const schedPick = { staffIds:[], siteId:null, tplId:null, start:'', end:'', placeMode:false };
+let schedToastTimer = null;
+let schedDragEndedAt = 0;
+
+function isSchedComboReady(){
+  return schedPick.staffIds.length>0 && !!schedPick.siteId && !!schedPick.start && !!schedPick.end && schedPick.start<schedPick.end;
+}
+function schedStaffNamesText(){
+  const names = schedPick.staffIds.map(getStaffName);
+  return names.length>3 ? names.slice(0,3).join('、')+'等'+names.length+'人' : names.join('、');
+}
+function schedComboPlainText(){
+  const site = schedPick.siteId ? getSiteName(schedPick.siteId) : '';
+  return `${schedStaffNamesText()} ｜ ${site}${getShiftHalfLabel(schedPick.start, schedPick.end)} ｜ ${schedPick.start}–${schedPick.end}`;
+}
+function renderSchedPalette(){
+  const staffBox = document.getElementById('palStaff');
+  if(!staffBox) return;
+  const activeStaff = staff.filter(s=>s.active);
+  // 清掉已刪除／停用的選擇，避免拖出幽靈組合
+  schedPick.staffIds = schedPick.staffIds.filter(id=>activeStaff.some(s=>s.id===id));
+  if(schedPick.siteId && !sites.some(s=>s.id===schedPick.siteId)) schedPick.siteId = null;
+  staffBox.innerHTML = activeStaff.map(s=>`<span class="pal-pill" data-kind="staff" data-id="${s.id}">${s.name}</span>`).join('')
+    || '<span style="font-size:12px;color:var(--text-soft);">尚無啟用中的員工</span>';
+  const clinics = sites.filter(s=>s.isClinic), stations = sites.filter(s=>!s.isClinic);
+  document.getElementById('palSites').innerHTML =
+    (clinics.length ? `<div class="pal-group-label">診所</div>` + clinics.map(s=>`<span class="pal-pill clinic" data-kind="site" data-id="${s.id}">🏥 ${s.name}</span>`).join('') : '') +
+    (stations.length ? `<div class="pal-group-label">據點</div>` + stations.map(s=>`<span class="pal-pill station" data-kind="site" data-id="${s.id}">📍 ${s.name}</span>`).join('') : '');
+  document.getElementById('palTimes').innerHTML = shiftTemplates.map(t=>
+    `<span class="pal-pill time" data-kind="tpl" data-id="${t.id}">${t.name}<small>${t.start}–${t.end}</small></span>`
+  ).join('');
+  updateSchedPaletteUI();
+}
+function updateSchedPaletteUI(){
+  const pal = document.getElementById('schedPalette');
+  if(!pal) return;
+  pal.querySelectorAll('.pal-pill').forEach(el=>{
+    const kind = el.dataset.kind, id = el.dataset.id;
+    let on = false;
+    if(kind==='staff') on = schedPick.staffIds.includes(id);
+    else if(kind==='site') on = schedPick.siteId===id;
+    else if(kind==='tpl'){
+      const t = shiftTemplates.find(x=>x.id===id);
+      on = !!t && schedPick.tplId===id && schedPick.start===t.start && schedPick.end===t.end;
+    }
+    el.classList.toggle('selected', on);
+  });
+  const cnt = document.getElementById('palStaffCount');
+  if(cnt) cnt.textContent = schedPick.staffIds.length ? `（已選 ${schedPick.staffIds.length}）` : '';
+  document.getElementById('palStart').value = schedPick.start;
+  document.getElementById('palEnd').value = schedPick.end;
+  const chip = document.getElementById('schedComboChip');
+  const ready = isSchedComboReady();
+  chip.classList.toggle('ready', ready);
+  const part = (txt, placeholder)=> txt ? `<span>${txt}</span>` : `<span class="cc-empty">${placeholder}</span>`;
+  const timeBad = schedPick.start && schedPick.end && schedPick.start>=schedPick.end;
+  chip.innerHTML = (ready ? '<span class="cc-grip">⠿</span>' : '') +
+    part(schedPick.staffIds.length ? schedStaffNamesText() : '', '（選員工）') + '<span class="cc-sep">＋</span>' +
+    part(schedPick.siteId ? (isClinicSite(schedPick.siteId)?'🏥':'📍')+getSiteName(schedPick.siteId) : '', '（選地點）') + '<span class="cc-sep">＋</span>' +
+    part(schedPick.start && schedPick.end ? `${schedPick.start}–${schedPick.end}（${getShiftHalfLabel(schedPick.start, schedPick.end)}）` : '', '（選時段）') +
+    (timeBad ? '<span style="color:var(--danger);font-weight:600;">結束需晚於開始</span>' : '');
+  const pb = document.getElementById('palPlaceBtn');
+  if(pb){
+    pb.textContent = '👆 點日期放置：' + (schedPick.placeMode ? '開' : '關');
+    pb.classList.toggle('gold', schedPick.placeMode);
+    pb.classList.toggle('outline', !schedPick.placeMode);
+  }
+  const grid = document.getElementById('calGrid');
+  if(grid) grid.classList.toggle('place-mode', schedPick.placeMode);
+}
+function clearSchedPick(){
+  schedPick.staffIds = []; schedPick.siteId = null; schedPick.tplId = null; schedPick.start = ''; schedPick.end = '';
+  updateSchedPaletteUI();
+}
+function selectAllPalStaff(){ schedPick.staffIds = staff.filter(s=>s.active).map(s=>s.id); updateSchedPaletteUI(); }
+function clearPalStaff(){ schedPick.staffIds = []; updateSchedPaletteUI(); }
+function togglePlaceMode(){ schedPick.placeMode = !schedPick.placeMode; updateSchedPaletteUI(); }
+function onPalTimeInput(){
+  schedPick.start = document.getElementById('palStart').value;
+  schedPick.end = document.getElementById('palEnd').value;
+  schedPick.tplId = null; // 手動改時間後，不再視為套用模板
+  updateSchedPaletteUI();
+}
+(function initSchedPaletteClicks(){
+  const pal = document.getElementById('schedPalette');
+  if(!pal) return;
+  pal.addEventListener('click', e=>{
+    const pill = e.target.closest('.pal-pill');
+    if(!pill) return;
+    const kind = pill.dataset.kind, id = pill.dataset.id;
+    if(kind==='staff'){
+      schedPick.staffIds = schedPick.staffIds.includes(id) ? schedPick.staffIds.filter(x=>x!==id) : [...schedPick.staffIds, id];
+    } else if(kind==='site'){
+      schedPick.siteId = schedPick.siteId===id ? null : id;
+    } else if(kind==='tpl'){
+      const t = shiftTemplates.find(x=>x.id===id);
+      if(!t) return;
+      const already = schedPick.tplId===id && schedPick.start===t.start && schedPick.end===t.end;
+      if(already){ schedPick.tplId = null; schedPick.start = ''; schedPick.end = ''; }
+      else { schedPick.tplId = id; schedPick.start = t.start; schedPick.end = t.end; }
+    }
+    updateSchedPaletteUI();
+  });
+})();
+
+function showSchedToast(msg, undoFn){
+  let t = document.getElementById('schedToast');
+  if(!t){ t = document.createElement('div'); t.id = 'schedToast'; t.className = 'sched-toast'; document.body.appendChild(t); }
+  t.innerHTML = '';
+  const span = document.createElement('span'); span.textContent = msg; t.appendChild(span);
+  if(undoFn){
+    const b = document.createElement('button'); b.textContent = '復原';
+    b.onclick = ()=>{ undoFn(); t.style.display = 'none'; };
+    t.appendChild(b);
+  }
+  t.style.display = 'flex';
+  clearTimeout(schedToastTimer);
+  schedToastTimer = setTimeout(()=>{ t.style.display = 'none'; }, 7000);
+}
+// 該診所該日的上午/下午若已設為臨時休診，且這段排班落在該時段，回傳提醒文字
+function closedHalfNoticeFor(siteId, dateStr, start, end){
+  const hits = [];
+  if(start < '12:00' && isClinicHalfClosed(siteId, dateStr, 'am')) hits.push('上午');
+  if(end > '12:00' && isClinicHalfClosed(siteId, dateStr, 'pm')) hits.push('下午');
+  return hits.length ? `⚠ ${getSiteName(siteId)}當日${hits.join('、')}已設為休診` : '';
+}
+function placeSchedCombo(dateStr){
+  if(!isSchedComboReady()){ showSchedToast('請先在左側選好員工、地點與時段'); return; }
+  const { staffIds, siteId, start, end } = schedPick;
+  const added = [], onLeave = [], dup = [];
+  const leaveIds = getLeaveStaffIds(dateStr);
+  staffIds.forEach(id=>{
+    if(leaveIds.includes(id)){ onLeave.push(getStaffName(id)); return; }
+    const exists = (schedule[dateStr]||[]).some(e=>{
+      const es = e.custom?e.custom.start:e.start, ee = e.custom?e.custom.end:e.end;
+      return e.staffId===id && e.site===siteId && es===start && ee===end;
+    });
+    if(exists){ dup.push(getStaffName(id)); return; }
+    const entry = { staffId:id, site:siteId, start, end, status:'draft' };
+    if(!schedule[dateStr]) schedule[dateStr] = [];
+    schedule[dateStr].push(entry);
+    added.push(entry);
+  });
+  if(added.length){
+    saveStore(STORE_KEYS.schedule, schedule);
+    renderCalendar();
+    if(typeof renderConflictOverview==='function') renderConflictOverview();
+  }
+  const d = new Date(dateStr+'T00:00:00');
+  const WD = ['日','一','二','三','四','五','六'];
+  const dl = `${d.getMonth()+1}/${d.getDate()}（${WD[d.getDay()]}）`;
+  const parts = [];
+  if(added.length) parts.push(`已排入 ${dl}：${added.map(e=>getStaffName(e.staffId)).join('、')} → ${getSiteName(siteId)}${getShiftHalfLabel(start,end)} ${start}–${end}`);
+  if(onLeave.length) parts.push(`${onLeave.join('、')} 當日已請假，未排入`);
+  if(dup.length) parts.push(`${dup.join('、')} 已有相同排班，略過`);
+  const notice = added.length ? closedHalfNoticeFor(siteId, dateStr, start, end) : '';
+  if(notice) parts.push(notice);
+  const undo = added.length ? ()=>{
+    added.forEach(entry=>{
+      const arr = schedule[dateStr] || [];
+      const k = arr.indexOf(entry);
+      if(k>=0) arr.splice(k,1);
+    });
+    if(schedule[dateStr] && schedule[dateStr].length===0) delete schedule[dateStr];
+    saveStore(STORE_KEYS.schedule, schedule);
+    renderCalendar();
+    if(typeof renderConflictOverview==='function') renderConflictOverview();
+  } : null;
+  showSchedToast(parts.join('；'), undo);
+}
+function onCalCellClick(dateStr){
+  if(Date.now() - schedDragEndedAt < 350) return; // 拖曳放開後瀏覽器可能補發 click，忽略以免誤開彈窗
+  if(schedPick.placeMode){ placeSchedCombo(dateStr); return; }
+  openSchedModal(dateStr);
+}
+(function initSchedDrag(){
+  const chip = document.getElementById('schedComboChip');
+  if(!chip) return;
+  let ghost = null, hoverCell = null, dragging = false, pid = null;
+  const cellAt = (x,y)=>{ const el = document.elementFromPoint(x,y); return el ? el.closest('.cal-cell[data-date]') : null; };
+  const setHover = c=>{
+    if(hoverCell===c) return;
+    if(hoverCell) hoverCell.classList.remove('drop-hover');
+    hoverCell = c;
+    if(c) c.classList.add('drop-hover');
+  };
+  const moveGhost = (x,y)=>{ if(ghost){ ghost.style.left = (x+14)+'px'; ghost.style.top = (y+14)+'px'; } };
+  function finish(e, commit){
+    if(!dragging) return;
+    dragging = false;
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+    window.removeEventListener('pointercancel', onCancel);
+    window.removeEventListener('keydown', onKey);
+    if(ghost){ ghost.remove(); ghost = null; }
+    document.body.classList.remove('sched-dragging');
+    const cell = commit ? cellAt(e.clientX, e.clientY) : null;
+    setHover(null);
+    schedDragEndedAt = Date.now();
+    if(cell) placeSchedCombo(cell.dataset.date);
+  }
+  function onMove(e){ if(e.pointerId!==pid) return; moveGhost(e.clientX, e.clientY); setHover(cellAt(e.clientX, e.clientY)); }
+  function onUp(e){ if(e.pointerId!==pid) return; finish(e, true); }
+  function onCancel(){ finish({}, false); }
+  function onKey(e){ if(e.key==='Escape') finish({}, false); }
+  chip.addEventListener('pointerdown', e=>{
+    if(!isSchedComboReady() || dragging) return;
+    if(e.pointerType==='mouse' && e.button!==0) return;
+    e.preventDefault();
+    dragging = true; pid = e.pointerId;
+    ghost = document.createElement('div');
+    ghost.className = 'pal-ghost';
+    ghost.textContent = schedComboPlainText();
+    document.body.appendChild(ghost);
+    moveGhost(e.clientX, e.clientY);
+    document.body.classList.add('sched-dragging');
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onCancel);
+    window.addEventListener('keydown', onKey);
+  });
+})();
 
 // ===========================================================
 // 批量排班：多人 × 一個地點 × 一段日期範圍 × 多個時段規則，一次套用
@@ -4851,6 +5176,7 @@ function renderAllAfterSync(){
     renderSites();
     renderClinicWeekdays();
     renderClinicClosures();
+    renderSchedPalette();
     populateTeacherStaffSelect();
     toggleTeacherInput();
     renderTeachers();
