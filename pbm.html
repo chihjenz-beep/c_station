@@ -751,6 +751,9 @@
   .conflict-inline-sites .site-badge{font-size:10px;padding:3px 8px;border-radius:999px;background:var(--clinic-bg);color:var(--clinic);}
   .conflict-inline-sites .site-badge.station{background:var(--station-bg);color:var(--station);}
   .conflict-day-hint{font-size:10px;color:#a98282;text-align:right;margin-top:4px;}
+  /* ===== 據點指派：卡片由左而右、由上而下排列（多欄格線，窄螢幕自動變單欄） ===== */
+  #siteList{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr));gap:10px;grid-auto-flow:row;}
+  #siteList .site-card{margin-bottom:0;min-width:0;}
   /* ===== 診所臨時休診 ===== */
   .closure-block{margin-top:16px;padding-top:14px;border-top:1px dashed var(--border);}
   .closure-block .closure-title{font-size:13px;font-weight:700;color:var(--brown-dark);margin-bottom:4px;}
