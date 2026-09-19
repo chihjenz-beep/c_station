@@ -1032,8 +1032,10 @@
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
           <select id="courseSessionTeacher" style="flex:1;min-width:120px;"></select>
-          <input type="time" id="courseSessionStart" value="09:00" style="flex:1;min-width:100px;">
-          <input type="time" id="courseSessionEnd" value="10:00" style="flex:1;min-width:100px;">
+          <select id="courseSessionHalf" style="flex:1;min-width:100px;">
+            <option value="am">上午</option>
+            <option value="pm">下午</option>
+          </select>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
           <input type="text" id="courseSessionNote" placeholder="備註（選填）" style="flex:1;min-width:120px;">
@@ -1770,7 +1772,7 @@ async function pullAllFromGAS(){
           const rebuilt = {};
           r.entries.forEach(c=>{
             if(!rebuilt[c.date]) rebuilt[c.date]=[];
-            rebuilt[c.date].push({ id:c.id, siteId:c.siteId, courseItemId:c.courseItemId, teacherId:c.teacherId||'', start:c.start, end:c.end, note:c.note||'' });
+            rebuilt[c.date].push(normalizeCourseSession({ id:c.id, siteId:c.siteId, courseItemId:c.courseItemId, teacherId:c.teacherId||'', start:c.start, end:c.end, note:c.note||'' }));
           });
           courseSchedule = rebuilt;
           saveLocalOnly(STORE_KEYS.courseSchedule, courseSchedule);
@@ -1958,7 +1960,17 @@ function isClinicHalfClosed(siteId, dateStr, half){
 let externalTeachers = loadStore(STORE_KEYS.externalTeachers, []); // [{id, name, type:'internal'|'external', staffId|null, contact, assignments:[{siteId, categories:[]}]}]
 // M3次模組：外師課程排定。課程項目預設沿用外師管理既有的6大類別作為起始清單，之後可在M3自行增刪
 let courseItems = loadStore(STORE_KEYS.courseItems, null) || TEACHER_CATEGORIES.map(name=>({ id: uid('course'), name }));
-let courseSchedule = loadStore(STORE_KEYS.courseSchedule, {}); // { 'YYYY-MM-DD': [{id, siteId, courseItemId, teacherId, start, end, note}] }
+// 外師課程只分上午／下午，不設定實際起訖時間。start/end 由 half 換算成固定值，
+// 僅供M5人力涵蓋檢核與雲端同步欄位使用（上午 < 12:00、下午 > 12:00，與排班上/下判斷一致）。
+const COURSE_HALF_TIMES = { am:{ start:'08:00', end:'12:00' }, pm:{ start:'13:00', end:'17:00' } };
+const COURSE_HALF_LABELS = { am:'上午', pm:'下午' };
+function normalizeCourseSession(c){
+  // 舊資料沒有 half：依原本開始時間歸入上午（12:00 前開始）或下午
+  const half = (c.half==='am' || c.half==='pm') ? c.half : ((c.start && c.start >= '12:00') ? 'pm' : 'am');
+  return { ...c, half, start: COURSE_HALF_TIMES[half].start, end: COURSE_HALF_TIMES[half].end };
+}
+let courseSchedule = loadStore(STORE_KEYS.courseSchedule, {}); // { 'YYYY-MM-DD': [{id, siteId, courseItemId, teacherId, half:'am'|'pm', start, end, note}] }
+Object.keys(courseSchedule).forEach(d=>{ courseSchedule[d] = (courseSchedule[d]||[]).map(normalizeCourseSession); });
 let publishedMonths = loadStore(STORE_KEYS.publishedMonths, []); // ['2026-06', '2026-07', ...] 已發布的月份清單(YYYY-MM)
 let attendanceRecords = loadStore(STORE_KEYS.attendance, []); // [{id, staffId, date, site:'clinic'|siteId|'other', otherLabel, start, end, note}]
 
@@ -2398,14 +2410,12 @@ function addCourseSession(){
   const siteId = document.getElementById('courseSessionSite').value;
   const courseItemId = document.getElementById('courseSessionItem').value;
   const teacherId = document.getElementById('courseSessionTeacher').value;
-  const start = document.getElementById('courseSessionStart').value;
-  const end = document.getElementById('courseSessionEnd').value;
+  const half = document.getElementById('courseSessionHalf').value; // 'am' | 'pm'
   const note = document.getElementById('courseSessionNote').value.trim();
   if(!dateStr){ alert('請選擇日期'); return; }
   if(!courseItemId){ alert('請先新增並選擇課程項目'); return; }
-  if(!start || !end){ alert('請填寫上課時段'); return; }
   if(!courseSchedule[dateStr]) courseSchedule[dateStr] = [];
-  courseSchedule[dateStr].push({ id: uid('csess'), siteId, courseItemId, teacherId, start, end, note });
+  courseSchedule[dateStr].push(normalizeCourseSession({ id: uid('csess'), siteId, courseItemId, teacherId, half, note }));
   saveStore(STORE_KEYS.courseSchedule, courseSchedule);
   document.getElementById('courseSessionNote').value = '';
   // 課程清單月份自動切到剛新增的這筆所在月份，方便立即看到結果
@@ -2437,6 +2447,7 @@ function renderCourseSessionList(){
       rows.push({ dateStr, ...c });
     });
   });
+  rows.sort((a,b)=> a.dateStr.localeCompare(b.dateStr) || (a.half==='am'?0:1)-(b.half==='am'?0:1));
   if(rows.length===0){
     container.innerHTML = '<div style="text-align:center;color:var(--text-soft);font-size:12px;padding:10px;">本月尚無課程排定</div>';
     return;
@@ -2449,7 +2460,7 @@ function renderCourseSessionList(){
         <span class="lo-date">${r.dateStr}</span>
         <span><span class="site-badge ${siteColorClass(r.siteId)}">${siteLabel(r.siteId)}</span></span>
         <span><strong>${courseName}</strong>${teacherName?`　🎓${teacherName}`:''}</span>
-        <span>${r.start}–${r.end}</span>
+        <span><strong>${COURSE_HALF_LABELS[r.half]||''}</strong></span>
         ${r.note ? `<span style="color:var(--text-soft);font-size:11px;">${r.note}</span>` : ''}
         <button class="row-del" onclick="deleteCourseSession('${r.dateStr}','${r.id}')">✕ 刪除</button>
       </div>
@@ -4341,8 +4352,7 @@ function getPublishCourseExportData(){
           date:session.dateStr,
           courseName:itemName,
           teacherName,
-          start:session.start || '',
-          end:session.end || '',
+          period:COURSE_HALF_LABELS[session.half] || '',
           note:session.note || '',
           siteCourseCount:sessions.length
         });
@@ -4355,8 +4365,7 @@ function getPublishCourseExportData(){
         date:'',
         courseName:'',
         teacherName:'',
-        start:'',
-        end:'',
+        period:'',
         note:'本月尚無課程排定',
         siteCourseCount:0
       });
@@ -4376,10 +4385,10 @@ function csvCell(value){
 }
 function exportPublishCourseCSV(){
   const data = getPublishCourseExportData();
-  const headers = ['月份','據點','排定狀態','課程日期','課程名稱','外師','開始時間','結束時間','備註','該據點當月課程堂數'];
+  const headers = ['月份','據點','排定狀態','課程日期','課程名稱','外師','時段','備註','該據點當月課程堂數'];
   const lines = [headers, ...data.rows.map(row=>[
     row.month,row.siteName,row.status,row.date,row.courseName,row.teacherName,
-    row.start,row.end,row.note,row.siteCourseCount
+    row.period,row.note,row.siteCourseCount
   ])].map(row=>row.map(csvCell).join(','));
   const blob = new Blob([`\ufeff${lines.join('\r\n')}`], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
@@ -4400,8 +4409,7 @@ function printPublishCourseReport(){
     <td>${escapeHtml(row.date)}</td>
     <td>${escapeHtml(row.courseName)}</td>
     <td>${escapeHtml(row.teacherName)}</td>
-    <td>${escapeHtml(row.start)}</td>
-    <td>${escapeHtml(row.end)}</td>
+    <td>${escapeHtml(row.period)}</td>
     <td>${escapeHtml(row.note)}</td>
   </tr>`).join('');
   const printWindow = window.open('', '_blank', 'width=1200,height=800');
@@ -4414,13 +4422,13 @@ function printPublishCourseReport(){
     *{box-sizing:border-box;} body{font-family:"Noto Sans TC","Microsoft JhengHei",Arial,sans-serif;color:#24333d;margin:0;font-size:11px;}
     h1{font-size:20px;margin:0 0 5px;color:#254d5b;} .meta{color:#657680;margin-bottom:12px;}
     .summary{display:flex;gap:8px;margin-bottom:12px;}.summary span{padding:5px 9px;border:1px solid #cbdfe1;border-radius:999px;background:#f5fbfb;}.summary .warn{background:#fff5df;border-color:#e5b56f;color:#9b6725;}
-    table{width:100%;border-collapse:collapse;table-layout:fixed;} th{background:#dceff0;color:#254d5b;text-align:left;padding:6px;border:1px solid #bfd5d8;} td{padding:5px 6px;border:1px solid #d7e1e3;vertical-align:top;word-break:break-word;} tr.missing td{background:#fff8e9;color:#8a652e;} th:nth-child(1){width:12%;} th:nth-child(2){width:10%;} th:nth-child(3){width:12%;} th:nth-child(4){width:17%;} th:nth-child(5){width:14%;} th:nth-child(6){width:9%;} th:nth-child(7){width:9%;} th:nth-child(8){width:17%;}
+    table{width:100%;border-collapse:collapse;table-layout:fixed;} th{background:#dceff0;color:#254d5b;text-align:left;padding:6px;border:1px solid #bfd5d8;} td{padding:5px 6px;border:1px solid #d7e1e3;vertical-align:top;word-break:break-word;} tr.missing td{background:#fff8e9;color:#8a652e;} th:nth-child(1){width:12%;} th:nth-child(2){width:10%;} th:nth-child(3){width:12%;} th:nth-child(4){width:20%;} th:nth-child(5){width:16%;} th:nth-child(6){width:8%;} th:nth-child(7){width:22%;}
     .foot{margin-top:10px;color:#71818a;font-size:10px;}
   </style></head><body>
     <h1>外師課程排定總表｜${escapeHtml(data.month)}</h1>
     <div class="meta">匯出時間：${escapeHtml(new Date().toLocaleString('zh-TW'))}</div>
     <div class="summary"><span>課程總堂數：${data.totalSessions}</span><span>已排定據點：${data.scheduledSiteCount}</span><span class="warn">未排定據點：${data.missingSiteCount}</span><span>檢查範圍：${data.siteCount} 個據點</span></div>
-    <table><thead><tr><th>據點</th><th>排定狀態</th><th>課程日期</th><th>課程名稱</th><th>外師</th><th>開始時間</th><th>結束時間</th><th>備註</th></tr></thead><tbody>${tableRows}</tbody></table>
+    <table><thead><tr><th>據點</th><th>排定狀態</th><th>課程日期</th><th>課程名稱</th><th>外師</th><th>時段</th><th>備註</th></tr></thead><tbody>${tableRows}</tbody></table>
     <div class="foot">此報表依排班系統當下所選月份產生；「未排定」代表該據點於該月份沒有外師課程資料。</div>
   </body></html>`);
   printWindow.document.close();
