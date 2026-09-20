@@ -1654,6 +1654,7 @@ const STORE_KEYS = {
   attendance: 'sched_attendance',
   clinicOperatingWeekdays: 'sched_clinicOperatingWeekdays',
   clinicClosures: 'sched_clinicClosures',
+  deletedClinicIds: 'sched_deletedClinicIds',
   courseItems: 'sched_courseItems',
   courseSchedule: 'sched_courseSchedule'
 };
@@ -2039,9 +2040,15 @@ const CLINIC_SITE_DEFS = [
   { id:'clinic_pingan', name:'平安' },
   { id:'clinic_qinghe', name:'清禾' }
 ];
+// 使用者主動刪除過的診所 id：之後載入或雲端拉回都不再自動補回（可在M1「診所上班日設定」卡片還原）。僅存本機。
+let deletedClinicIds = loadStore(STORE_KEYS.deletedClinicIds, []);
 function ensureClinicSites(){
   const missing = [];
   CLINIC_SITE_DEFS.forEach(def=>{
+    if(deletedClinicIds.includes(def.id)){
+      sites = sites.filter(s=>s.id!==def.id); // 雲端若又帶回同一筆，也一併濾掉
+      return;
+    }
     const found = sites.find(s=>s.id===def.id);
     if(found){
       found.isClinic = true;
@@ -2239,7 +2246,12 @@ function renderClinicWeekdays(){
   const WEEKDAY_LABELS = ['日','一','二','三','四','五','六'];
   container.innerHTML = CLINIC_SITE_DEFS.map((def, i)=>{
     const site = sites.find(s=>s.id===def.id);
-    if(!site) return '';
+    if(!site) return `
+      <div class="site-role-row" style="${i===0?'margin-top:0;':''}">
+        <span class="role-label">${def.name}</span>
+        <span style="font-size:12px;color:var(--text-soft);">已刪除</span>
+        <button class="btn outline" style="padding:4px 10px;font-size:11px;" onclick="restoreClinicSite('${def.id}')">＋ 還原「${def.name}」診所</button>
+      </div>`;
     return `
       <div class="site-role-row" style="${i===0?'margin-top:0;':''}">
         <span class="role-label">${site.name}</span>
@@ -2258,8 +2270,9 @@ function renderClinicClosures(){
   const dateInp = document.getElementById('closureDate');
   const listEl = document.getElementById('closureList');
   if(!sel || !listEl) return;
-  if(!sel.options.length){
-    sel.innerHTML = CLINIC_SITE_DEFS.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+  const liveClinics = CLINIC_SITE_DEFS.filter(d=>sites.some(s=>s.id===d.id));
+  if([...sel.options].map(o=>o.value).join(',') !== liveClinics.map(d=>d.id).join(',')){
+    sel.innerHTML = liveClinics.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
   }
   if(dateInp && !dateInp.value) dateInp.value = todayStr();
   // 同一診所同一天上午+下午都休診 → 合併顯示為「全天休診」
@@ -2329,7 +2342,15 @@ function removeSiteRole(siteId, role, staffId){
   renderSites();
 }
 function deleteSite(siteId){
-  if(!confirm('確定刪除此據點？相關外師指派將一併移除。')) return;
+  const isClinicDef = CLINIC_SITE_DEFS.some(d=>d.id===siteId);
+  const msg = isClinicDef
+    ? '確定刪除此診所？相關外師指派將一併移除。\n刪除後不會再自動補回，之後可到「診所上班日設定」卡片還原。'
+    : '確定刪除此據點？相關外師指派將一併移除。';
+  if(!confirm(msg)) return;
+  if(isClinicDef && !deletedClinicIds.includes(siteId)){
+    deletedClinicIds.push(siteId);
+    saveLocalOnly(STORE_KEYS.deletedClinicIds, deletedClinicIds);
+  }
   sites = sites.filter(x=>x.id!==siteId);
   externalTeachers.forEach(t=>{
     t.assignments = (t.assignments||[]).filter(a=>a.siteId!==siteId);
@@ -2337,6 +2358,18 @@ function deleteSite(siteId){
   saveStore(STORE_KEYS.sites, sites);
   saveStore(STORE_KEYS.externalTeachers, externalTeachers);
   renderSites(); renderTeachers();
+  if(isClinicDef){
+    renderClinicWeekdays(); renderClinicClosures(); renderSchedPalette();
+    if(typeof renderConflictOverview==='function') renderConflictOverview();
+  }
+}
+function restoreClinicSite(siteId){
+  deletedClinicIds = deletedClinicIds.filter(id=>id!==siteId);
+  saveLocalOnly(STORE_KEYS.deletedClinicIds, deletedClinicIds);
+  ensureClinicSites();
+  saveStore(STORE_KEYS.sites, sites);
+  renderSites(); renderClinicWeekdays(); renderClinicClosures(); renderSchedPalette();
+  if(typeof renderConflictOverview==='function') renderConflictOverview();
 }
 function addSite(){
   const inp = document.getElementById('newSiteName');
