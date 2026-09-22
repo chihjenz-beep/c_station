@@ -1006,8 +1006,16 @@
     </div>
 
     <div class="card">
-      <h2>🎓 外師管理 <span class="badge">潔牙／佛教／精準／延緩／樂齡／用藥</span></h2>
+      <h2>🎓 外師課程管理 <span class="badge" id="courseItemBadgeM1"></span></h2>
       <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">外師可選自22位員工（內部），或新增外部講師；每位外師可指派到多個據點並標註授課類別</div>
+      <div style="border-bottom:1px dashed var(--border);padding-bottom:14px;margin-bottom:14px;">
+        <div class="closure-title" style="margin-bottom:6px;">📚 課程項目 <span style="font-weight:400;font-size:11px;color:var(--text-soft);">（例如口腔保健講座、佛學生命教育；與M3「外師課程排定」共用同一份清單）</span></div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+          <input type="text" id="newCourseItemNameM1" placeholder="新增課程項目名稱" style="flex:1;min-width:160px;" onkeydown="if(event.key==='Enter') addCourseItem('newCourseItemNameM1')">
+          <button class="btn" onclick="addCourseItem('newCourseItemNameM1')">＋ 新增課程項目</button>
+        </div>
+        <div id="courseItemListM1" class="tag-list"></div>
+      </div>
       <div id="teacherList"></div>
       <div class="teacher-add-row">
         <select id="newTeacherType" onchange="toggleTeacherInput()">
@@ -2495,22 +2503,25 @@ function toggleTeacherCategory(teacherId, siteId, cat){
 // 課程項目（courseItems）：可自訂新增/刪除的課程名稱清單
 // 課程排定（courseSchedule）：把某個課程項目安插到某個據點/日期/時段，可選填授課外師
 // ===========================================================
+// 課程項目清單在 M1「外師課程管理」與 M3「外師課程排定」各有一份 UI，共用同一份 courseItems 資料，
+// 任一邊新增／刪除都會同步更新兩邊的清單與徽章。
 function renderCourseItemList(){
-  const container = document.getElementById('courseItemList');
-  if(!container) return;
-  if(courseItems.length===0){
-    container.innerHTML = '<div style="font-size:12px;color:var(--text-soft);">尚未新增課程項目</div>';
-  } else {
-    container.innerHTML = courseItems.map(c=>`
-      <span class="tag-chip">${c.name}<span class="x" onclick="deleteCourseItem('${c.id}')">✕</span></span>
-    `).join('');
-  }
+  const listHtml = courseItems.length===0
+    ? '<div style="font-size:12px;color:var(--text-soft);">尚未新增課程項目</div>'
+    : courseItems.map(c=>`<span class="tag-chip">${c.name}<span class="x" onclick="deleteCourseItem('${c.id}')">✕</span></span>`).join('');
+  ['courseItemList','courseItemListM1'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.innerHTML = listHtml;
+  });
+  const badge = document.getElementById('courseItemBadgeM1');
+  if(badge) badge.textContent = courseItems.length ? courseItems.map(c=>c.name).join('／') : '尚未新增課程項目';
   populateCourseSessionSelects();
 }
-function addCourseItem(){
-  const inp = document.getElementById('newCourseItemName');
+function addCourseItem(inputId){
+  const inp = document.getElementById(inputId || 'newCourseItemName');
   const name = inp.value.trim();
   if(!name){ alert('請輸入課程項目名稱'); return; }
+  if(courseItems.some(c=>c.name===name)){ alert('已有相同名稱的課程項目'); return; }
   courseItems.push({ id: uid('course'), name });
   saveStore(STORE_KEYS.courseItems, courseItems);
   inp.value = '';
