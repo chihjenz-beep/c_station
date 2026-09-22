@@ -1319,9 +1319,9 @@
           <div class="desc" style="font-size:11px;color:var(--text-soft);margin:-2px 0 8px;">
             會依「星期幾＋第幾次出現」對齊複製（例如來源月的第2個星期一→目標月的第2個星期一），避免因兩個月1號星期幾不同，
             造成平日班表錯位到週末的問題。完整保留每天每個人的地點/時段/自訂時間。若來源某天在目標月份中沒有對應的星期次數
-            （例如來源有第5個星期一，目標月只有4個），該天會自動略過。不含請假紀錄，只複製排班。
+            （例如來源有第5個星期一，目標月只有4個），該天會自動略過。<strong>不含診所（平安、清禾）的班</strong>，診所班請另外排；也不含請假紀錄，只複製據點排班。
           </div>
-          <button class="btn gold" style="width:100%;margin-top:6px;" onclick="runCopyFullMonth()">📆 整月複製給全員</button>
+          <button class="btn gold" style="width:100%;margin-top:6px;" onclick="runCopyFullMonth()">📆 整月複製給全員（不含診所）</button>
         </div>
 
         <div id="copyPersonSection" style="display:none;">
@@ -1330,8 +1330,11 @@
             <div id="copySourceStaffChecklist" class="bulk-staff-checklist"></div>
           </div>
           <div class="form-line">
-            <label>月份</label>
-            <input type="month" id="copyPersonMonth">
+            <label>月份（可複選）</label>
+            <div style="flex:1;min-width:0;">
+              <div id="copyPersonMonthList" class="bulk-staff-checklist"></div>
+              <div style="font-size:11px;color:var(--text-soft);margin-top:4px;">列出來源人員有排班的月份，點選可複選；每個月份各自複製到目標人員的同一個月份。</div>
+            </div>
           </div>
           <div class="desc" style="font-size:11px;color:var(--text-soft);margin:-4px 0 8px;">
             勾選目標人員後，可分別為每個人指定要套用的地點（例如A在X據點，給B選Y、給C選Z，互不相同）；預設「維持原地點」會照抄來源人員的地點。
@@ -3890,6 +3893,7 @@ function closeCopyScheduleModal(e){
 }
 function setCopyMode(mode){
   copyMode = mode;
+  if(mode==='person') renderCopyPersonMonthList();
   document.getElementById('copyModeMonthBtn').classList.toggle('gold', mode==='month');
   document.getElementById('copyModeMonthBtn').classList.toggle('outline', mode!=='month');
   document.getElementById('copyModeFullBtn').classList.toggle('gold', mode==='full');
@@ -3905,9 +3909,9 @@ function setCopyMode(mode){
   if(mode==='month'){
     document.getElementById('copyModeDesc').textContent = '選一位人員，把他某個月份的班表完整複製到另一個月份（適合固定排班的據點人員）。若目標月份已有班表，會拒絕複製。';
   } else if(mode==='full'){
-    document.getElementById('copyModeDesc').textContent = '把整個月份「所有人員、所有地點」的排班，逐日複製到另一個月份（適合整月班表要原封不動搬到下個月的情況）。若目標月份已有任何排班，會拒絕複製。';
+    document.getElementById('copyModeDesc').textContent = '把整個月份「所有人員」在各據點的排班，逐日複製到另一個月份（不含診所的班，適合據點班表要原封不動搬到下個月的情況）。若目標月份已有據點排班（診所班不計），會拒絕複製。';
   } else if(mode==='person'){
-    document.getElementById('copyModeDesc').textContent = '選一位來源人員與月份，複製給多位目標人員（複製後每個人都可以自己再微調地點/時間）。若目標人員當月已有班表，會拒絕複製。';
+    document.getElementById('copyModeDesc').textContent = '選一位來源人員與月份（可複選多個月份），複製給多位目標人員（複製後每個人都可以自己再微調地點/時間）。若任一目標人員在所選月份已有班表，會拒絕複製。';
   } else {
     document.getElementById('copyModeDesc').textContent = '選「指定人員」或「全公司」＋月份，刪除整月、不論哪個地點的所有排班（整月清零重來）。此操作無法復原，適合排錯後重新排班前的清空步驟。';
   }
@@ -3922,6 +3926,7 @@ function populateCopyStaffSelects(){
   document.getElementById('clearMonthStaffSel').innerHTML = opts;
   renderCopyMonthStaffChecklist();
   renderCopySourceStaffChecklist();
+  renderCopyPersonMonthList();
   renderCopyTargetStaffChecklist();
 }
 function renderCopyMonthStaffChecklist(){
@@ -3949,7 +3954,39 @@ function renderCopySourceStaffChecklist(){
 function selectCopySourceStaff(staffId){
   copySourceSelectedStaff = staffId;
   renderCopySourceStaffChecklist();
+  renderCopyPersonMonthList(); // 換來源人員後，可選月份也跟著換
   renderCopyTargetStaffChecklist(); // 來源人員變更時，目標清單要排除新的來源人員(避免複製給自己)
+}
+// 「複製給其他人」的月份（可複選）：只列出來源人員有排班的月份
+let copyPersonMonths = [];
+function getStaffMonthsWithSchedule(staffId){
+  const set = new Set();
+  Object.keys(schedule).forEach(d=>{ if((schedule[d]||[]).some(e=>e.staffId===staffId)) set.add(d.slice(0,7)); });
+  return [...set].sort();
+}
+function renderCopyPersonMonthList(){
+  const box = document.getElementById('copyPersonMonthList');
+  if(!box) return;
+  const months = copySourceSelectedStaff ? getStaffMonthsWithSchedule(copySourceSelectedStaff) : [];
+  copyPersonMonths = copyPersonMonths.filter(m=>months.includes(m));
+  if(months.length===0){
+    box.innerHTML = '<span style="font-size:12px;color:var(--text-soft);">來源人員目前沒有任何排班可複製</span>';
+    return;
+  }
+  const allOn = copyPersonMonths.length===months.length;
+  box.innerHTML = months.map(m=>
+    `<span class="bulk-staff-chip ${copyPersonMonths.includes(m)?'selected':''}" onclick="toggleCopyPersonMonth('${m}')">${m.slice(0,4)}年${Number(m.slice(5))}月</span>`
+  ).join('') + `<span class="bulk-staff-chip" style="border-style:dashed;" onclick="toggleAllCopyPersonMonths()">${allOn?'全部取消':'全選'}</span>`;
+}
+function toggleCopyPersonMonth(m){
+  const i = copyPersonMonths.indexOf(m);
+  if(i>=0) copyPersonMonths.splice(i,1); else copyPersonMonths.push(m);
+  renderCopyPersonMonthList();
+}
+function toggleAllCopyPersonMonths(){
+  const months = copySourceSelectedStaff ? getStaffMonthsWithSchedule(copySourceSelectedStaff) : [];
+  copyPersonMonths = copyPersonMonths.length===months.length ? [] : months.slice();
+  renderCopyPersonMonthList();
 }
 function renderCopyTargetStaffChecklist(){
   const container = document.getElementById('copyTargetStaffChecklist');
@@ -4113,19 +4150,22 @@ function runCopyFullMonth(){
   if(!sourceMonth || !targetMonth){ alert('請選擇來源與目標月份'); return; }
   if(sourceMonth===targetMonth){ alert('來源與目標月份不能相同'); return; }
 
-  // 蒐集來源月份所有排班紀錄（依日）
-  const sourceDates = Object.keys(schedule).filter(d=>d.startsWith(sourceMonth) && (schedule[d]||[]).length>0);
+  // 診所（平安、清禾）的班不在整月複製範圍內：來源與「目標月份是否已有排班」的檢查都只看據點班
+  const stationEntries = d => (schedule[d]||[]).filter(e=>!isClinicSite(e.site));
+  const sourceDates = Object.keys(schedule).filter(d=>d.startsWith(sourceMonth) && stationEntries(d).length>0);
+  const skippedClinicEntries = Object.keys(schedule).filter(d=>d.startsWith(sourceMonth))
+    .reduce((n,d)=> n + (schedule[d]||[]).filter(e=>isClinicSite(e.site)).length, 0);
   if(sourceDates.length===0){
     document.getElementById('copyResultReport').innerHTML =
-      `<div class="bulk-report-box">ℹ️ ${sourceMonth} 沒有任何排班紀錄，無法複製。</div>`;
+      `<div class="bulk-report-box">ℹ️ ${sourceMonth} 沒有任何據點排班紀錄（診所班不在複製範圍），無法複製。</div>`;
     return;
   }
-  // 目標月份若已有任何排班，拒絕複製（避免覆蓋掉既有安排；需要重排請先用「清空整月」）
-  const targetHasAny = Object.keys(schedule).some(d=>d.startsWith(targetMonth) && (schedule[d]||[]).length>0);
+  // 目標月份若已有任何據點排班，拒絕複製（避免覆蓋掉既有安排；需要重排請先用「清空整月」）
+  const targetHasAny = Object.keys(schedule).some(d=>d.startsWith(targetMonth) && stationEntries(d).length>0);
   if(targetHasAny){
     document.getElementById('copyResultReport').innerHTML =
       `<div class="bulk-report-box" style="background:var(--danger-bg);border-color:var(--danger);color:var(--danger);">
-        ❌ 複製失敗：目標月份 ${targetMonth} 已有排班資料，請先用「🗑️ 清空整月」清空後再複製，避免覆蓋既有安排。
+        ❌ 複製失敗：目標月份 ${targetMonth} 已有據點排班資料（診所班不計），請先用「🗑️ 清空整月」清空後再複製，避免覆蓋既有安排。
       </div>`;
     return;
   }
@@ -4137,8 +4177,8 @@ function runCopyFullMonth(){
     const targetDateStr = findDateByWeekdayOccurrence(targetMonth, dow, occurrence);
     if(!targetDateStr){ skippedOutOfRangeDays++; return; } // 目標月份沒有「第occurrence次的星期dow」（例如來源有第5個星期一，目標月只有4個）
     if(!schedule[targetDateStr]) schedule[targetDateStr] = [];
-    (schedule[sourceDateStr]||[]).forEach(entry=>{
-      // 完整複製每筆排班內容（人員/地點/時段/自訂時間），狀態一律設為草稿，方便複製後再統一確認發布
+    stationEntries(sourceDateStr).forEach(entry=>{
+      // 完整複製每筆據點排班內容（人員/地點/時段/自訂時間），狀態一律設為草稿，方便複製後再統一確認發布
       schedule[targetDateStr].push({ ...entry, status: 'draft' });
       copiedCount++;
     });
@@ -4148,11 +4188,14 @@ function runCopyFullMonth(){
   renderCalendar();
   if(typeof renderConflictOverview==='function') renderConflictOverview();
 
-  let reportHtml = `<div class="bulk-report-box success">✅ 已將 ${sourceMonth} 整月排班（全員、全地點）依星期對齊複製到 ${targetMonth}，共 <strong>${copiedCount}</strong> 筆。`;
+  let reportHtml = `<div class="bulk-report-box success">✅ 已將 ${sourceMonth} 整月據點排班（全員）依星期對齊複製到 ${targetMonth}，共 <strong>${copiedCount}</strong> 筆。`;
+  if(skippedClinicEntries>0){
+    reportHtml += `<br>診所（平安、清禾）的班 ${skippedClinicEntries} 筆不在複製範圍，未複製。`;
+  }
   if(skippedOutOfRangeDays>0){
     reportHtml += `<br>來源月份有 ${skippedOutOfRangeDays} 天在目標月份中沒有對應的星期次數，已自動略過。`;
   }
-  reportHtml += '複製後狀態皆為草稿，請至M3或M7確認後再發布。</div>';
+  reportHtml += '<br>複製後狀態皆為草稿，請至M3或M7確認後再發布。</div>';
   document.getElementById('copyResultReport').innerHTML = reportHtml;
 }
 
@@ -4268,42 +4311,54 @@ function runClearMonthAll(startMonth, endMonth){
 
 function runCopyToPersons(){
   const sourceId = copySourceSelectedStaff;
-  const monthStr = document.getElementById('copyPersonMonth').value;
+  const months = copyPersonMonths.slice().sort();
   if(!sourceId){ alert('請選擇來源人員'); return; }
-  if(!monthStr){ alert('請選擇月份'); return; }
+  if(months.length===0){ alert('請至少選擇一個月份'); return; }
   if(copyTargetStaffIds.length===0){ alert('請至少選擇一位目標人員'); return; }
 
   const sourceName = getStaffName(sourceId);
-  const sourceEntries = getStaffScheduleInMonth(sourceId, monthStr);
-  if(sourceEntries.length===0){
+  const sourceByMonth = {};
+  months.forEach(m=>{ sourceByMonth[m] = getStaffScheduleInMonth(sourceId, m); });
+  if(months.every(m=>sourceByMonth[m].length===0)){
     document.getElementById('copyResultReport').innerHTML =
-      `<div class="bulk-report-box">ℹ️ ${sourceName} 在 ${monthStr} 沒有任何排班紀錄，無法複製。</div>`;
+      `<div class="bulk-report-box">ℹ️ ${sourceName} 在所選月份沒有任何排班紀錄，無法複製。</div>`;
     return;
   }
 
-  // 先檢查所有目標人員，若任何一位當月已有班表，整批拒絕（不部分執行，避免「複製了一半」的混亂狀態）
-  const conflicted = copyTargetStaffIds.filter(id=>staffHasScheduleInMonth(id, monthStr));
+  // 先檢查「任一月份、任一位目標人員」是否已有班表，有的話整批拒絕（不部分執行，避免「複製了一半」的混亂狀態）
+  const conflicted = [];
+  months.forEach(m=>{
+    if(sourceByMonth[m].length===0) return;
+    copyTargetStaffIds.forEach(id=>{ if(staffHasScheduleInMonth(id, m)) conflicted.push(`${getStaffName(id)}（${m}）`); });
+  });
   if(conflicted.length>0){
-    const conflictedNames = conflicted.map(getStaffName).join('、');
     document.getElementById('copyResultReport').innerHTML =
       `<div class="bulk-report-box" style="background:var(--danger-bg);border-color:var(--danger);color:var(--danger);">
-        ❌ 複製失敗：以下人員在 ${monthStr} 已有班表，請先清空才能複製：${conflictedNames}
+        ❌ 複製失敗：以下人員在所選月份已有班表，請先清空才能複製：${conflicted.join('、')}
       </div>`;
     return;
   }
 
   let totalCopied = 0;
-  const targetSiteNotes = []; // 記錄每人實際套用的地點，用於報告呈現
-  copyTargetStaffIds.forEach(targetId=>{
-    const newSite = copyTargetSites[targetId] || '__keep__'; // 每位目標人員各自指定的地點
-    sourceEntries.forEach(e=>{
-      if(!schedule[e.dateStr]) schedule[e.dateStr] = [];
-      const appliedSite = newSite==='__keep__' ? e.site : newSite;
-      schedule[e.dateStr].push({ staffId: targetId, site: appliedSite, start: e.start, end: e.end, status: 'draft' });
-      totalCopied++;
+  const perMonthNotes = [];
+  months.forEach(m=>{
+    const entries = sourceByMonth[m];
+    if(entries.length===0){ perMonthNotes.push(`${m}：來源無排班，略過`); return; }
+    let monthCount = 0;
+    copyTargetStaffIds.forEach(targetId=>{
+      const newSite = copyTargetSites[targetId] || '__keep__'; // 每位目標人員各自指定的地點
+      entries.forEach(e=>{
+        if(!schedule[e.dateStr]) schedule[e.dateStr] = [];
+        const appliedSite = newSite==='__keep__' ? e.site : newSite;
+        schedule[e.dateStr].push({ staffId: targetId, site: appliedSite, start: e.start, end: e.end, status: 'draft' });
+        monthCount++; totalCopied++;
+      });
     });
-    const siteLabel2 = newSite==='__keep__' ? '維持原地點' : siteLabelPlain(newSite);
-    targetSiteNotes.push(`${getStaffName(targetId)}→${siteLabel2}`);
+    perMonthNotes.push(`${m}：${monthCount} 筆`);
+  });
+  const targetSiteNotes = copyTargetStaffIds.map(id=>{
+    const ns = copyTargetSites[id] || '__keep__';
+    return `${getStaffName(id)}→${ns==='__keep__' ? '維持原地點' : siteLabelPlain(ns)}`;
   });
 
   saveStore(STORE_KEYS.schedule, schedule);
@@ -4311,7 +4366,8 @@ function runCopyToPersons(){
   if(typeof renderConflictOverview==='function') renderConflictOverview();
 
   document.getElementById('copyResultReport').innerHTML =
-    `<div class="bulk-report-box success">✅ 已將 ${sourceName} 在 ${monthStr} 的班表複製給選定人員，共 <strong>${totalCopied}</strong> 筆。<br>
+    `<div class="bulk-report-box success">✅ 已將 ${sourceName} 在 ${months.length} 個月份的班表複製給選定人員，共 <strong>${totalCopied}</strong> 筆。<br>
+      各月份：${perMonthNotes.join('、')}<br>
       ${targetSiteNotes.join('、')}<br>可至M3分別微調各自的地點或時間。</div>`;
   copyTargetStaffIds = [];
   copyTargetSites = {};
