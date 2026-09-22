@@ -1609,6 +1609,8 @@
 </footer>
 
 <script>
+const STAFF_ONLY_BUILD = true; // 員工版固定檔：IS_ADMIN 一律為 false，無法用網址參數切換成管理員
+
 // ===== 角色判斷（URL參數方式，無需登入） =====
 // ?role=admin → 幹部，完整權限，可見全部8模組
 // 無參數或其他值 → 員工模式，僅可見 M4（請假登記）與 M7（班表查詢）
