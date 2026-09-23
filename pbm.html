@@ -692,10 +692,10 @@
   #panel-m1>.card,#panel-m2>.card,#panel-m4>.card,#panel-m5>.card,#panel-m7>.card,#panel-m8>.card,#panel-m9>.card{grid-column:span 12;width:100%;}
   #panel-m1>.card:nth-child(1),#panel-m1>.card:nth-child(2){grid-column:span 6;}
   #panel-m4>.card:nth-child(1),#panel-m4>.card:nth-child(2){grid-column:span 6;}
-  #panel-m7>.card:nth-child(1),#panel-m7>.card:nth-child(2){grid-column:span 6;}
+  /* M7：兩張卡片改為全寬上下排列（原本左右各半寬會把矩陣檢視擠窄），查詢卡片的矩陣才有整排寬度可以檢視 */
   #panel-m9>.card:nth-child(1),#panel-m9>.card:nth-child(2){grid-column:span 6;}
   @media(max-width:900px){
-    #panel-m1>.card:nth-child(1),#panel-m1>.card:nth-child(2),#panel-m4>.card:nth-child(1),#panel-m4>.card:nth-child(2),#panel-m7>.card:nth-child(1),#panel-m7>.card:nth-child(2),#panel-m9>.card:nth-child(1),#panel-m9>.card:nth-child(2){grid-column:span 12;}
+    #panel-m1>.card:nth-child(1),#panel-m1>.card:nth-child(2),#panel-m4>.card:nth-child(1),#panel-m4>.card:nth-child(2),#panel-m9>.card:nth-child(1),#panel-m9>.card:nth-child(2){grid-column:span 12;}
   }
   @media(max-width:620px){
     header{min-height:70px;padding:13px 14px;}
@@ -863,6 +863,18 @@
     .entry-tag .et-site{display:none;}
     .entry-more{font-size:9px;padding-left:0;}
   }
+  /* ===== M5 衝突偵測：月曆檢視（沿用M3的 cal-grid/cal-cell 樣式，另加嚴重度底色） ===== */
+  .cal-cell.cc-severe{background:var(--danger-bg);border-color:#e3a89e;}
+  .cal-cell.cc-severe:hover{border-color:var(--danger);}
+  .cal-cell.cc-warn{background:var(--warn-bg);border-color:#e6cd94;}
+  .cal-cell.cc-warn:hover{border-color:var(--warn);}
+  .cc-badge{
+    display:inline-block;font-size:10px;padding:2px 6px;border-radius:6px;margin:1px 3px 1px 0;
+    background:rgba(255,255,255,.55);line-height:1.4;white-space:normal;
+  }
+  .cal-cell.cc-severe .cc-badge{color:#7a281f;}
+  .cal-cell.cc-warn .cc-badge{color:#7a5a12;}
+  .cc-badge b{font-weight:700;}
   /* ===== 據點指派：卡片由左而右、由上而下排列（多欄格線，窄螢幕自動變單欄） ===== */
   #siteList{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr));gap:10px;grid-auto-flow:row;}
   #siteList .site-card{margin-bottom:0;min-width:0;}
@@ -1427,7 +1439,11 @@
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:6px;">
         <h2 style="margin:0;">⚠️ 衝突偵測總覽</h2>
-        <button class="btn outline" onclick="renderConflictOverview()">🔄 重新掃描</button>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn outline" id="conflictViewListBtn" onclick="setConflictView('list')">列表檢視</button>
+          <button class="btn outline" id="conflictViewCalBtn" onclick="setConflictView('calendar')">🗓️ 月曆檢視</button>
+          <button class="btn outline" onclick="renderConflictOverview()">🔄 重新掃描</button>
+        </div>
       </div>
       <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
         掃描所有已有排班或課程資料的日期（員工排班與M3外師課程排定皆列入人力涵蓋判斷），列出：
@@ -1440,6 +1456,22 @@
       </div>
       <div id="conflictSummary" style="margin-bottom:10px;"></div>
       <div id="conflictList"></div>
+      <div id="conflictCalendarArea" style="display:none;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <button class="btn outline" onclick="navConflictCal(-1)">‹ 上一個</button>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div id="conflictCalTitle" style="font-weight:700;color:var(--brown-dark);font-size:15px;"></div>
+            <button class="btn outline" style="padding:4px 10px;font-size:11px;" onclick="goConflictCalToday()">今天</button>
+          </div>
+          <button class="btn outline" onclick="navConflictCal(1)">下一個 ›</button>
+        </div>
+        <div class="cal-legend" style="margin-bottom:10px;">
+          <span><i style="background:var(--danger);"></i>整天無人／人員衝突</span>
+          <span><i style="background:var(--warn);"></i>只排半天／休診異常</span>
+          <span><i style="background:var(--paper);border:1px solid var(--border);"></i>正常</span>
+        </div>
+        <div id="conflictCalGrid" class="cal-grid"></div>
+      </div>
     </div>
   </div>
 
@@ -4600,11 +4632,110 @@ function scanClosedClinicScheduled(){
   });
   return results;
 }
-function renderConflictOverview(){
+// 把①②③④四種掃描結果，依日期分組成 dayGroups：同一天只建立一組，彙整當天涉及的據點與各項風險，
+// 供「列表檢視」與「月曆檢視」共用，避免兩邊各自重複掃描與分組邏輯。
+function buildConflictDayGroups(){
   const conflicts = scanAllConflicts();
   const gaps = scanSiteCoverageGaps();
   const halfDayGaps = scanPartialDayCoverage();
   const closedScheduled = scanClosedClinicScheduled();
+
+  const dayGroups = {};
+  const ensureDayGroup = dateStr => {
+    if(!dayGroups[dateStr]) dayGroups[dateStr] = { rows:[], siteIds:[] };
+    return dayGroups[dateStr];
+  };
+  const addDaySite = (group, siteId) => {
+    if(!group.siteIds.includes(siteId)) group.siteIds.push(siteId);
+  };
+
+  conflicts.forEach(c=>{
+    const group = ensureDayGroup(c.dateStr);
+    addDaySite(group, c.site);
+    group.rows.push({
+      kind:'conflict', staffId:c.staffId, siteId:c.site, start:c.start, end:c.end,
+      reason:c.reasons.map(r=>r==='overlap'?'跨地點重疊':'與請假衝突').join('、')
+    });
+  });
+  gaps.forEach(g=>{
+    const group = ensureDayGroup(g.dateStr);
+    addDaySite(group, g.siteId);
+    group.rows.push({ kind:'gap', siteId:g.siteId, reason:'當天完全沒有安排人力' });
+  });
+  halfDayGaps.forEach(g=>{
+    const group = ensureDayGroup(g.dateStr);
+    addDaySite(group, g.siteId);
+    group.rows.push({ kind:'half', siteId:g.siteId, reason:`只有${g.missing==='morning'?'下午':'上午'}有安排，${g.missing==='morning'?'上午':'下午'}空著` });
+  });
+  closedScheduled.forEach(g=>{
+    const group = ensureDayGroup(g.dateStr);
+    addDaySite(group, g.siteId);
+    group.rows.push({ kind:'closed', siteId:g.siteId, reason:`已設為${g.half==='am'?'上午':'下午'}休診，但該時段仍有排班或課程` });
+  });
+  return { dayGroups, conflicts, gaps, halfDayGaps, closedScheduled };
+}
+// 列表／月曆檢視切換
+let conflictView = 'list';
+let conflictCalRefDate = new Date();
+function setConflictView(view){
+  conflictView = view;
+  document.getElementById('conflictViewListBtn').classList.toggle('gold', view==='list');
+  document.getElementById('conflictViewCalBtn').classList.toggle('gold', view==='calendar');
+  document.getElementById('conflictList').style.display = view==='list' ? '' : 'none';
+  document.getElementById('conflictCalendarArea').style.display = view==='calendar' ? '' : 'none';
+  if(view==='calendar') renderConflictCalendar();
+}
+function navConflictCal(delta){
+  conflictCalRefDate = new Date(conflictCalRefDate.getFullYear(), conflictCalRefDate.getMonth()+delta, 1);
+  renderConflictCalendar();
+}
+function goConflictCalToday(){
+  conflictCalRefDate = new Date();
+  renderConflictCalendar();
+}
+// 月曆檢視：同一天若同時有多種問題，嚴重度取最高者決定底色——
+// 衝突①②、提醒③（整天無人）為紅色；提醒④（只排半天）、休診異常為橘色；當天沒有任何問題則維持一般格子。
+function renderConflictCalendar(){
+  const grid = document.getElementById('conflictCalGrid');
+  const title = document.getElementById('conflictCalTitle');
+  if(!grid || !title) return;
+  const { dayGroups } = buildConflictDayGroups();
+  const weekdayNames = ['日','一','二','三','四','五','六'];
+  const y = conflictCalRefDate.getFullYear(), m = conflictCalRefDate.getMonth();
+  title.textContent = y+'年 '+(m+1)+'月';
+  const firstDay = new Date(y,m,1);
+  const startOffset = firstDay.getDay();
+  const gridStart = new Date(y,m,1-startOffset);
+  const daysInMonth = new Date(y,m+1,0).getDate();
+  const weekRows = Math.ceil((startOffset+daysInMonth)/7);
+
+  let html = weekdayNames.map(w=>`<div class="cal-weekday">${w}</div>`).join('');
+  for(let i=0;i<weekRows*7;i++){
+    const d = new Date(gridStart); d.setDate(gridStart.getDate()+i);
+    const dateStr = fmtDate(d);
+    const otherMonth = d.getMonth()!==m;
+    const isToday = dateStr===todayStr();
+    const dow = d.getDay();
+    const group = dayGroups[dateStr];
+    let severityCls = '', badgesHtml = '';
+    if(group){
+      const hasSevere = group.rows.some(r=>r.kind==='conflict' || r.kind==='gap');
+      severityCls = hasSevere ? 'cc-severe' : 'cc-warn';
+      // 每種問題各顯示一個小標籤（例如「⚠ 整天無人 ×3」），而非逐筆列出，避免格子被塞爆
+      const byKind = {};
+      group.rows.forEach(r=>{ (byKind[r.kind] = byKind[r.kind]||[]).push(r); });
+      const kindLabel = { conflict:'⚠ 人員衝突', gap:'⚠ 整天無人', half:'🌗 只排半天', closed:'🚫 休診異常' };
+      badgesHtml = Object.keys(byKind).map(k=>`<span class="cc-badge">${kindLabel[k]} <b>×${byKind[k].length}</b></span>`).join('');
+    }
+    html += `<div class="cal-cell ${otherMonth?'other-month':''} ${isToday?'today':''} ${severityCls} ${(dow===0||dow===6)?'weekend':''}" data-date="${dateStr}" onclick="jumpToScheduleDate('${dateStr}')">
+      <div class="cal-head"><span class="cal-daynum">${d.getDate()}</span></div>
+      ${badgesHtml}
+    </div>`;
+  }
+  grid.innerHTML = html;
+}
+function renderConflictOverview(){
+  const { dayGroups, conflicts, gaps, halfDayGaps, closedScheduled } = buildConflictDayGroups();
   const summaryEl = document.getElementById('conflictSummary');
   const listEl = document.getElementById('conflictList');
 
@@ -4625,52 +4756,11 @@ function renderConflictOverview(){
 
   if(conflicts.length===0 && gaps.length===0 && halfDayGaps.length===0 && closedScheduled.length===0){
     listEl.innerHTML = '<div class="no-conflict-box">✅ 目前沒有偵測到任何排班衝突或據點漏排</div>';
+    if(conflictView==='calendar') renderConflictCalendar();
     return;
   }
-  // 以日期分組：同一天只建立一張卡片，將診所、各里與所有風險項目集中呈現。
+  // 以日期分組：同一天只建立一張卡片，將診所、各里與所有風險項目集中呈現（分組邏輯已抽到 buildConflictDayGroups）。
   // 保留整張卡片點擊跳轉到當日排班彈窗的既有互動。
-  const dayGroups = {};
-  const ensureDayGroup = dateStr => {
-    if(!dayGroups[dateStr]) dayGroups[dateStr] = { rows:[], siteIds:[] };
-    return dayGroups[dateStr];
-  };
-  const addDaySite = (group, siteId) => {
-    if(!group.siteIds.includes(siteId)) group.siteIds.push(siteId);
-  };
-
-  conflicts.forEach(c=>{
-    const group = ensureDayGroup(c.dateStr);
-    addDaySite(group, c.site);
-    group.rows.push({
-      kind:'conflict',
-      staffId:c.staffId,
-      siteId:c.site,
-      start:c.start,
-      end:c.end,
-      reason:c.reasons.map(r=>r==='overlap'?'跨地點重疊':'與請假衝突').join('、')
-    });
-  });
-  gaps.forEach(g=>{
-    const group = ensureDayGroup(g.dateStr);
-    addDaySite(group, g.siteId);
-    group.rows.push({ kind:'gap', siteId:g.siteId, reason:'當天完全沒有安排人力' });
-  });
-  halfDayGaps.forEach(g=>{
-    const group = ensureDayGroup(g.dateStr);
-    addDaySite(group, g.siteId);
-    group.rows.push({
-      kind:'half',
-      siteId:g.siteId,
-      reason:`只有${g.missing==='morning'?'下午':'上午'}有安排，${g.missing==='morning'?'上午':'下午'}空著`
-    });
-  });
-
-  closedScheduled.forEach(g=>{
-    const group = ensureDayGroup(g.dateStr);
-    addDaySite(group, g.siteId);
-    group.rows.push({ kind:'closed', siteId:g.siteId, reason:`已設為${g.half==='am'?'上午':'下午'}休診，但該時段仍有排班或課程` });
-  });
-
   const dayCardsHtml = Object.keys(dayGroups).sort().map(dateStr=>{
     const group = dayGroups[dateStr];
     const gapRows = group.rows.filter(row=>row.kind==='gap');
@@ -4724,6 +4814,7 @@ function renderConflictOverview(){
     </div>`;
   }).join('');
   listEl.innerHTML = dayCardsHtml;
+  if(conflictView==='calendar') renderConflictCalendar(); // 資料異動時，若目前正顯示月曆檢視，一併刷新
 }
 
 // ===========================================================
@@ -5603,6 +5694,7 @@ function renderAllAfterSync(){
     renderCourseItemList();
     renderCalendar(); // 內部會自動依calMode分流到矩陣或月曆渲染
     renderConflictOverview();
+    document.getElementById('conflictViewListBtn')?.classList.add('gold');
   }
   // M4（請假登記＋總覽）與M7（發布清單）兩種角色都需要：
   // 幹部要管理發布狀態／也可登記請假，員工要登記請假／查詢已發布班表
