@@ -2495,7 +2495,7 @@ function renderTeachers(){
         ${(t.assignments||[]).map(a=>`
           <div class="assign-line">
             <span class="site-tag">📍 ${getSiteName(a.siteId)}</span>
-            ${TEACHER_CATEGORIES.map(cat=>`<span class="cat-chip ${a.categories.includes(cat)?'active':''}" onclick="toggleTeacherCategory('${t.id}','${a.siteId}','${cat}')">${cat}</span>`).join('')}
+            ${courseItems.map(c=>c.name).map(cat=>`<span class="cat-chip ${a.categories.includes(cat)?'active':''}" onclick="toggleTeacherCategory('${t.id}','${a.siteId}','${cat}')">${cat}</span>`).join('')}
             <span class="x" style="cursor:pointer;color:var(--danger);font-size:12px;" onclick="removeTeacherAssignment('${t.id}','${a.siteId}')">✕移除據點</span>
           </div>
         `).join('')}
