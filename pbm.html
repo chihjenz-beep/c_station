@@ -796,6 +796,8 @@
   .pal-pill.clinic.selected{background:var(--clinic);border-color:var(--clinic);color:#fff;}
   .pal-pill.station.selected{background:var(--station);border-color:var(--station);color:#fff;}
   .pal-pill.time.selected{background:var(--gold);border-color:var(--gold);color:#fff;}
+  .pal-pill.disabled{opacity:.35;cursor:not-allowed;text-decoration:line-through;}
+  .pal-pill.disabled:hover{border-color:#e5dfd3;}
   .pal-time-inputs{display:flex;gap:8px;align-items:center;margin-top:8px;font-size:12px;color:var(--text-soft);}
   .pal-ghost{
     position:fixed;z-index:300;pointer-events:none;padding:8px 12px;border-radius:12px;background:#fefaf1;
@@ -2156,6 +2158,17 @@ function isClinicSite(id){
   const s = sites.find(x=>x.id===id);
   return !!(s && s.isClinic);
 }
+const SITE_PREF_LABEL = { clinic:'診所', station:'據點', both:'兩者皆可' };
+// 依員工「上班類型」（診所／據點／兩者皆可）判斷是否可被排進某個地點；未設定或「兩者皆可」一律放行
+function staffAllowedAtSite(s, site){
+  if(!s || !site) return true;
+  if(!s.sites || s.sites==='both') return true;
+  return site.isClinic ? s.sites==='clinic' : s.sites==='station';
+}
+// 依目前彈丸已選的員工，判斷某個地點是否可選（只要有一位員工的上班類型跟這個地點不合，該地點就先不能選）
+function siteAllowedForCurrentStaff(site){
+  return schedPick.staffIds.every(id=>staffAllowedAtSite(staff.find(x=>x.id===id), site));
+}
 
 // ===== 頁籤切換 =====
 document.getElementById('tabBar').addEventListener('click', (e)=>{
@@ -3028,6 +3041,7 @@ function openSchedModal(dateStr){
   renderLeaveTypeBtns();
   renderModalLeaves();
   renderModalEntries();
+  updateScheduleFormAvailability();
   document.getElementById('schedModalOverlay').classList.add('open');
 }
 function closeSchedModal(e){
@@ -3071,6 +3085,7 @@ function renderFormSiteBtns(){
 function selectFormSite(id){
   document.getElementById('formSiteSel').value = id;
   renderFormSiteBtns();
+  updateScheduleFormAvailability();
 }
 function renderFormQuickBtns(){
   const container = document.getElementById('formQuickBtns');
@@ -3210,13 +3225,22 @@ function getLeaveStaffIds(dateStr){
 // 依目前表單選擇的人員，檢查是否被請假阻擋，更新UI禁用狀態
 function updateScheduleFormAvailability(){
   const staffId = document.getElementById('formStaffSel').value;
+  const siteId = document.getElementById('formSiteSel').value;
   const leaveStaffIds = getLeaveStaffIds(modalDate);
   const notice = document.getElementById('formBlockNotice');
   const btn = document.getElementById('addScheduleBtn');
+  const staffObj = staff.find(x=>x.id===staffId);
+  const siteObj = sites.find(x=>x.id===siteId);
   if(staffId && leaveStaffIds.includes(staffId)){
     const l = (leaves[modalDate]||[]).find(x=>x.staffId===staffId);
     notice.style.display='block';
     notice.textContent = `⚠ ${getStaffName(staffId)} 當日已登記「${l?l.type:''}」，需先取消請假才能排班`;
+    btn.disabled = true;
+    btn.style.opacity = '.5';
+    btn.style.cursor = 'not-allowed';
+  } else if(staffId && siteId && !staffAllowedAtSite(staffObj, siteObj)){
+    notice.style.display='block';
+    notice.textContent = `⚠ ${staffObj?staffObj.name:''} 上班類型設定為「${staffObj?SITE_PREF_LABEL[staffObj.sites]||'兩者皆可':''}」，不能排進「${siteObj?siteObj.name:''}」`;
     btn.disabled = true;
     btn.style.opacity = '.5';
     btn.style.cursor = 'not-allowed';
@@ -3260,6 +3284,12 @@ function addScheduleEntry(){
   if(start>=end){ alert('結束時間需晚於開始時間'); return; }
   if(getLeaveStaffIds(modalDate).includes(staffId)){
     alert('此人員當日已登記請假/排休，需先取消請假才能排班');
+    return;
+  }
+  const staffObj = staff.find(x=>x.id===staffId);
+  const siteObj = sites.find(x=>x.id===site);
+  if(!staffAllowedAtSite(staffObj, siteObj)){
+    alert(`${staffObj?staffObj.name:'此人員'}上班類型設定為「${staffObj?SITE_PREF_LABEL[staffObj.sites]||'兩者皆可':''}」，不能排進「${siteObj?siteObj.name:''}」，如需調整請到 M1 員工管理修改`);
     return;
   }
   if(!schedule[modalDate]) schedule[modalDate]=[];
@@ -3320,16 +3350,24 @@ function renderSchedPalette(){
 function updateSchedPaletteUI(){
   const pal = document.getElementById('schedPalette');
   if(!pal) return;
+  const selectedSite = schedPick.siteId ? sites.find(x=>x.id===schedPick.siteId) : null;
   pal.querySelectorAll('.pal-pill').forEach(el=>{
     const kind = el.dataset.kind, id = el.dataset.id;
-    let on = false;
-    if(kind==='staff') on = schedPick.staffIds.includes(id);
-    else if(kind==='site') on = schedPick.siteId===id;
+    let on = false, disallowed = false;
+    if(kind==='staff'){
+      on = schedPick.staffIds.includes(id);
+      disallowed = selectedSite ? !staffAllowedAtSite(staff.find(x=>x.id===id), selectedSite) : false;
+    }
+    else if(kind==='site'){
+      on = schedPick.siteId===id;
+      disallowed = !siteAllowedForCurrentStaff(sites.find(x=>x.id===id));
+    }
     else if(kind==='tpl'){
       const t = shiftTemplates.find(x=>x.id===id);
       on = !!t && schedPick.tplId===id && schedPick.start===t.start && schedPick.end===t.end;
     }
     el.classList.toggle('selected', on);
+    el.classList.toggle('disabled', disallowed && !on);
   });
   const cnt = document.getElementById('palStaffCount');
   if(cnt) cnt.textContent = schedPick.staffIds.length ? `（已選 ${schedPick.staffIds.length}）` : '';
@@ -3374,6 +3412,16 @@ function onPalTimeInput(){
     const pill = e.target.closest('.pal-pill');
     if(!pill) return;
     const kind = pill.dataset.kind, id = pill.dataset.id;
+    if(pill.classList.contains('disabled')){
+      if(kind==='staff'){
+        const s = staff.find(x=>x.id===id);
+        showSchedToast(`⚠ ${s?s.name:''} 上班類型設定為「${s?SITE_PREF_LABEL[s.sites]||'兩者皆可':''}」，不能排進目前選的地點，如需調整請到 M1 員工管理修改`);
+      } else if(kind==='site'){
+        const site = sites.find(x=>x.id===id);
+        showSchedToast(`⚠ 目前選取的員工中，有人上班類型不符「${site&&site.isClinic?'診所':'據點'}」，請先調整員工或地點的選擇`);
+      }
+      return;
+    }
     if(kind==='staff'){
       schedPick.staffIds = schedPick.staffIds.includes(id) ? schedPick.staffIds.filter(x=>x!==id) : [...schedPick.staffIds, id];
     } else if(kind==='site'){
@@ -3413,9 +3461,12 @@ function closedHalfNoticeFor(siteId, dateStr, start, end){
 function placeSchedCombo(dateStr){
   if(!isSchedComboReady()){ showSchedToast('請先在左側選好員工、地點與時段'); return; }
   const { staffIds, siteId, start, end } = schedPick;
-  const added = [], onLeave = [], dup = [];
+  const site = sites.find(x=>x.id===siteId);
+  const added = [], onLeave = [], dup = [], wrongType = [];
   const leaveIds = getLeaveStaffIds(dateStr);
   staffIds.forEach(id=>{
+    const s = staff.find(x=>x.id===id);
+    if(!staffAllowedAtSite(s, site)){ wrongType.push(getStaffName(id)); return; } // 保險檢查：上班類型不符者不排入
     if(leaveIds.includes(id)){ onLeave.push(getStaffName(id)); return; }
     const exists = (schedule[dateStr]||[]).some(e=>{
       const es = e.custom?e.custom.start:e.start, ee = e.custom?e.custom.end:e.end;
@@ -3439,6 +3490,7 @@ function placeSchedCombo(dateStr){
   if(added.length) parts.push(`已排入 ${dl}：${added.map(e=>getStaffName(e.staffId)).join('、')} → ${getSiteName(siteId)}${getShiftHalfLabel(start,end)} ${start}–${end}`);
   if(onLeave.length) parts.push(`${onLeave.join('、')} 當日已請假，未排入`);
   if(dup.length) parts.push(`${dup.join('、')} 已有相同排班，略過`);
+  if(wrongType.length) parts.push(`${wrongType.join('、')} 上班類型不符，未排入`);
   const notice = added.length ? closedHalfNoticeFor(siteId, dateStr, start, end) : '';
   if(notice) parts.push(notice);
   const undo = added.length ? ()=>{
