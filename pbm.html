@@ -1729,7 +1729,7 @@ const SYNC_MAP = {
   },
   sched_sites: {
     saveAction: 'saveSchedSites',
-    buildPayload: () => ({ sites: sites.map(s=>({ id:s.id, name:s.name, mainStaffIds:s.mainStaffIds, reliefStaffIds:s.reliefStaffIds, operatingWeekdays:s.operatingWeekdays })) }),
+    buildPayload: () => ({ sites: sites.map(s=>({ id:s.id, name:s.name, mainStaffIds:s.mainStaffIds, reliefStaffIds:s.reliefStaffIds, dutyStaffIds:s.dutyStaffIds, operatingWeekdays:s.operatingWeekdays })) }),
   },
   sched_clinicOperatingWeekdays: {
     saveAction: 'saveSchedClinicHours',
@@ -2101,8 +2101,13 @@ function ensureClinicSites(){
     if(found){
       found.isClinic = true;
       if(!found.operatingWeekdays || !found.operatingWeekdays.length) found.operatingWeekdays = [...clinicOperatingWeekdays];
+      // 診所改用「值班員工」單一欄位（人數不限）取代主責人員／延緩老師；
+      // 舊資料若尚無 dutyStaffIds，合併既有的主責人員＋延緩老師作為起始值，避免資料遺失
+      if(!found.dutyStaffIds){
+        found.dutyStaffIds = Array.from(new Set([...(found.mainStaffIds||[]), ...(found.reliefStaffIds||[])]));
+      }
     } else {
-      missing.push({ id:def.id, name:def.name, isClinic:true, mainStaffIds:[], reliefStaffIds:[], operatingWeekdays:[...clinicOperatingWeekdays] });
+      missing.push({ id:def.id, name:def.name, isClinic:true, mainStaffIds:[], reliefStaffIds:[], dutyStaffIds:[], operatingWeekdays:[...clinicOperatingWeekdays] });
     }
   });
   if(missing.length) sites.unshift(...missing.reverse()); // 補在清單最前面，沿用原本診所的營運星期作為起始值
@@ -2214,6 +2219,7 @@ function deleteStaff(id){
   sites.forEach(site=>{
     site.mainStaffIds = site.mainStaffIds.filter(x=>x!==id);
     site.reliefStaffIds = site.reliefStaffIds.filter(x=>x!==id);
+    if(site.dutyStaffIds) site.dutyStaffIds = site.dutyStaffIds.filter(x=>x!==id);
   });
   externalTeachers.forEach(t=>{ if(t.staffId===id){ t.staffId=null; t.type='external'; } });
   saveStore(STORE_KEYS.staff, staff);
@@ -2254,6 +2260,18 @@ function renderSites(){
           }).join('')}
         </div>
       </div>
+      ${site.isClinic ? `
+      <div class="site-role-row">
+        <span class="role-label">值班員工</span>
+        <div class="tag-list">
+          ${(site.dutyStaffIds||[]).map(sid=>`<span class="tag-chip">${getStaffName(sid)}<span class="x" onclick="removeSiteRole('${site.id}','duty','${sid}')">✕</span></span>`).join('')}
+          <select class="add-tag-select" onchange="addSiteRole('${site.id}','duty',this.value);this.value='';">
+            <option value="">＋新增值班員工</option>
+            ${staff.filter(s=>s.active && !(site.dutyStaffIds||[]).includes(s.id)).map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      ` : `
       <div class="site-role-row">
         <span class="role-label">主責人員</span>
         <div class="tag-list">
@@ -2274,6 +2292,7 @@ function renderSites(){
           </select>
         </div>
       </div>
+      `}
     </div>
   `).join('');
 }
@@ -2380,7 +2399,8 @@ function addSiteRole(siteId, role, staffId){
   if(!staffId) return;
   const site = sites.find(x=>x.id===siteId);
   if(!site) return;
-  const key = role==='main' ? 'mainStaffIds' : 'reliefStaffIds';
+  const key = role==='main' ? 'mainStaffIds' : role==='relief' ? 'reliefStaffIds' : 'dutyStaffIds';
+  if(!site[key]) site[key] = [];
   if(!site[key].includes(staffId)) site[key].push(staffId);
   saveStore(STORE_KEYS.sites, sites);
   renderSites();
@@ -2388,8 +2408,8 @@ function addSiteRole(siteId, role, staffId){
 function removeSiteRole(siteId, role, staffId){
   const site = sites.find(x=>x.id===siteId);
   if(!site) return;
-  const key = role==='main' ? 'mainStaffIds' : 'reliefStaffIds';
-  site[key] = site[key].filter(x=>x!==staffId);
+  const key = role==='main' ? 'mainStaffIds' : role==='relief' ? 'reliefStaffIds' : 'dutyStaffIds';
+  site[key] = (site[key]||[]).filter(x=>x!==staffId);
   saveStore(STORE_KEYS.sites, sites);
   renderSites();
 }
@@ -3646,7 +3666,8 @@ function buildScheduleBackupSheets(){
   sites.forEach(st=>{
     siteRows.push([st.name, st.isClinic?'診所':'據點',
       (st.operatingWeekdays||[]).slice().sort((a,b)=>a-b).map(d=>'週'+WD[d]).join('、'),
-      (st.mainStaffIds||[]).map(getStaffName).join('、'), (st.reliefStaffIds||[]).map(getStaffName).join('、')]);
+      st.isClinic ? (st.dutyStaffIds||[]).map(getStaffName).join('、') : (st.mainStaffIds||[]).map(getStaffName).join('、'),
+      st.isClinic ? '' : (st.reliefStaffIds||[]).map(getStaffName).join('、')]);
   });
   // 班別模板
   const tplRows = [['名稱','開始','結束','時段']];
