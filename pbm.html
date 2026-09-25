@@ -5187,7 +5187,10 @@ function downloadMatrixImage(){
     });
     return maxSegs;
   });
-  const rowHeights = rowSegCounts.map(segs => baseRowH * segs);
+  // 兩班以上疊在同一格時，每段改用較窄的高度（跟畫面上縮小mc-seg間距後的觀感一致），
+  // 避免像上下兩班8px的小字在32px的高格裡留下大片空白，顯得很「寬」
+  const stackedSegH = 20;
+  const rowHeights = rowSegCounts.map(segs => segs<=1 ? baseRowH : stackedSegH*segs);
   const totalRowsH = rowHeights.reduce((a,b)=>a+b, 0);
 
   const canvasW = tableW + padding * 2;
