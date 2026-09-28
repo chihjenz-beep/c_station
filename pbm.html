@@ -971,6 +971,7 @@
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -1743,9 +1744,16 @@ const FIREBASE_CONFIG = {
 };
 const ADMIN_EMAIL = 'admin@pbm.local'; // 需與 Firebase 建立的共用主管帳號、firestore.rules 內的信箱一致
 let fbAuth = null;
+let fbDb = null; // Firestore（M9 支援填報：每筆紀錄一份獨立文件，集合 attendance）
 try{
   firebase.initializeApp(FIREBASE_CONFIG);
   fbAuth = firebase.auth();
+  fbDb = firebase.firestore();
+  // 離線持久化：寫入先存在瀏覽器（IndexedDB），沒網路也能登記，恢復連線後自動補送，關掉頁面也不會掉。
+  // 必須在任何 Firestore 讀寫之前呼叫；不支援的瀏覽器會自動退回「僅本次開啟期間排隊」。
+  fbDb.enablePersistence({ synchronizeTabs:true }).catch(e=>{
+    console.warn('[Firestore] 離線持久化未啟用（' + (e && e.code) + '），寫入仍可用，但關閉頁面前需連上網路', e);
+  });
   // 沿用舊行為：關閉分頁即登出。想改成「同一台裝置長期保持登入」，把 SESSION 改成 LOCAL
   fbAuth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(()=>{});
 }catch(e){ console.error('[Firebase] 初始化失敗，請檢查 FIREBASE_CONFIG：', e); }
@@ -1756,6 +1764,9 @@ if(fbAuth){
   fbAuth.onAuthStateChanged(user=>{
     const ok = !!(user && user.email === ADMIN_EMAIL);
     if(IS_ADMIN) document.body.classList.toggle('locked', !ok);
+    // firestore.rules：attendance 僅管理員可讀，所以登入確認後才拉全部 M9 紀錄
+    if(ok && IS_ADMIN) startAttendanceListener();
+    else stopAttendanceListener();
   });
 }
 function authErrMsg(e){
@@ -1969,10 +1980,7 @@ const SYNC_MAP = {
     saveAction: 'saveSchedPublished',
     buildPayload: () => ({ publishedMonths: publishedMonths }),
   },
-  sched_attendance: {
-    saveAction: 'saveSchedAttendance',
-    buildPayload: () => ({ attendance: attendanceRecords }),
-  },
+  // M9 支援填報已改存 Firestore（attendance 集合，一筆一份文件），不再走 GAS 整包同步
 };
 
 let syncTimers = {};
@@ -2097,7 +2105,6 @@ async function pullAllFromGAS(){
         }
       } },
     { getAction:'getSchedPublished',  apply: r => { if(r.publishedMonths){ publishedMonths = r.publishedMonths; saveLocalOnly(STORE_KEYS.publishedMonths, publishedMonths); } } },
-    { getAction:'getSchedAttendance', apply: r => { if(r.attendance){ attendanceRecords = r.attendance; saveLocalOnly(STORE_KEYS.attendance, attendanceRecords); } } },
     { getAction:'getSchedClinicHours', apply: r => { if(r.operatingWeekdays && r.operatingWeekdays.length){ clinicOperatingWeekdays = r.operatingWeekdays; saveLocalOnly(STORE_KEYS.clinicOperatingWeekdays, clinicOperatingWeekdays); } } },
     { getAction:'getSchedCourseItems', apply: r => { if(r.courseItems && r.courseItems.length){ courseItems = r.courseItems; saveLocalOnly(STORE_KEYS.courseItems, courseItems); } } },
     { getAction:'getSchedCourseSchedule', apply: r => {
@@ -5936,25 +5943,119 @@ async function addAttendanceRecord(){
     if(btn) btn.disabled = false;
   }
 
-  attendanceRecords.push({
+  const rec = {
     id: uid9(), staffId, date: dateStr, site,
     otherLabel: site==='other' ? otherLabel : '',
     start, end, note, photos: photoUrls
+  };
+  // 一筆紀錄 = Firestore 一份獨立文件（attendance/{id}）。
+  // 有離線持久化時，set() 要等伺服器確認才會完成，所以不 await：先把紀錄記在本機並標「待上傳」，
+  // 確認後才拿掉標記。員工端只會 create；之後要改、要刪，伺服器規則一律要求管理員登入。
+  const isAdminNow = isAdminAuthed();
+  if(!isAdminNow){ // 管理員的畫面由即時監聽維護，員工端才需要自己記一份本機快取
+    attendanceRecords.push(Object.assign({ _pending:true }, rec));
+    saveLocalOnly(STORE_KEYS.attendance, attendanceRecords);
+  }
+  fbDb.collection('attendance').doc(rec.id).set(Object.assign({}, rec, {
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  })).then(()=>{
+    const r = attendanceRecords.find(x=>x.id===rec.id);
+    if(r && r._pending){ delete r._pending; saveLocalOnly(STORE_KEYS.attendance, attendanceRecords); renderAttendanceOverview(); }
+  }).catch(err=>{
+    // 伺服器明確拒絕（例如規則不允許）→ 撤回本機紀錄，別讓人以為已送出
+    attendanceRecords = attendanceRecords.filter(x=>x.id!==rec.id);
+    saveLocalOnly(STORE_KEYS.attendance, attendanceRecords);
+    renderAttendanceOverview();
+    alert('⚠️ ' + dateStr + ' 的支援紀錄被伺服器拒絕，未成功登記：' + (err && err.code || err && err.message || '未知錯誤') + '\n請洽管理者。');
   });
-  saveStore(STORE_KEYS.attendance, attendanceRecords);
   document.getElementById('m9OtherLabel').value = '';
   document.getElementById('m9Note').value = '';
   m9PendingPhotos = [];
   renderM9PhotoPreview();
   renderAttendanceOverview();
-  alert(`已為 ${getStaffName(staffId)} 登記 ${dateStr} 的支援紀錄${photoUrls.length>0?`（含${photoUrls.length}張照片）`:''}`);
+  alert(`已為 ${getStaffName(staffId)} 登記 ${dateStr} 的支援紀錄${photoUrls.length>0?`（含${photoUrls.length}張照片）`:''}` +
+    (isAdminNow ? '' : '\n若目前網路不穩，紀錄會先保存在這台裝置，恢復連線後自動上傳（總覽會顯示「⏳ 待上傳」）。'));
 }
-function deleteAttendanceRecord(id){
-  if(!IS_ADMIN){ alert('⚠️ 一般員工僅能新增支援填報紀錄，無法修改或刪除已填報的紀錄。如需更正，請洽管理者協助處理。'); return; }
+function isAdminAuthed(){ return !!(IS_ADMIN && fbAuth && fbAuth.currentUser && fbAuth.currentUser.email === ADMIN_EMAIL); }
+async function deleteAttendanceRecord(id){
+  if(!isAdminAuthed()){ alert('⚠️ 一般員工僅能新增支援填報紀錄，無法修改或刪除已填報的紀錄。如需更正，請洽管理者協助處理。'); return; }
   if(!confirm('確定刪除此筆支援紀錄？')) return;
+  try{
+    await fbDb.collection('attendance').doc(id).delete(); // 伺服器端再驗一次：非管理員會被拒絕
+  }catch(err){
+    alert('刪除失敗：' + (err && err.code || err && err.message || '未知錯誤'));
+    return;
+  }
   attendanceRecords = attendanceRecords.filter(r=>r.id!==id);
-  saveStore(STORE_KEYS.attendance, attendanceRecords);
+  saveLocalOnly(STORE_KEYS.attendance, attendanceRecords);
   renderAttendanceOverview();
+}
+
+// 管理員：即時監聽 attendance 集合，別人新增/刪除的紀錄會自動出現在畫面上（員工端沒有讀取權限，不監聽）
+let attendanceUnsub = null;
+let legacyMigrationOffered = false;
+function startAttendanceListener(){
+  if(attendanceUnsub || !fbDb || !isAdminAuthed()) return;
+  attendanceUnsub = fbDb.collection('attendance').onSnapshot(snap=>{
+    attendanceRecords = snap.docs.map(d=>{
+      const x = d.data();
+      return { id:d.id, staffId:x.staffId, date:x.date, site:x.site, otherLabel:x.otherLabel||'',
+               start:x.start, end:x.end, note:x.note||'', photos:x.photos||[] };
+    });
+    saveLocalOnly(STORE_KEYS.attendance, attendanceRecords);
+    renderAttendanceOverview();
+    if(lastReportData) runReport(); // 報表已產生過就用最新的 M9 資料重算
+    if(!legacyMigrationOffered && !snap.metadata.fromCache){ legacyMigrationOffered = true; offerLegacyAttendanceMigration(); }
+  }, err=>{
+    attendanceUnsub = null;
+    console.error('[Firestore] 監聽 attendance 失敗：', err);
+    alert('讀取支援填報紀錄失敗：' + (err && err.code || err && err.message || '未知錯誤'));
+  });
+}
+function stopAttendanceListener(){
+  if(attendanceUnsub){ attendanceUnsub(); attendanceUnsub = null; }
+  legacyMigrationOffered = false;
+}
+
+// 員工端：開啟頁面時，若先前「待上傳」的寫入已全部送達伺服器，就清掉本機的待上傳標記
+function clearAttendancePendingWhenSynced(){
+  if(!fbDb || IS_ADMIN) return;
+  fbDb.waitForPendingWrites().then(()=>{
+    let changed = false;
+    attendanceRecords.forEach(r=>{ if(r._pending){ delete r._pending; changed = true; } });
+    if(changed){ saveLocalOnly(STORE_KEYS.attendance, attendanceRecords); renderAttendanceOverview(); }
+  }).catch(()=>{});
+}
+clearAttendancePendingWhenSynced();
+
+// 一次性搬家：把舊版存在 GAS/Google Sheet 的 M9 紀錄，逐筆寫成 Firestore 文件（沿用原 id，重複執行不會產生重複）
+async function offerLegacyAttendanceMigration(){
+  if(localStorage.getItem('m9_migrated_to_firestore') === '1') return;
+  let legacy = [];
+  try{
+    const r = await gasGet({ action:'getSchedAttendance' });
+    if(r && r.ok && Array.isArray(r.attendance)) legacy = r.attendance;
+  }catch(e){ return; } // 拉不到舊資料就下次再說
+  const have = new Set(attendanceRecords.map(r=>r.id));
+  const todo = legacy.filter(r=> r && r.id && !have.has(r.id));
+  if(todo.length === 0){ localStorage.setItem('m9_migrated_to_firestore','1'); return; }
+  if(!confirm(`偵測到 ${todo.length} 筆舊版 M9 支援紀錄尚未搬到 Firestore，要現在匯入嗎？`)) return;
+  // 舊資料量不大（M9 使用頻率低），一次性寫入就好，不用分批
+  try{
+    const batch = fbDb.batch();
+    todo.forEach(r=>{
+      batch.set(fbDb.collection('attendance').doc(r.id), {
+        staffId:r.staffId||'', date:r.date||'', site:r.site||'', otherLabel:r.otherLabel||'',
+        start:r.start||'', end:r.end||'', note:r.note||'', photos:r.photos||[],
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(), migrated:true
+      });
+    });
+    await batch.commit();
+    localStorage.setItem('m9_migrated_to_firestore','1');
+    alert(`✅ 已匯入 ${todo.length} 筆舊紀錄`); // 即時監聽會自動把它們顯示出來
+  }catch(err){
+    alert('匯入舊紀錄失敗：' + (err && err.code || err && err.message || '未知錯誤'));
+  }
 }
 function renderAttendanceOverview(){
   const container = document.getElementById('attendanceOverviewList');
@@ -5975,11 +6076,13 @@ function renderAttendanceOverview(){
   rows.forEach(r=> totalHours += timeToHours(r.start, r.end));
   totalBox.textContent = `⏱️ 符合篩選條件的總工時：${totalHours.toFixed(1)} 小時（共 ${rows.length} 筆紀錄）`;
 
+  const empHint = isAdminAuthed() ? '' :
+    '<div style="font-size:11px;color:var(--text-soft);margin-bottom:6px;">ℹ️ 員工端只顯示這台裝置上填報過的紀錄；完整紀錄由管理者查看。</div>';
   if(rows.length===0){
-    container.innerHTML = '<div class="report-empty">查無支援紀錄</div>';
+    container.innerHTML = empHint + '<div class="report-empty">查無支援紀錄</div>';
     return;
   }
-  let html = `<table class="report-table attendance-table">
+  let html = empHint + `<table class="report-table attendance-table">
     <thead><tr>
       <th>姓名</th><th>日期</th><th>時間區間</th><th>地點</th><th>事由</th><th class="num-head">支援時數</th><th>照片</th><th></th>
     </tr></thead><tbody>`;
@@ -5988,9 +6091,10 @@ function renderAttendanceOverview(){
     const photosHtml = (r.photos && r.photos.length>0)
       ? r.photos.map(url=>`<a href="${url}" target="_blank" class="m9-photo-link"><img src="${url}" loading="lazy"></a>`).join('')
       : '<span style="color:var(--text-soft);font-size:11px;">無</span>';
-    const delCell = IS_ADMIN
+    const pendingBadge = r._pending ? '<span style="font-size:11px;color:var(--warn);font-weight:600;">⏳ 待上傳</span><br>' : '';
+    const delCell = isAdminAuthed()
       ? `<button class="row-del" onclick="deleteAttendanceRecord('${r.id}')">✕ 刪除</button>`
-      : `<span style="font-size:11px;color:var(--warn);font-weight:600;" title="一般員工無法刪除，請洽管理者">🔒 僅管理者可刪除</span>`;
+      : pendingBadge + `<span style="font-size:11px;color:var(--warn);font-weight:600;" title="一般員工無法刪除，請洽管理者">🔒 僅管理者可刪除</span>`;
     html += `<tr>
       <td>${getStaffName(r.staffId)}</td>
       <td>${r.date}</td>
