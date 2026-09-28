@@ -953,9 +953,70 @@
   .badge{background:#efe3c4;color:#7a5a2c;}
   .wip{background:linear-gradient(135deg,#fbf3df,#f4e8c9);border-color:#d3bd8c;}
 
+  /* ===== 登入閘門 ===== */
+  body.locked > *:not(#loginGate):not(script){display:none !important;}
+  #loginGate,#pwdModal,#adminLoginModal{position:fixed;inset:0;z-index:9999;background:rgba(51,32,26,.92);display:none;align-items:center;justify-content:center;padding:16px;}
+  #loginGate{display:flex;background:linear-gradient(160deg,#33201a,#5b2a26);}
+  body:not(.locked) #loginGate{display:none;}
+  #pwdModal.open,#adminLoginModal.open{display:flex;}
+  .gate-card{background:var(--paper);border:1px solid var(--gold);border-radius:16px;padding:28px 26px;width:100%;max-width:340px;box-shadow:0 12px 40px rgba(0,0,0,.35);}
+  .gate-card h2{margin:0 0 4px;font-size:18px;color:var(--brown-dark);}
+  .gate-card .gate-sub{font-size:12px;color:var(--brown-light);margin-bottom:16px;}
+  .gate-card label{display:block;font-size:12px;color:var(--brown);margin:10px 0 4px;font-weight:600;}
+  .gate-card input{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--gold);border-radius:10px;font-size:15px;background:#fff;}
+  .gate-card .gate-err{color:var(--danger);font-size:12px;min-height:16px;margin-top:8px;}
+  .gate-card .gate-btns{display:flex;gap:8px;margin-top:14px;}
+  .gate-card button{flex:1;padding:10px;border-radius:10px;border:1px solid var(--gold);background:var(--brown);color:#fff;font-size:14px;font-weight:700;cursor:pointer;}
+  .gate-card button.ghost{background:transparent;color:var(--brown);}
 </style>
 </head>
 <body>
+
+<div id="loginGate">
+  <div class="gate-card">
+    <h2>🔒 平安長照醫療體系排班系統</h2>
+    <div class="gate-sub">請輸入管理密碼</div>
+    <label for="gatePwd">密碼</label>
+    <input type="password" id="gatePwd" autocomplete="current-password" onkeydown="if(event.key==='Enter')submitLogin()">
+    <div class="gate-err" id="gateErr"></div>
+    <div class="gate-btns">
+      <button class="ghost" onclick="backToEmployee()">返回員工版</button>
+      <button onclick="submitLogin()">登入</button>
+    </div>
+  </div>
+</div>
+
+<div id="adminLoginModal">
+  <div class="gate-card">
+    <h2>🔒 管理員登入</h2>
+    <div class="gate-sub">登入成功後網址會帶上 role=admin，進入管理版</div>
+    <label for="adminPwd">密碼</label>
+    <input type="password" id="adminPwd" autocomplete="current-password" onkeydown="if(event.key==='Enter')submitAdminLogin()">
+    <div class="gate-err" id="adminErr"></div>
+    <div class="gate-btns">
+      <button class="ghost" onclick="closeAdminLogin()">取消</button>
+      <button onclick="submitAdminLogin()">登入</button>
+    </div>
+  </div>
+</div>
+
+<div id="pwdModal">
+  <div class="gate-card">
+    <h2>🔑 修改密碼</h2>
+    <div class="gate-sub">修改後，下次登入請使用新密碼</div>
+    <label for="pwdOld">目前密碼</label>
+    <input type="password" id="pwdOld" autocomplete="current-password">
+    <label for="pwdNew">新密碼（至少4碼）</label>
+    <input type="password" id="pwdNew" autocomplete="new-password">
+    <label for="pwdNew2">再輸入一次新密碼</label>
+    <input type="password" id="pwdNew2" autocomplete="new-password" onkeydown="if(event.key==='Enter')submitChangePwd()">
+    <div class="gate-err" id="pwdErr"></div>
+    <div class="gate-btns">
+      <button class="ghost" onclick="closeChangePwd()">取消</button>
+      <button onclick="submitChangePwd()">確認修改</button>
+    </div>
+  </div>
+</div>
 
 <header>
   <div>
@@ -964,7 +1025,9 @@
   </div>
   <div class="actions">
     <button class="icon-btn" id="syncBtn">同步</button>
-    <button class="icon-btn" id="loginBtn">登入</button>
+    <button class="icon-btn" id="pwdBtn" onclick="openChangePwd()">改密碼</button>
+    <button class="icon-btn" id="loginBtn" onclick="logout()">登出</button>
+    <button class="icon-btn" id="adminEntryBtn" onclick="openAdminLogin()">管理員登入</button>
   </div>
 </header>
 
@@ -1424,10 +1487,14 @@
     </div>
 
     <div class="card">
-      <h2>📋 請假排休總覽</h2>
-      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
-        可查詢所有人的請假紀錄，方便互相協調班表。
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px;">
+        <h2 style="margin:0;">📋 請假排休總覽</h2>
+        <button class="btn outline" id="m4ScanBtn" onclick="scanLeavesM4()">🔄 掃描員工端登記</button>
       </div>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
+        可查詢所有人的請假紀錄，方便互相協調班表。員工端登記的請假，按「掃描」即可從雲端抓回並與本機合併。
+      </div>
+      <div id="m4ScanResult" style="display:none;font-size:12px;line-height:1.7;padding:8px 10px;margin-bottom:10px;border-radius:8px;background:#f6f1e6;border:1px solid #e5dfd3;"></div>
       <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
         <select id="leaveFilterStaff" onchange="renderLeaveOverview()" style="flex:1;min-width:120px;">
           <option value="">全部人員</option>
@@ -1654,17 +1721,89 @@
 </footer>
 
 <script>
-// ===== 角色判斷（URL參數方式，無需登入） =====
-// ?role=admin → 幹部，完整權限，可見全部8模組
-// 無參數或其他值 → 員工模式，僅可見 M4（請假登記）與 M7（班表查詢）
+// ===== 角色判斷 =====
+// 單一檔案兩種角色：
+// ・一般網址 → 員工版，僅可見 M4、M7、M9，畫面上有「管理員登入」按鈕
+// ・網址帶 ?role=admin → 管理版，需先通過密碼才顯示全部模組
+// 員工按「管理員登入」輸入密碼成功後，會自動跳到帶 role=admin 的網址。
 const urlParams = new URLSearchParams(window.location.search);
-const IS_ADMIN = (typeof STAFF_ONLY_BUILD !== 'undefined' && STAFF_ONLY_BUILD)
-  ? false // 員工版固定檔（staff.html）：不論網址加什麼參數，一律視為一般員工，無法用網址切換成管理員
-  : urlParams.get('role') === 'admin';
+const IS_ADMIN = (typeof STAFF_ONLY_BUILD !== 'undefined' && STAFF_ONLY_BUILD) ? false : (urlParams.get('role') === 'admin');
+
+// ===== 密碼登入（僅前端閘門，密碼雜湊存於本機瀏覽器；預設密碼 1234，請登入後立即修改） =====
+const PWD_KEY = 'sched_adminPwdHash';
+const AUTH_KEY = 'sched_adminAuthed';
+const DEFAULT_PWD = '1234';
+async function hashPwd(p){
+  const text = 'pbm-salt:' + p;
+  if(window.crypto && crypto.subtle){
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+  let h = 5381; for(const c of text) h = ((h<<5)+h+c.charCodeAt(0))>>>0;
+  return 'x' + h.toString(16);
+}
+async function getStoredHash(){ return localStorage.getItem(PWD_KEY) || await hashPwd(DEFAULT_PWD); }
+if(IS_ADMIN && sessionStorage.getItem(AUTH_KEY)!=='1') document.body.classList.add('locked');
+async function submitLogin(){
+  const inp = document.getElementById('gatePwd');
+  if(await hashPwd(inp.value) === await getStoredHash()){
+    sessionStorage.setItem(AUTH_KEY,'1');
+    document.body.classList.remove('locked');
+    inp.value=''; document.getElementById('gateErr').textContent='';
+  } else {
+    document.getElementById('gateErr').textContent = '密碼錯誤，請再試一次';
+    inp.select();
+  }
+}
+function goEmployeeUrl(){
+  const u = new URL(location.href);
+  u.searchParams.delete('role');
+  location.href = u.toString();
+}
+function backToEmployee(){ goEmployeeUrl(); }
+function logout(){
+  sessionStorage.removeItem(AUTH_KEY);
+  goEmployeeUrl(); // 登出後回到員工版網址
+}
+function openAdminLogin(){
+  document.getElementById('adminPwd').value = '';
+  document.getElementById('adminErr').textContent = '';
+  document.getElementById('adminLoginModal').classList.add('open');
+  setTimeout(()=>document.getElementById('adminPwd').focus(), 50);
+}
+function closeAdminLogin(){ document.getElementById('adminLoginModal').classList.remove('open'); }
+async function submitAdminLogin(){
+  const inp = document.getElementById('adminPwd');
+  if(await hashPwd(inp.value) === await getStoredHash()){
+    sessionStorage.setItem(AUTH_KEY,'1');
+    const u = new URL(location.href);
+    u.searchParams.set('role','admin'); // 登入成功 → 網址帶上 role=admin
+    location.href = u.toString();
+  } else {
+    document.getElementById('adminErr').textContent = '密碼錯誤，請再試一次';
+    inp.select();
+  }
+}
+function openChangePwd(){
+  ['pwdOld','pwdNew','pwdNew2'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('pwdErr').textContent='';
+  document.getElementById('pwdModal').classList.add('open');
+}
+function closeChangePwd(){ document.getElementById('pwdModal').classList.remove('open'); }
+async function submitChangePwd(){
+  const err = document.getElementById('pwdErr');
+  const o = document.getElementById('pwdOld').value, n = document.getElementById('pwdNew').value, n2 = document.getElementById('pwdNew2').value;
+  if(await hashPwd(o) !== await getStoredHash()){ err.textContent='目前密碼不正確'; return; }
+  if(n.length < 4){ err.textContent='新密碼至少需4碼'; return; }
+  if(n !== n2){ err.textContent='兩次輸入的新密碼不一致'; return; }
+  localStorage.setItem(PWD_KEY, await hashPwd(n));
+  closeChangePwd();
+  alert('✅ 密碼已修改，下次登入請使用新密碼');
+}
 const EMPLOYEE_VISIBLE_PANELS = ['m4', 'm7', 'm9'];
 
 function applyRoleVisibility(){
-  if(IS_ADMIN) return; // 幹部模式：保留全部頁籤與按鈕，不做任何隱藏
+  if(IS_ADMIN){ const eb = document.getElementById('adminEntryBtn'); if(eb) eb.remove(); return; } // 幹部模式：保留全部頁籤與按鈕；已登入，不需要「管理員登入」入口
   // 員工模式：只留 M4＋M7，其餘頁籤從畫面移除（不是CSS隱藏，是直接從DOM拿掉，避免被找到或誤點）
   document.querySelectorAll('.tab-btn').forEach(btn=>{
     if(!EMPLOYEE_VISIBLE_PANELS.includes(btn.dataset.panel)) btn.remove();
@@ -1685,6 +1824,8 @@ function applyRoleVisibility(){
   const syncBtn = document.getElementById('syncBtn');
   if(loginBtn) loginBtn.remove();
   if(syncBtn) syncBtn.remove();
+  const pwdBtnEl = document.getElementById('pwdBtn');
+  if(pwdBtnEl) pwdBtnEl.remove(); // 改密碼僅管理版可用
   // M7內的「班表發布管理」是管理者專用功能，員工模式直接從DOM移除（不是CSS隱藏），
   // 避免員工檢視網頁原始碼/開發者工具就能看到發布操作區與相關按鈕
   const m7PublishCard = document.getElementById('m7PublishCard');
@@ -4547,6 +4688,70 @@ function renderLeaveOverview(){
       ${delBtn}
     </div>
   `;}).join('');
+}
+// 掃描員工端（staff.html）登記的請假：抓雲端最新資料，與本機「合併」（不是覆蓋），
+// 雲端有而本機沒有的補進來；本機有而雲端沒有的（例如被員工端舊資料覆蓋掉）推回雲端。
+async function scanLeavesM4(){
+  const btn = document.getElementById('m4ScanBtn');
+  const box = document.getElementById('m4ScanResult');
+  const show = (html, ok)=>{
+    box.style.display = 'block';
+    box.style.background = ok ? '#eef5e8' : '#fbeeee';
+    box.style.borderColor = ok ? '#cfe0c3' : '#e8c5c5';
+    box.innerHTML = html;
+  };
+  if(!SYNC_ENABLED){ show('⚠ 雲端同步未啟用，無法掃描。', false); return; }
+  btn.disabled = true; btn.textContent = '掃描中…';
+  try{
+    const r = await gasGet({ action:'getSchedLeaves' });
+    if(!r || !r.ok) throw new Error((r && r.error) || '雲端回應異常');
+    const keyOf = (d,l)=>`${d}|${l.staffId}|${l.type}`;
+    const localKeys = new Set();
+    Object.keys(leaves).forEach(d=>(leaves[d]||[]).forEach(l=>localKeys.add(keyOf(d,l))));
+    const cloudKeys = new Set((r.leaves||[]).map(l=>keyOf(l.date,l)));
+
+    // 雲端有、本機沒有 → 員工端新登記的
+    const added = [];
+    (r.leaves||[]).forEach(l=>{
+      if(localKeys.has(keyOf(l.date,l))) return;
+      if(!leaves[l.date]) leaves[l.date] = [];
+      leaves[l.date].push({ staffId:l.staffId, type:l.type, note:l.note||'' });
+      added.push(l);
+    });
+    // 本機有、雲端沒有 → 需推回雲端
+    let localOnly = 0;
+    localKeys.forEach(k=>{ if(!cloudKeys.has(k)) localOnly++; });
+
+    if(added.length || localOnly){
+      // saveStore 會寫本機並排程推送（推送的是合併後的完整清單）
+      saveStore(STORE_KEYS.leaves, leaves);
+    }
+
+    // 新增的請假若與已排班衝突，提醒到 M5 查看
+    const clash = added.filter(l=>(schedule[l.date]||[]).some(e=>e.staffId===l.staffId));
+
+    renderLeaveOverview();
+    renderCalendar();
+    if(typeof renderConflictOverview==='function') renderConflictOverview();
+    updateM4ScheduleHint();
+
+    const t = new Date();
+    const stamp = `${t.getHours()}:${String(t.getMinutes()).padStart(2,'0')}`;
+    let html = `✅ 掃描完成（${stamp}）：雲端共 ${cloudKeys.size} 筆請假。`;
+    if(added.length){
+      const list = added.slice(0,8).map(l=>`${l.date} ${getStaffName(l.staffId)}（${l.type}）`).join('、');
+      html += `<br>📥 新同步 ${added.length} 筆：${list}${added.length>8?' …':''}`;
+    } else {
+      html += '<br>📥 沒有新的員工登記。';
+    }
+    if(localOnly) html += `<br>📤 本機有 ${localOnly} 筆雲端缺少，已推回雲端。`;
+    if(clash.length) html += `<br>⚠ 其中 ${clash.length} 筆與已排班衝突，請到 M5 衝突偵測處理。`;
+    show(html, true);
+  }catch(err){
+    show('⚠ 掃描失敗：' + err.message + '（目前仍顯示本機資料）', false);
+  }finally{
+    btn.disabled = false; btn.textContent = '🔄 掃描員工端登記';
+  }
 }
 function deleteLeaveFromOverview(dateStr, idx, force=false){
   if(!IS_ADMIN){ alert('⚠️ 一般員工僅能新增請假登記，無法修改或刪除已登記的紀錄。如需取消/更正，請洽管理者協助處理。'); return; }
