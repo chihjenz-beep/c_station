@@ -969,6 +969,8 @@
   .gate-card button{flex:1;padding:10px;border-radius:10px;border:1px solid var(--gold);background:var(--brown);color:#fff;font-size:14px;font-weight:700;cursor:pointer;}
   .gate-card button.ghost{background:transparent;color:var(--brown);}
 </style>
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
 </head>
 <body>
 
@@ -1002,10 +1004,10 @@
 <div id="pwdModal">
   <div class="gate-card">
     <h2>🔑 修改密碼</h2>
-    <div class="gate-sub">修改後，下次登入請使用新密碼</div>
+    <div class="gate-sub">A、B 主管共用同一組密碼，修改後兩人都需使用新密碼</div>
     <label for="pwdOld">目前密碼</label>
     <input type="password" id="pwdOld" autocomplete="current-password">
-    <label for="pwdNew">新密碼（至少4碼）</label>
+    <label for="pwdNew">新密碼（至少6碼）</label>
     <input type="password" id="pwdNew" autocomplete="new-password">
     <label for="pwdNew2">再輸入一次新密碼</label>
     <input type="password" id="pwdNew2" autocomplete="new-password" onkeydown="if(event.key==='Enter')submitChangePwd()">
@@ -1728,29 +1730,56 @@
 const urlParams = new URLSearchParams(window.location.search);
 const IS_ADMIN = (typeof STAFF_ONLY_BUILD !== 'undefined' && STAFF_ONLY_BUILD) ? false : (urlParams.get('role') === 'admin');
 
-// ===== 密碼登入（僅前端閘門，密碼雜湊存於本機瀏覽器；預設密碼 1234，請登入後立即修改） =====
-const PWD_KEY = 'sched_adminPwdHash';
-const AUTH_KEY = 'sched_adminAuthed';
-const DEFAULT_PWD = '1234';
-async function hashPwd(p){
-  const text = 'pbm-salt:' + p;
-  if(window.crypto && crypto.subtle){
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-  }
-  let h = 5381; for(const c of text) h = ((h<<5)+h+c.charCodeAt(0))>>>0;
-  return 'x' + h.toString(16);
+// ===== Firebase Auth 登入（階段1）=====
+// A、B 兩位主管共用一組帳號（信箱固定在程式裡，畫面上只需輸入密碼）。
+// 請先在 Firebase Console → Authentication → 啟用「電子郵件/密碼」，並手動建立下方 ADMIN_EMAIL 這個使用者。
+const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyDnD3pte7Zy6aKeAKUMT2_tdlMD3QnT6sk',
+  authDomain: 'pbmfirebase-2ef6a.firebaseapp.com',
+  projectId: 'pbmfirebase-2ef6a',
+  storageBucket: 'pbmfirebase-2ef6a.firebasestorage.app',
+  messagingSenderId: '228833545764',
+  appId: '1:228833545764:web:e1059928832906a73092b1'
+};
+const ADMIN_EMAIL = 'admin@pbm.local'; // 需與 Firebase 建立的共用主管帳號、firestore.rules 內的信箱一致
+let fbAuth = null;
+try{
+  firebase.initializeApp(FIREBASE_CONFIG);
+  fbAuth = firebase.auth();
+  // 沿用舊行為：關閉分頁即登出。想改成「同一台裝置長期保持登入」，把 SESSION 改成 LOCAL
+  fbAuth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(()=>{});
+}catch(e){ console.error('[Firebase] 初始化失敗，請檢查 FIREBASE_CONFIG：', e); }
+localStorage.removeItem('sched_adminPwdHash'); // 清掉舊版存在本機的密碼雜湊
+
+if(IS_ADMIN) document.body.classList.add('locked'); // 預設鎖住，確認登入身分後才解鎖
+if(fbAuth){
+  fbAuth.onAuthStateChanged(user=>{
+    const ok = !!(user && user.email === ADMIN_EMAIL);
+    if(IS_ADMIN) document.body.classList.toggle('locked', !ok);
+  });
 }
-async function getStoredHash(){ return localStorage.getItem(PWD_KEY) || await hashPwd(DEFAULT_PWD); }
-if(IS_ADMIN && sessionStorage.getItem(AUTH_KEY)!=='1') document.body.classList.add('locked');
+function authErrMsg(e){
+  const c = (e && e.code) || '';
+  if(['auth/wrong-password','auth/invalid-credential','auth/invalid-login-credentials','auth/user-not-found'].includes(c)) return '密碼錯誤，請再試一次';
+  if(c === 'auth/too-many-requests') return '嘗試次數過多，請稍後再試';
+  if(c === 'auth/network-request-failed') return '網路連線失敗，請確認網路後再試';
+  if(c === 'auth/weak-password') return '新密碼至少需6碼';
+  if(c === 'auth/requires-recent-login') return '登入已逾時，請重新登入後再改密碼';
+  return '登入失敗' + (c ? '（' + c + '）' : '');
+}
+async function adminSignIn(pwd){
+  if(!fbAuth) throw { code:'app/no-firebase' };
+  await fbAuth.signInWithEmailAndPassword(ADMIN_EMAIL, pwd);
+}
 async function submitLogin(){
   const inp = document.getElementById('gatePwd');
-  if(await hashPwd(inp.value) === await getStoredHash()){
-    sessionStorage.setItem(AUTH_KEY,'1');
-    document.body.classList.remove('locked');
-    inp.value=''; document.getElementById('gateErr').textContent='';
-  } else {
-    document.getElementById('gateErr').textContent = '密碼錯誤，請再試一次';
+  const err = document.getElementById('gateErr');
+  err.textContent = '';
+  try{
+    await adminSignIn(inp.value);
+    inp.value = '';
+  }catch(e){
+    err.textContent = authErrMsg(e);
     inp.select();
   }
 }
@@ -1760,8 +1789,8 @@ function goEmployeeUrl(){
   location.href = u.toString();
 }
 function backToEmployee(){ goEmployeeUrl(); }
-function logout(){
-  sessionStorage.removeItem(AUTH_KEY);
+async function logout(){
+  try{ if(fbAuth) await fbAuth.signOut(); }catch(e){}
   goEmployeeUrl(); // 登出後回到員工版網址
 }
 function openAdminLogin(){
@@ -1773,13 +1802,15 @@ function openAdminLogin(){
 function closeAdminLogin(){ document.getElementById('adminLoginModal').classList.remove('open'); }
 async function submitAdminLogin(){
   const inp = document.getElementById('adminPwd');
-  if(await hashPwd(inp.value) === await getStoredHash()){
-    sessionStorage.setItem(AUTH_KEY,'1');
+  const err = document.getElementById('adminErr');
+  err.textContent = '';
+  try{
+    await adminSignIn(inp.value);
     const u = new URL(location.href);
     u.searchParams.set('role','admin'); // 登入成功 → 網址帶上 role=admin
     location.href = u.toString();
-  } else {
-    document.getElementById('adminErr').textContent = '密碼錯誤，請再試一次';
+  }catch(e){
+    err.textContent = authErrMsg(e);
     inp.select();
   }
 }
@@ -1792,12 +1823,19 @@ function closeChangePwd(){ document.getElementById('pwdModal').classList.remove(
 async function submitChangePwd(){
   const err = document.getElementById('pwdErr');
   const o = document.getElementById('pwdOld').value, n = document.getElementById('pwdNew').value, n2 = document.getElementById('pwdNew2').value;
-  if(await hashPwd(o) !== await getStoredHash()){ err.textContent='目前密碼不正確'; return; }
-  if(n.length < 4){ err.textContent='新密碼至少需4碼'; return; }
+  if(n.length < 6){ err.textContent='新密碼至少需6碼'; return; }
   if(n !== n2){ err.textContent='兩次輸入的新密碼不一致'; return; }
-  localStorage.setItem(PWD_KEY, await hashPwd(n));
-  closeChangePwd();
-  alert('✅ 密碼已修改，下次登入請使用新密碼');
+  try{
+    const user = fbAuth && fbAuth.currentUser;
+    if(!user) throw { code:'auth/requires-recent-login' };
+    const cred = firebase.auth.EmailAuthProvider.credential(ADMIN_EMAIL, o);
+    await user.reauthenticateWithCredential(cred);
+    await user.updatePassword(n);
+    closeChangePwd();
+    alert('✅ 密碼已修改。A、B 主管共用此密碼，請通知另一位使用新密碼登入');
+  }catch(e){
+    err.textContent = (e && e.code && e.code.startsWith('auth/') && e.code!=='auth/weak-password' && e.code!=='auth/requires-recent-login') ? '目前密碼不正確' : authErrMsg(e);
+  }
 }
 const EMPLOYEE_VISIBLE_PANELS = ['m4', 'm7', 'm9'];
 
