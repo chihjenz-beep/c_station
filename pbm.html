@@ -1490,7 +1490,7 @@
         <h2 style="margin:0;">📋 請假排休總覽</h2>
         <button class="btn outline" id="m4ScanBtn" onclick="scanLeavesM4()">🔄 掃描員工端登記</button>
       </div>
-      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
+      <div class="desc" id="m4ScanDesc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
         可查詢所有人的請假紀錄，方便互相協調班表。員工端登記的請假，按「掃描」即可從雲端抓回並與本機合併。
       </div>
       <div id="m4ScanResult" style="display:none;font-size:12px;line-height:1.7;padding:8px 10px;margin-bottom:10px;border-radius:8px;background:#f6f1e6;border:1px solid #e5dfd3;"></div>
@@ -1823,6 +1823,8 @@ function applyRoleVisibility(){
   const syncBtn = document.getElementById('syncBtn');
   if(loginBtn) loginBtn.remove();
   if(syncBtn) syncBtn.remove();
+  // 掃描員工端登記僅管理者使用：員工模式直接從DOM移除按鈕、說明與結果框
+  ['m4ScanBtn','m4ScanDesc','m4ScanResult'].forEach(id=>{ const el=document.getElementById(id); if(el) el.remove(); });
   const pwdBtnEl = document.getElementById('pwdBtn');
   if(pwdBtnEl) pwdBtnEl.remove(); // 改密碼僅管理版可用
   // M7內的「班表發布管理」是管理者專用功能，員工模式直接從DOM移除（不是CSS隱藏），
