@@ -813,7 +813,6 @@
   }
   body.sched-dragging{user-select:none;-webkit-user-select:none;cursor:grabbing;}
   .cal-cell.drop-hover{background:#fcf2db !important;border-color:var(--gold) !important;box-shadow:inset 0 0 0 2px var(--gold) !important;}
-  .cal-grid.place-mode .cal-cell{cursor:copy;}
   .sched-toast{
     position:fixed;left:50%;bottom:58px;transform:translateX(-50%);z-index:250;background:#463429;color:#fff;
     padding:10px 14px;border-radius:12px;font-size:12px;display:none;gap:12px;align-items:center;
@@ -1169,7 +1168,6 @@
             <div class="combo-chip" id="schedComboChip"></div>
             <div class="pal-tray-actions">
               <button class="btn outline" style="padding:5px 10px;font-size:11px;" onclick="clearSchedPick()">清除選擇</button>
-              <button class="btn outline" id="palPlaceBtn" style="padding:5px 10px;font-size:11px;" onclick="togglePlaceMode()">👆 點日期放置：關</button>
             </div>
           </div>
           <div class="pal-tabs" id="palTabsBar">
@@ -3193,7 +3191,7 @@ function renderCalendar(){
     }
   }
 
-  grid.className = 'cal-grid'+(calMode==='week'?' week-mode':'')+(schedPick.placeMode?' place-mode':'');
+  grid.className = 'cal-grid'+(calMode==='week'?' week-mode':'');
   let html = weekdayNames.map(w=>`<div class="cal-weekday">${w}</div>`).join('');
 
   cells.forEach(c=>{
@@ -3527,9 +3525,9 @@ function deleteScheduleEntry(idx){
 // ===========================================================
 // M3 排班：左側彈丸選單（員工／地點／時段）→ 組合 → 拖曳到右側月曆日期
 // 員工可多選（一次為多人排同一地點與時段），地點、時段各單選；選好後上方「組合」變成可拖曳的彈丸。
-// 拖曳使用 Pointer Events，滑鼠與觸控都能用；另提供「點日期放置」模式作為手機備案。
+// 拖曳使用 Pointer Events，滑鼠與觸控都能用（此系統主要在 PC/NB 操作，已移除手機用的「點日期放置」備案）。
 // ===========================================================
-const schedPick = { staffIds:[], siteId:null, tplId:null, start:'', end:'', placeMode:false };
+const schedPick = { staffIds:[], siteId:null, tplId:null, start:'', end:'' };
 let schedToastTimer = null;
 let schedDragEndedAt = 0;
 
@@ -3599,14 +3597,6 @@ function updateSchedPaletteUI(){
     part(schedPick.siteId ? (isClinicSite(schedPick.siteId)?'🏥':'📍')+getSiteName(schedPick.siteId) : '', '（選地點）') + '<span class="cc-sep">＋</span>' +
     part(schedPick.start && schedPick.end ? `${schedPick.start}–${schedPick.end}（${getShiftHalfLabel(schedPick.start, schedPick.end)}）` : '', '（選時段）') +
     (timeBad ? '<span style="color:var(--danger);font-weight:600;">結束需晚於開始</span>' : '');
-  const pb = document.getElementById('palPlaceBtn');
-  if(pb){
-    pb.textContent = '👆 點日期放置：' + (schedPick.placeMode ? '開' : '關');
-    pb.classList.toggle('gold', schedPick.placeMode);
-    pb.classList.toggle('outline', !schedPick.placeMode);
-  }
-  const grid = document.getElementById('calGrid');
-  if(grid) grid.classList.toggle('place-mode', schedPick.placeMode);
 }
 function clearSchedPick(){
   schedPick.staffIds = []; schedPick.siteId = null; schedPick.tplId = null; schedPick.start = ''; schedPick.end = '';
@@ -3628,7 +3618,6 @@ function updatePalTabChecks(){
   set('palTabCheckSite', !!schedPick.siteId);
   set('palTabCheckTime', !!(schedPick.start && schedPick.end));
 }
-function togglePlaceMode(){ schedPick.placeMode = !schedPick.placeMode; updateSchedPaletteUI(); }
 function onPalTimeInput(){
   schedPick.start = document.getElementById('palStart').value;
   schedPick.end = document.getElementById('palEnd').value;
@@ -3738,7 +3727,6 @@ function placeSchedCombo(dateStr){
 }
 function onCalCellClick(dateStr){
   if(Date.now() - schedDragEndedAt < 350) return; // 拖曳放開後瀏覽器可能補發 click，忽略以免誤開彈窗
-  if(schedPick.placeMode){ placeSchedCombo(dateStr); return; }
   openSchedModal(dateStr);
 }
 (function initSchedDrag(){
