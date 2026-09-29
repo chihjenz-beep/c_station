@@ -6030,7 +6030,7 @@ async function addAttendanceRecord(){
   renderM9PhotoPreview();
   renderAttendanceOverview();
   alert(`已為 ${getStaffName(staffId)} 登記 ${dateStr} 的支援紀錄${photoUrls.length>0?`（含${photoUrls.length}張照片）`:''}` +
-    (isAdminNow ? '' : '\n若目前網路不穩，紀錄會先保存在這台裝置，恢復連線後自動上傳（總覽會顯示「⏳ 待上傳」）。'));
+    (isAdminNow ? '' : '\n若目前網路不穩，紀錄會先保存在這台裝置，恢復連線後會自動上傳。'));
 }
 function isAdminAuthed(){ return !!(IS_ADMIN && fbAuth && fbAuth.currentUser && fbAuth.currentUser.email === ADMIN_EMAIL); }
 async function deleteAttendanceRecord(id){
@@ -6147,10 +6147,9 @@ function renderAttendanceOverview(){
     const photosHtml = (r.photos && r.photos.length>0)
       ? r.photos.map(url=>`<a href="${url}" target="_blank" class="m9-photo-link"><img src="${url}" loading="lazy"></a>`).join('')
       : '<span style="color:var(--text-soft);font-size:11px;">無</span>';
-    const pendingBadge = r._pending ? '<span style="font-size:11px;color:var(--warn);font-weight:600;">⏳ 待上傳</span><br>' : '';
     const delCell = isAdminAuthed()
       ? `<button class="row-del" onclick="deleteAttendanceRecord('${r.id}')">✕ 刪除</button>`
-      : pendingBadge + `<span style="font-size:11px;color:var(--warn);font-weight:600;" title="一般員工無法刪除，請洽管理者">🔒 僅管理者可刪除</span>`;
+      : `<span style="font-size:11px;color:var(--warn);font-weight:600;" title="一般員工無法刪除，請洽管理者">🔒 僅管理者可刪除</span>`;
     html += `<tr>
       <td>${getStaffName(r.staffId)}</td>
       <td>${r.date}</td>
