@@ -1723,14 +1723,6 @@
         <label>備註</label>
         <input type="text" id="m9Note" placeholder="選填，如：支援代班、公務出差" style="flex:1;">
       </div>
-      <div class="form-line">
-        <label>照片</label>
-        <div style="flex:1;">
-          <input type="file" id="m9PhotoInput" accept="image/*" multiple onchange="handleM9PhotoSelect(event)">
-          <div id="m9PhotoPreview" class="m9-photo-preview"></div>
-          <div id="m9PhotoUploadStatus" style="font-size:11px;color:var(--text-soft);margin-top:4px;"></div>
-        </div>
-      </div>
       <button class="btn gold" style="width:100%;margin-top:6px;" onclick="addAttendanceRecord()">📝 登記支援紀錄</button>
     </div>
 
@@ -1784,6 +1776,8 @@ try{
   firebase.initializeApp(FIREBASE_CONFIG);
   fbAuth = firebase.auth();
   fbDb = firebase.firestore();
+  // 部分網路/廣告攔截環境擋 WebChannel，自動偵測並改用 long polling
+  try{ fbDb.settings({ experimentalAutoDetectLongPolling:true, merge:true }); }catch(e){}
   // 離線持久化：寫入先存在瀏覽器（IndexedDB），沒網路也能登記，恢復連線後自動補送，關掉頁面也不會掉。
   // 必須在任何 Firestore 讀寫之前呼叫；不支援的瀏覽器會自動退回「僅本次開啟期間排隊」。
   fbDb.enablePersistence({ synchronizeTabs:true }).catch(e=>{
@@ -4825,6 +4819,7 @@ function startLeavesListener(){
     });
     leaves = rebuilt;
     saveLocalOnly(STORE_KEYS.leaves, leaves);
+    setFbConn(snap.metadata.fromCache);
     renderLeaveOverview();
     renderCalendar();
     if(typeof renderConflictOverview==='function') renderConflictOverview();
@@ -5910,81 +5905,6 @@ function attendanceSiteLabelPlain(rec){
   if(rec.site==='other') return rec.otherLabel || '其他';
   return siteLabelPlain(rec.site);
 }
-// ===========================================================
-// M9 照片上傳：選擇後在瀏覽器端壓縮(最長邊1200px)，暫存於記憶體，
-// 按「登記支援紀錄」時才實際上傳到Drive(透過GAS)，成功後才連同紀錄一起存檔。
-// ===========================================================
-let m9PendingPhotos = []; // [{dataUrl, blob, fileName}] 已選取且壓縮完成、尚未上傳的照片
-
-function handleM9PhotoSelect(event){
-  const files = Array.from(event.target.files || []);
-  files.forEach(file=>{
-    compressImageFile(file, 1200, 0.7).then(({ dataUrl, blob })=>{
-      m9PendingPhotos.push({ dataUrl, blob, fileName: file.name });
-      renderM9PhotoPreview();
-    }).catch(err=>{
-      console.warn('圖片壓縮失敗:', err);
-      alert('其中一張照片處理失敗，請重新選擇');
-    });
-  });
-  event.target.value = ''; // 清空，允許重複選擇同一檔案
-}
-
-// 壓縮圖片：等比例縮小到最長邊不超過maxSize，輸出JPEG格式並降低品質
-function compressImageFile(file, maxSize, quality){
-  return new Promise((resolve, reject)=>{
-    const reader = new FileReader();
-    reader.onload = (e)=>{
-      const img = new Image();
-      img.onload = ()=>{
-        let { width, height } = img;
-        if(width > height && width > maxSize){
-          height = Math.round(height * maxSize / width);
-          width = maxSize;
-        } else if(height > maxSize){
-          width = Math.round(width * maxSize / height);
-          height = maxSize;
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width; canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL('image/jpeg', quality);
-        canvas.toBlob(blob=>{
-          resolve({ dataUrl, blob });
-        }, 'image/jpeg', quality);
-      };
-      img.onerror = reject;
-      img.src = e.target.result;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-function renderM9PhotoPreview(){
-  const container = document.getElementById('m9PhotoPreview');
-  if(!container) return;
-  container.innerHTML = m9PendingPhotos.map((p, idx)=>
-    `<div class="m9-photo-thumb"><img src="${p.dataUrl}"><button class="m9-photo-remove" onclick="removeM9PendingPhoto(${idx})">✕</button></div>`
-  ).join('');
-}
-function removeM9PendingPhoto(idx){
-  m9PendingPhotos.splice(idx,1);
-  renderM9PhotoPreview();
-}
-
-// 把單張壓縮後的照片上傳到GAS，取得Drive網址（複用gasPost的同步機制）
-async function uploadOnePhoto(photo){
-  const base64Data = photo.dataUrl.split(',')[1]; // 去掉 "data:image/jpeg;base64," 前綴
-  const result = await gasPost({
-    action: 'uploadAttendancePhoto',
-    base64Data, fileName: photo.fileName, mimeType: 'image/jpeg'
-  });
-  if(result && result.ok) return result.url;
-  throw new Error(result && result.error || '上傳失敗');
-}
-
 async function addAttendanceRecord(){
   const staffId = document.getElementById('m9StaffSel').value;
   const dateStr = document.getElementById('m9Date').value;
@@ -5998,32 +5918,10 @@ async function addAttendanceRecord(){
   if(site==='other' && !otherLabel){ alert('請輸入地點名稱'); return; }
   if(start>=end){ alert('結束時間需晚於開始時間'); return; }
 
-  const statusEl = document.getElementById('m9PhotoUploadStatus');
-  let photoUrls = [];
-
-  if(m9PendingPhotos.length>0){
-    const btn = document.querySelector('button[onclick="addAttendanceRecord()"]');
-    if(btn) btn.disabled = true;
-    try{
-      for(let i=0; i<m9PendingPhotos.length; i++){
-        if(statusEl) statusEl.textContent = `上傳照片中...（${i+1}/${m9PendingPhotos.length}）`;
-        const url = await uploadOnePhoto(m9PendingPhotos[i]);
-        photoUrls.push(url);
-      }
-      if(statusEl) statusEl.textContent = '';
-    }catch(err){
-      if(statusEl) statusEl.textContent = '';
-      if(btn) btn.disabled = false;
-      alert('照片上傳失敗，請檢查網路連線後重試：' + err.message);
-      return;
-    }
-    if(btn) btn.disabled = false;
-  }
-
   const rec = {
     id: uid9(), staffId, date: dateStr, site,
     otherLabel: site==='other' ? otherLabel : '',
-    start, end, note, photos: photoUrls
+    start, end, note, photos: []
   };
   // 一筆紀錄 = Firestore 一份獨立文件（attendance/{id}）。
   // 有離線持久化時，set() 要等伺服器確認才會完成，所以不 await：先把紀錄記在本機並標「待上傳」，
@@ -6047,10 +5945,8 @@ async function addAttendanceRecord(){
   });
   document.getElementById('m9OtherLabel').value = '';
   document.getElementById('m9Note').value = '';
-  m9PendingPhotos = [];
-  renderM9PhotoPreview();
   renderAttendanceOverview();
-  alert(`已為 ${getStaffName(staffId)} 登記 ${dateStr} 的支援紀錄${photoUrls.length>0?`（含${photoUrls.length}張照片）`:''}` +
+  alert(`已為 ${getStaffName(staffId)} 登記 ${dateStr} 的支援紀錄` +
     (isAdminNow ? '' : '\n若目前網路不穩，紀錄會先保存在這台裝置，恢復連線後會自動上傳。'));
 }
 function isAdminAuthed(){ return !!(IS_ADMIN && fbAuth && fbAuth.currentUser && fbAuth.currentUser.email === ADMIN_EMAIL); }
@@ -6080,6 +5976,7 @@ function startAttendanceListener(){
                start:x.start, end:x.end, note:x.note||'', photos:x.photos||[] };
     });
     saveLocalOnly(STORE_KEYS.attendance, attendanceRecords);
+    setFbConn(snap.metadata.fromCache);
     renderAttendanceOverview();
     if(lastReportData) runReport(); // 報表已產生過就用最新的 M9 資料重算
     if(!legacyMigrationOffered && !snap.metadata.fromCache){ legacyMigrationOffered = true; offerLegacyAttendanceMigration(); }
@@ -6088,6 +5985,17 @@ function startAttendanceListener(){
     console.error('[Firestore] 監聽 attendance 失敗：', err);
     alert('讀取支援填報紀錄失敗：' + (err && err.code || err && err.message || '未知錯誤'));
   });
+}
+function setFbConn(fromCache){
+  let b = document.getElementById('fbConnBadge');
+  if(!b){
+    b = document.createElement('div');
+    b.id = 'fbConnBadge';
+    b.style.cssText = 'position:fixed;right:10px;bottom:10px;z-index:9000;padding:4px 10px;border-radius:12px;font-size:12px;color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.3);';
+    document.body.appendChild(b);
+  }
+  b.style.background = fromCache ? '#c0392b' : '#2e8b57';
+  b.textContent = fromCache ? '⚠️ 顯示的是本機快取，尚未連上雲端' : '● 雲端即時連線中';
 }
 function stopAttendanceListener(){
   if(attendanceUnsub){ attendanceUnsub(); attendanceUnsub = null; }
