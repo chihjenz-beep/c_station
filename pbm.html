@@ -1528,12 +1528,10 @@
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px;">
         <h2 style="margin:0;">📋 請假排休總覽</h2>
-        <button class="btn outline" id="m4ScanBtn" onclick="scanLeavesM4()">🔄 掃描員工端登記</button>
       </div>
-      <div class="desc" id="m4ScanDesc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
-        可查詢所有人的請假紀錄，方便互相協調班表。員工端登記的請假，按「掃描」即可從雲端抓回並與本機合併。
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
+        可查詢所有人的請假紀錄，方便互相協調班表。員工端登記後即時同步，不用手動掃描。
       </div>
-      <div id="m4ScanResult" style="display:none;font-size:12px;line-height:1.7;padding:8px 10px;margin-bottom:10px;border-radius:8px;background:#f6f1e6;border:1px solid #e5dfd3;"></div>
       <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
         <select id="leaveFilterStaff" onchange="renderLeaveOverview()" style="flex:1;min-width:120px;">
           <option value="">全部人員</option>
@@ -1801,9 +1799,9 @@ if(fbAuth){
   fbAuth.onAuthStateChanged(user=>{
     const ok = !!(user && user.email === ADMIN_EMAIL);
     if(IS_ADMIN) document.body.classList.toggle('locked', !ok);
-    // firestore.rules：attendance 僅管理員可讀，所以登入確認後才拉全部 M9 紀錄
-    if(ok && IS_ADMIN) startAttendanceListener();
-    else stopAttendanceListener();
+    // firestore.rules：attendance、leaves 都僅管理員可讀，所以登入確認後才拉全部紀錄
+    if(ok && IS_ADMIN){ startAttendanceListener(); startLeavesListener(); }
+    else { stopAttendanceListener(); stopLeavesListener(); }
   });
 }
 function authErrMsg(e){
@@ -1909,8 +1907,6 @@ function applyRoleVisibility(){
   const syncBtn = document.getElementById('syncBtn');
   if(loginBtn) loginBtn.remove();
   if(syncBtn) syncBtn.remove();
-  // 掃描員工端登記僅管理者使用：員工模式直接從DOM移除按鈕、說明與結果框
-  ['m4ScanBtn','m4ScanDesc','m4ScanResult'].forEach(id=>{ const el=document.getElementById(id); if(el) el.remove(); });
   const pwdBtnEl = document.getElementById('pwdBtn');
   if(pwdBtnEl) pwdBtnEl.remove(); // 改密碼僅管理版可用
   // M7內的「班表發布管理」是管理者專用功能，員工模式直接從DOM移除（不是CSS隱藏），
@@ -1999,18 +1995,6 @@ const SYNC_MAP = {
         });
       });
       return { entries };
-    },
-  },
-  sched_leaves: {
-    saveAction: 'saveSchedLeaves',
-    buildPayload: () => {
-      const arr = [];
-      Object.keys(leaves).forEach(date=>{
-        (leaves[date]||[]).forEach(l=>{
-          arr.push({ date, staffId:l.staffId, type:l.type, note:l.note||'' });
-        });
-      });
-      return { leaves: arr };
     },
   },
   sched_publishedMonths: {
@@ -2128,17 +2112,6 @@ async function pullAllFromGAS(){
           });
           schedule = rebuilt;
           saveLocalOnly(STORE_KEYS.schedule, schedule);
-        }
-      } },
-    { getAction:'getSchedLeaves',    apply: r => {
-        if(r.leaves){
-          const rebuilt = {};
-          r.leaves.forEach(l=>{
-            if(!rebuilt[l.date]) rebuilt[l.date]=[];
-            rebuilt[l.date].push({ staffId:l.staffId, type:l.type, note:l.note||'' });
-          });
-          leaves = rebuilt;
-          saveLocalOnly(STORE_KEYS.leaves, leaves);
         }
       } },
     { getAction:'getSchedPublished',  apply: r => { if(r.publishedMonths){ publishedMonths = r.publishedMonths; saveLocalOnly(STORE_KEYS.publishedMonths, publishedMonths); } } },
@@ -3355,21 +3328,47 @@ function addLeaveEntry(){
     alert('此人員當日已登記相同類型的請假');
     return;
   }
-  leaves[modalDate].push({ staffId, type: selectedLeaveType, note:'' });
-  saveStore(STORE_KEYS.leaves, leaves);
+  // 跟 M4 的登記共用同一個 Firestore 集合：樂觀更新畫面，寫入確認後補上文件 id
+  const entry = { staffId, type: selectedLeaveType, note:'' };
+  leaves[modalDate].push(entry);
+  saveLocalOnly(STORE_KEYS.leaves, leaves);
   renderModalLeaves();
   renderModalEntries();
   renderCalendar();
   if(typeof renderLeaveOverview==='function') renderLeaveOverview();
   if(typeof renderConflictOverview==='function') renderConflictOverview();
+  fbDb.collection('leaves').add({ date: modalDate, staffId, type: selectedLeaveType, note:'' }).then(doc=>{
+    entry._id = doc.id;
+    saveLocalOnly(STORE_KEYS.leaves, leaves);
+  }).catch(err=>{
+    const arr = leaves[modalDate] || [];
+    const i = arr.indexOf(entry);
+    if(i>-1) arr.splice(i,1);
+    if(arr.length===0) delete leaves[modalDate];
+    saveLocalOnly(STORE_KEYS.leaves, leaves);
+    renderModalLeaves();
+    renderModalEntries();
+    renderCalendar();
+    if(typeof renderLeaveOverview==='function') renderLeaveOverview();
+    if(typeof renderConflictOverview==='function') renderConflictOverview();
+    alert('⚠️ 請假登記被伺服器拒絕，未成功送出：' + (err && err.code || err && err.message || '未知錯誤'));
+  });
 }
-function deleteLeaveEntry(idx){
+async function deleteLeaveEntry(idx){
   if(!IS_ADMIN){ alert('⚠️ 一般員工僅能新增請假登記，無法修改或刪除已登記的紀錄。如需取消/更正，請洽管理者協助處理。'); return; }
   if(isDateLeaveLocked(modalDate, 'cancel')){ alert(leaveLockMessage('cancel')); return; }
-  if(!leaves[modalDate]) return;
+  if(!leaves[modalDate] || !leaves[modalDate][idx]) return;
+  const rec = leaves[modalDate][idx];
+  if(!rec._id){ alert('這筆紀錄剛送出、還在跟伺服器確認，請稍等一下再試一次刪除。'); return; }
+  try{
+    await fbDb.collection('leaves').doc(rec._id).delete();
+  }catch(err){
+    alert('刪除失敗：' + (err && err.code || err && err.message || '未知錯誤'));
+    return;
+  }
   leaves[modalDate].splice(idx,1);
   if(leaves[modalDate].length===0) delete leaves[modalDate];
-  saveStore(STORE_KEYS.leaves, leaves);
+  saveLocalOnly(STORE_KEYS.leaves, leaves);
   renderModalLeaves();
   renderModalEntries();
   renderCalendar();
@@ -3434,13 +3433,33 @@ function addLeaveEntryM4(){
     alert('此人員當日已登記相同類型的請假');
     return;
   }
-  leaves[dateStr].push({ staffId, type: m4SelectedLeaveType, note:'' });
-  saveStore(STORE_KEYS.leaves, leaves);
+  // 一筆請假 = Firestore 一份獨立文件（leaves/{自動ID}）。先樂觀更新畫面，寫入確認後補上文件 id；
+  // 員工端只會 create（跟 firestore.rules 一致）；之後要改、要刪，一律要求管理員登入。
+  const entry = { staffId, type: m4SelectedLeaveType, note:'' };
+  leaves[dateStr].push(entry);
+  saveLocalOnly(STORE_KEYS.leaves, leaves);
   if(typeof renderLeaveOverview==='function') renderLeaveOverview();
   if(typeof renderConflictOverview==='function') renderConflictOverview();
   if(typeof renderCalendar==='function') renderCalendar();
   updateM4ScheduleHint();
-  alert(`已為 ${getStaffName(staffId)} 登記 ${dateStr} 的「${m4SelectedLeaveType}」`);
+  fbDb.collection('leaves').add({ date: dateStr, staffId, type: m4SelectedLeaveType, note:'' }).then(doc=>{
+    entry._id = doc.id;
+    saveLocalOnly(STORE_KEYS.leaves, leaves);
+  }).catch(err=>{
+    const arr = leaves[dateStr] || [];
+    const i = arr.indexOf(entry);
+    if(i>-1) arr.splice(i,1);
+    if(arr.length===0) delete leaves[dateStr];
+    saveLocalOnly(STORE_KEYS.leaves, leaves);
+    if(typeof renderLeaveOverview==='function') renderLeaveOverview();
+    if(typeof renderConflictOverview==='function') renderConflictOverview();
+    if(typeof renderCalendar==='function') renderCalendar();
+    updateM4ScheduleHint();
+    alert('⚠️ ' + dateStr + ' 的請假登記被伺服器拒絕，未成功送出：' + (err && err.code || err && err.message || '未知錯誤') + '\n請洽管理者。');
+  });
+  const isAdminNow = isAdminAuthed();
+  alert(`已為 ${getStaffName(staffId)} 登記 ${dateStr} 的「${m4SelectedLeaveType}」` +
+    (isAdminNow ? '' : '\n若目前網路不穩，紀錄會先保存在這台裝置，恢復連線後會自動上傳。'));
 }
 // 取得當日已請假的員工id清單
 function getLeaveStaffIds(dateStr){
@@ -4791,81 +4810,83 @@ function renderLeaveOverview(){
     </div>
   `;}).join('');
 }
-// 掃描員工端（staff.html）登記的請假：抓雲端最新資料，與本機「合併」（不是覆蓋），
-// 雲端有而本機沒有的補進來；本機有而雲端沒有的（例如被員工端舊資料覆蓋掉）推回雲端。
-async function scanLeavesM4(){
-  const btn = document.getElementById('m4ScanBtn');
-  const box = document.getElementById('m4ScanResult');
-  const show = (html, ok)=>{
-    box.style.display = 'block';
-    box.style.background = ok ? '#eef5e8' : '#fbeeee';
-    box.style.borderColor = ok ? '#cfe0c3' : '#e8c5c5';
-    box.innerHTML = html;
-  };
-  if(!SYNC_ENABLED){ show('⚠ 雲端同步未啟用，無法掃描。', false); return; }
-  btn.disabled = true; btn.textContent = '掃描中…';
-  try{
-    const r = await gasGet({ action:'getSchedLeaves' });
-    if(!r || !r.ok) throw new Error((r && r.error) || '雲端回應異常');
-    const keyOf = (d,l)=>`${d}|${l.staffId}|${l.type}`;
-    const localKeys = new Set();
-    Object.keys(leaves).forEach(d=>(leaves[d]||[]).forEach(l=>localKeys.add(keyOf(d,l))));
-    const cloudKeys = new Set((r.leaves||[]).map(l=>keyOf(l.date,l)));
-
-    // 雲端有、本機沒有 → 員工端新登記的
-    const added = [];
-    (r.leaves||[]).forEach(l=>{
-      if(localKeys.has(keyOf(l.date,l))) return;
-      if(!leaves[l.date]) leaves[l.date] = [];
-      leaves[l.date].push({ staffId:l.staffId, type:l.type, note:l.note||'' });
-      added.push(l);
+// 管理員：即時監聽 leaves 集合，員工端登記的請假會自動出現在總覽（員工端沒有讀取權限，不監聽）
+let leavesUnsub = null;
+let legacyLeavesMigrationOffered = false;
+function startLeavesListener(){
+  if(leavesUnsub || !fbDb || !isAdminAuthed()) return;
+  leavesUnsub = fbDb.collection('leaves').onSnapshot(snap=>{
+    const rebuilt = {};
+    snap.docs.forEach(d=>{
+      const x = d.data();
+      if(!x || !x.date) return;
+      if(!rebuilt[x.date]) rebuilt[x.date] = [];
+      rebuilt[x.date].push({ staffId:x.staffId, type:x.type, note:x.note||'', _id:d.id });
     });
-    // 本機有、雲端沒有 → 需推回雲端
-    let localOnly = 0;
-    localKeys.forEach(k=>{ if(!cloudKeys.has(k)) localOnly++; });
-
-    if(added.length || localOnly){
-      // saveStore 會寫本機並排程推送（推送的是合併後的完整清單）
-      saveStore(STORE_KEYS.leaves, leaves);
-    }
-
-    // 新增的請假若與已排班衝突，提醒到 M5 查看
-    const clash = added.filter(l=>(schedule[l.date]||[]).some(e=>e.staffId===l.staffId));
-
+    leaves = rebuilt;
+    saveLocalOnly(STORE_KEYS.leaves, leaves);
     renderLeaveOverview();
     renderCalendar();
     if(typeof renderConflictOverview==='function') renderConflictOverview();
     updateM4ScheduleHint();
+    if(!legacyLeavesMigrationOffered && !snap.metadata.fromCache){ legacyLeavesMigrationOffered = true; offerLegacyLeavesMigration(); }
+  }, err=>{
+    leavesUnsub = null;
+    console.error('[Firestore] 監聽 leaves 失敗：', err);
+    alert('讀取請假紀錄失敗：' + (err && err.code || err && err.message || '未知錯誤'));
+  });
+}
+function stopLeavesListener(){
+  if(leavesUnsub){ leavesUnsub(); leavesUnsub = null; }
+  legacyLeavesMigrationOffered = false;
+}
 
-    const t = new Date();
-    const stamp = `${t.getHours()}:${String(t.getMinutes()).padStart(2,'0')}`;
-    let html = `✅ 掃描完成（${stamp}）：雲端共 ${cloudKeys.size} 筆請假。`;
-    if(added.length){
-      const list = added.slice(0,8).map(l=>`${l.date} ${getStaffName(l.staffId)}（${l.type}）`).join('、');
-      html += `<br>📥 新同步 ${added.length} 筆：${list}${added.length>8?' …':''}`;
-    } else {
-      html += '<br>📥 沒有新的員工登記。';
-    }
-    if(localOnly) html += `<br>📤 本機有 ${localOnly} 筆雲端缺少，已推回雲端。`;
-    if(clash.length) html += `<br>⚠ 其中 ${clash.length} 筆與已排班衝突，請到 M5 衝突偵測處理。`;
-    show(html, true);
+// 一次性搬家：把舊版存在 GAS/Google Sheet 的請假紀錄，寫成 Firestore 文件（舊資料本來就沒有 id，改用自動配 ID；
+// 用「日期＋人員＋類型」去比對避免重複匯入，量不大所以一次寫完，不分批）
+async function offerLegacyLeavesMigration(){
+  if(localStorage.getItem('m4_migrated_to_firestore') === '1') return;
+  let legacy = [];
+  try{
+    const r = await gasGet({ action:'getSchedLeaves' });
+    if(r && r.ok && Array.isArray(r.leaves)) legacy = r.leaves;
+  }catch(e){ return; } // 拉不到舊資料就下次再說
+  const keyOf = (date, staffId, type)=>`${date}|${staffId}|${type}`;
+  const haveKeys = new Set();
+  Object.keys(leaves).forEach(d=>(leaves[d]||[]).forEach(l=>haveKeys.add(keyOf(d, l.staffId, l.type))));
+  const todo = legacy.filter(l=> l && l.date && l.staffId && l.type && !haveKeys.has(keyOf(l.date, l.staffId, l.type)));
+  if(todo.length === 0){ localStorage.setItem('m4_migrated_to_firestore','1'); return; }
+  if(!confirm(`偵測到 ${todo.length} 筆舊版員工端請假紀錄尚未搬到 Firestore，要現在匯入嗎？`)) return;
+  try{
+    const batch = fbDb.batch();
+    todo.forEach(l=>{
+      batch.set(fbDb.collection('leaves').doc(), { date:l.date, staffId:l.staffId, type:l.type, note:l.note||'' });
+    });
+    await batch.commit();
+    localStorage.setItem('m4_migrated_to_firestore','1');
+    alert(`✅ 已匯入 ${todo.length} 筆舊紀錄`); // 即時監聽會自動把它們顯示出來
   }catch(err){
-    show('⚠ 掃描失敗：' + err.message + '（目前仍顯示本機資料）', false);
-  }finally{
-    btn.disabled = false; btn.textContent = '🔄 掃描員工端登記';
+    alert('匯入舊紀錄失敗：' + (err && err.code || err && err.message || '未知錯誤'));
   }
 }
-function deleteLeaveFromOverview(dateStr, idx, force=false){
+async function deleteLeaveFromOverview(dateStr, idx, force=false){
   if(!IS_ADMIN){ alert('⚠️ 一般員工僅能新增請假登記，無法修改或刪除已登記的紀錄。如需取消/更正，請洽管理者協助處理。'); return; }
   const locked = isDateLeaveLocked(dateStr, 'cancel');
   if(locked && !force){ alert(leaveLockMessage('cancel')); return; }
   if(locked && force){
     if(!confirm(`⚠️ ${dateStr} 屬於鎖定月份（班表已定案），強制刪除將略過鎖定規則且無法復原，確定要刪除這筆請假紀錄嗎？`)) return;
   }
-  if(!leaves[dateStr]) return;
+  if(!leaves[dateStr] || !leaves[dateStr][idx]) return;
+  const rec = leaves[dateStr][idx];
+  if(!rec._id){ alert('這筆紀錄剛送出、還在跟伺服器確認，請稍等一下再試一次刪除。'); return; }
+  try{
+    await fbDb.collection('leaves').doc(rec._id).delete(); // 伺服器再驗一次：非管理員會被拒絕
+  }catch(err){
+    alert('刪除失敗：' + (err && err.code || err && err.message || '未知錯誤'));
+    return;
+  }
   leaves[dateStr].splice(idx,1);
   if(leaves[dateStr].length===0) delete leaves[dateStr];
-  saveStore(STORE_KEYS.leaves, leaves);
+  saveLocalOnly(STORE_KEYS.leaves, leaves);
   renderLeaveOverview();
   renderCalendar();
   if(typeof renderConflictOverview==='function') renderConflictOverview();
