@@ -1470,7 +1470,7 @@
           </div>
           <div class="form-line" id="clearStaffRow">
             <label>人員</label>
-            <select id="clearMonthStaffSel" style="flex:1;"></select>
+            <div id="clearMonthStaffChecklist" class="bulk-staff-checklist"></div>
           </div>
           <div class="form-line">
             <label>月份</label>
@@ -4266,12 +4266,25 @@ let copyMonthSelectedStaff = null; // 「複製月份班表」目前選定的人
 let copySourceSelectedStaff = null; // 「複製給其他人」目前選定的來源人員(單選)
 
 function populateCopyStaffSelects(){
-  const opts = staff.filter(s=>s.active).map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
-  document.getElementById('clearMonthStaffSel').innerHTML = opts;
   renderCopyMonthStaffChecklist();
   renderCopySourceStaffChecklist();
   renderCopyPersonMonthList();
   renderCopyTargetStaffChecklist();
+  renderClearMonthStaffChecklist();
+}
+let clearMonthSelectedStaff = null; // 「清空整月」指定人員模式目前選定的人員(單選)
+function renderClearMonthStaffChecklist(){
+  const container = document.getElementById('clearMonthStaffChecklist');
+  if(!container) return;
+  const activeStaff = staff.filter(s=>s.active);
+  if((clearMonthSelectedStaff===null || !activeStaff.some(s=>s.id===clearMonthSelectedStaff)) && activeStaff.length>0) clearMonthSelectedStaff = activeStaff[0].id;
+  container.innerHTML = activeStaff.map(s=>
+    `<span class="bulk-staff-chip ${clearMonthSelectedStaff===s.id?'selected':''}" onclick="selectClearMonthStaff('${s.id}')">${s.name}</span>`
+  ).join('');
+}
+function selectClearMonthStaff(staffId){
+  clearMonthSelectedStaff = staffId;
+  renderClearMonthStaffChecklist();
 }
 function renderCopyMonthStaffChecklist(){
   const container = document.getElementById('copyMonthStaffChecklist');
@@ -4585,7 +4598,7 @@ function runClearMonth(){
     return;
   }
 
-  const staffId = document.getElementById('clearMonthStaffSel').value;
+  const staffId = clearMonthSelectedStaff;
   if(!staffId){ alert('請選擇人員'); return; }
 
   const staffName = getStaffName(staffId);
