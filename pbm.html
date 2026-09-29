@@ -280,13 +280,11 @@
   }
 
   /* ===== 批量排班 styles ===== */
-  /* 這個彈窗內容較多，放大視窗寬度，讓人員／地點／日期／時段由左至右並排，不用整個視窗上下滑 */
-  #bulkScheduleOverlay .modal-box{width:min(94vw,960px);}
-  .bulk-form-grid{display:grid;grid-template-columns:1.3fr 1.3fr 1fr 1.3fr;gap:16px;align-items:start;margin-bottom:10px;}
+  /* 這兩個彈窗內容較多，放大視窗寬度，讓欄位（人員／地點／日期／時段…）由左至右並排的箱子呈現，不用整個視窗上下滑 */
+  #bulkScheduleOverlay .modal-box,#copyScheduleOverlay .modal-box{width:min(94vw,960px);}
+  .bulk-form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;align-items:start;margin-bottom:10px;}
   .bulk-form-col{display:flex;flex-direction:column;gap:7px;min-width:0;}
   .bulk-form-col>.bfc-label{font-size:12px;font-weight:600;color:var(--text-soft);}
-  @media(max-width:900px){ .bulk-form-grid{grid-template-columns:1fr 1fr;} }
-  @media(max-width:620px){ .bulk-form-grid{grid-template-columns:1fr;} }
   .bulk-staff-checklist{
     flex:1;display:flex;flex-wrap:wrap;gap:5px;max-height:220px;overflow-y:auto;
     padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--paper);
@@ -1413,29 +1411,33 @@
         </div>
 
         <div id="copyMonthSection">
-          <div class="form-line">
-            <label>人員</label>
-            <div id="copyMonthStaffChecklist" class="bulk-staff-checklist"></div>
-          </div>
-          <div class="form-line">
-            <label>來源</label>
-            <input type="month" id="copySourceMonth">
-          </div>
-          <div class="form-line">
-            <label>目標</label>
-            <input type="month" id="copyTargetMonth">
+          <div class="bulk-form-grid">
+            <div class="bulk-form-col">
+              <span class="bfc-label">人員</span>
+              <div id="copyMonthStaffChecklist" class="bulk-staff-checklist"></div>
+            </div>
+            <div class="bulk-form-col">
+              <span class="bfc-label">來源</span>
+              <input type="month" id="copySourceMonth">
+            </div>
+            <div class="bulk-form-col">
+              <span class="bfc-label">目標</span>
+              <input type="month" id="copyTargetMonth">
+            </div>
           </div>
           <button class="btn gold" style="width:100%;margin-top:6px;" onclick="runCopyMonth()">📅 複製月份班表</button>
         </div>
 
         <div id="copyFullMonthSection" style="display:none;">
-          <div class="form-line">
-            <label>來源</label>
-            <input type="month" id="copyFullSourceMonth">
-          </div>
-          <div class="form-line">
-            <label>目標</label>
-            <input type="month" id="copyFullTargetMonth">
+          <div class="bulk-form-grid">
+            <div class="bulk-form-col">
+              <span class="bfc-label">來源</span>
+              <input type="month" id="copyFullSourceMonth">
+            </div>
+            <div class="bulk-form-col">
+              <span class="bfc-label">目標</span>
+              <input type="month" id="copyFullTargetMonth">
+            </div>
           </div>
           <div class="desc" style="font-size:11px;color:var(--text-soft);margin:-2px 0 8px;">
             會依「星期幾＋第幾次出現」對齊複製（例如來源月的第2個星期一→目標月的第2個星期一），避免因兩個月1號星期幾不同，
@@ -1446,23 +1448,23 @@
         </div>
 
         <div id="copyPersonSection" style="display:none;">
-          <div class="form-line">
-            <label>來源</label>
-            <div id="copySourceStaffChecklist" class="bulk-staff-checklist"></div>
-          </div>
-          <div class="form-line">
-            <label>月份（可複選）</label>
-            <div style="flex:1;min-width:0;">
+          <div class="bulk-form-grid">
+            <div class="bulk-form-col">
+              <span class="bfc-label">來源</span>
+              <div id="copySourceStaffChecklist" class="bulk-staff-checklist"></div>
+            </div>
+            <div class="bulk-form-col">
+              <span class="bfc-label">月份（可複選）</span>
               <div id="copyPersonMonthList" class="bulk-staff-checklist"></div>
-              <div style="font-size:11px;color:var(--text-soft);margin-top:4px;">列出來源人員有排班的月份，點選可複選；每個月份各自複製到目標人員的同一個月份。</div>
+              <div style="font-size:11px;color:var(--text-soft);">列出來源人員有排班的月份，點選可複選；每個月份各自複製到目標人員的同一個月份。</div>
+            </div>
+            <div class="bulk-form-col">
+              <span class="bfc-label">目標</span>
+              <div id="copyTargetStaffChecklist" class="bulk-staff-checklist"></div>
             </div>
           </div>
-          <div class="desc" style="font-size:11px;color:var(--text-soft);margin:-4px 0 8px;">
+          <div class="desc" style="font-size:11px;color:var(--text-soft);margin:4px 0 8px;">
             勾選目標人員後，可分別為每個人指定要套用的地點（例如A在X據點，給B選Y、給C選Z，互不相同）；預設「維持原地點」會照抄來源人員的地點。
-          </div>
-          <div class="form-line">
-            <label>目標</label>
-            <div id="copyTargetStaffChecklist" class="bulk-staff-checklist"></div>
           </div>
           <div id="copyTargetSiteList" style="margin-top:8px;"></div>
           <button class="btn gold" style="width:100%;margin-top:6px;" onclick="runCopyToPersons()">👥 複製給選定人員</button>
@@ -1473,16 +1475,18 @@
             <button class="btn gold" id="clearModePersonBtn" onclick="setClearMode('person')" style="flex:1;">👤 指定人員</button>
             <button class="btn outline" id="clearModeAllBtn" onclick="setClearMode('all')" style="flex:1;">🏢 全公司清空</button>
           </div>
-          <div class="form-line" id="clearStaffRow">
-            <label>人員</label>
-            <div id="clearMonthStaffChecklist" class="bulk-staff-checklist"></div>
-          </div>
-          <div class="form-line">
-            <label>月份</label>
-            <div style="display:flex;gap:8px;align-items:center;">
-              <input type="month" id="clearMonthStart">
-              <span>至</span>
-              <input type="month" id="clearMonthEnd">
+          <div class="bulk-form-grid">
+            <div class="bulk-form-col" id="clearStaffRow">
+              <span class="bfc-label">人員</span>
+              <div id="clearMonthStaffChecklist" class="bulk-staff-checklist"></div>
+            </div>
+            <div class="bulk-form-col">
+              <span class="bfc-label">月份</span>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input type="month" id="clearMonthStart">
+                <span>至</span>
+                <input type="month" id="clearMonthEnd">
+              </div>
             </div>
           </div>
           <div id="clearAllWarning" style="display:none;font-size:11px;color:var(--danger);margin-bottom:6px;">
