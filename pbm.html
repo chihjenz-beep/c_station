@@ -799,9 +799,13 @@
   .pal-pill.disabled{opacity:.35;cursor:not-allowed;text-decoration:line-through;}
   .pal-pill.disabled:hover{border-color:#e5dfd3;}
   .pal-time-inputs{display:flex;gap:8px;align-items:center;margin-top:8px;font-size:12px;color:var(--text-soft);}
-  /* B 方案：窄螢幕時把「員工」跟「地點／時段」拆成分頁，各自畫面變短，不必再整段上下滑；寬螢幕（電腦）維持原本一次全顯示 */
-  .pal-tabs{display:none;}
-  .pal-tab-panel{display:block;}
+  /* 三步分頁：員工／地點／時段各一頁，不分螢幕寬度都套用（此系統主要在 PC/NB 使用），避免側欄要整段上下滑 */
+  .pal-tabs{display:flex;gap:6px;margin:10px 0 4px;}
+  .pal-tab-btn{flex:1;padding:8px 6px;border-radius:9px;border:1px solid #e5dfd3;background:var(--paper);color:#715d4b;font-size:12px;font-weight:700;cursor:pointer;}
+  .pal-tab-btn.active{background:var(--brown);color:#fff;border-color:var(--brown);}
+  .pal-tab-btn .pal-tab-check{color:var(--gold);font-weight:700;margin-left:3px;}
+  .pal-tab-panel{display:none;}
+  .pal-tab-panel.active{display:block;}
   .pal-ghost{
     position:fixed;z-index:300;pointer-events:none;padding:8px 12px;border-radius:12px;background:#fefaf1;
     border:2px solid var(--gold);box-shadow:0 10px 24px rgba(0,0,0,.22);font-size:12px;font-weight:700;color:var(--brown-dark);
@@ -820,11 +824,6 @@
   @media(max-width:1100px){
     .sched-split{grid-template-columns:minmax(0,1fr);}
     .sched-palette{position:static;max-height:56vh;}
-    .pal-tabs{display:flex;gap:6px;margin:10px 0 4px;}
-    .pal-tab-btn{flex:1;padding:8px 6px;border-radius:9px;border:1px solid #e5dfd3;background:var(--paper);color:#715d4b;font-size:12px;font-weight:700;cursor:pointer;}
-    .pal-tab-btn.active{background:var(--brown);color:#fff;border-color:var(--brown);}
-    .pal-tab-panel{display:none;}
-    .pal-tab-panel.active{display:block;}
   }
   /* ===== M3 月曆表格優化 ===== */
   /* 7 欄一律等寬：用 minmax(0,1fr) 讓欄位不被內容撐開（原本 1fr 會被 nowrap 的標籤撐出不等寬並超出容器） */
@@ -1173,9 +1172,10 @@
               <button class="btn outline" id="palPlaceBtn" style="padding:5px 10px;font-size:11px;" onclick="togglePlaceMode()">👆 點日期放置：關</button>
             </div>
           </div>
-          <div class="pal-tabs">
-            <button class="pal-tab-btn active" data-tab="staff" onclick="switchPalTab('staff')">👥 員工</button>
-            <button class="pal-tab-btn" data-tab="site" onclick="switchPalTab('site')">📍 地點・🕘 時段</button>
+          <div class="pal-tabs" id="palTabsBar">
+            <button class="pal-tab-btn active" data-tab="staff" onclick="switchPalTab('staff')">① 員工<span class="pal-tab-check" id="palTabCheckStaff"></span></button>
+            <button class="pal-tab-btn" data-tab="site" onclick="switchPalTab('site')">② 地點<span class="pal-tab-check" id="palTabCheckSite"></span></button>
+            <button class="pal-tab-btn" data-tab="time" onclick="switchPalTab('time')">③ 時段<span class="pal-tab-check" id="palTabCheckTime"></span></button>
           </div>
           <div class="pal-tab-panel active" id="palTabStaff" data-tab-panel="staff">
             <div class="pal-section" style="margin-top:0;">
@@ -1183,13 +1183,22 @@
                 <span class="pal-links"><button onclick="selectAllPalStaff()">全選</button><button onclick="clearPalStaff()">清除</button></span></div>
               <div class="pal-grid" id="palStaff"></div>
             </div>
+            <div style="margin-top:12px;text-align:right;">
+              <button class="btn outline" style="padding:5px 12px;font-size:11px;" onclick="switchPalTab('site')">下一步：選地點 →</button>
+            </div>
           </div>
           <div class="pal-tab-panel" id="palTabSite" data-tab-panel="site">
             <div class="pal-section" style="margin-top:0;">
               <div class="pal-title"><span>📍 地點</span></div>
               <div class="pal-grid" id="palSites"></div>
             </div>
-            <div class="pal-section">
+            <div style="margin-top:12px;display:flex;justify-content:space-between;">
+              <button class="btn outline" style="padding:5px 12px;font-size:11px;" onclick="switchPalTab('staff')">← 上一步</button>
+              <button class="btn outline" style="padding:5px 12px;font-size:11px;" onclick="switchPalTab('time')">下一步：選時段 →</button>
+            </div>
+          </div>
+          <div class="pal-tab-panel" id="palTabTime" data-tab-panel="time">
+            <div class="pal-section" style="margin-top:0;">
               <div class="pal-title"><span>🕘 時段</span></div>
               <div class="pal-grid" id="palTimes"></div>
               <div class="pal-time-inputs">
@@ -1197,6 +1206,9 @@
                 <span>至</span>
                 <input type="time" id="palEnd" onchange="onPalTimeInput()">
               </div>
+            </div>
+            <div style="margin-top:12px;">
+              <button class="btn outline" style="padding:5px 12px;font-size:11px;" onclick="switchPalTab('site')">← 上一步</button>
             </div>
           </div>
         </aside>
@@ -3553,6 +3565,7 @@ function renderSchedPalette(){
 function updateSchedPaletteUI(){
   const pal = document.getElementById('schedPalette');
   if(!pal) return;
+  updatePalTabChecks();
   const selectedSite = schedPick.siteId ? sites.find(x=>x.id===schedPick.siteId) : null;
   pal.querySelectorAll('.pal-pill').forEach(el=>{
     const kind = el.dataset.kind, id = el.dataset.id;
@@ -3598,23 +3611,22 @@ function updateSchedPaletteUI(){
 function clearSchedPick(){
   schedPick.staffIds = []; schedPick.siteId = null; schedPick.tplId = null; schedPick.start = ''; schedPick.end = '';
   updateSchedPaletteUI();
-  _palAutoAdvanced = false;
   switchPalTab('staff'); // 清除選擇後，回到「員工」分頁，跟重新開始排班時的直覺一致
 }
-function selectAllPalStaff(){ schedPick.staffIds = staff.filter(s=>s.active).map(s=>s.id); updateSchedPaletteUI(); maybeAutoAdvancePalTab(); }
+function selectAllPalStaff(){ schedPick.staffIds = staff.filter(s=>s.active).map(s=>s.id); updateSchedPaletteUI(); }
 function clearPalStaff(){ schedPick.staffIds = []; updateSchedPaletteUI(); }
 
-// B 方案（分頁）：窄螢幕才有分頁按鈕，寬螢幕（電腦）兩個分頁一直都同時顯示，這個函式無作用也沒關係
+// 三步分頁：員工→地點→時段，靠使用者自己點分頁或「下一步／上一步」切換，不做自動跳頁
 function switchPalTab(tab){
   document.querySelectorAll('.pal-tab-btn').forEach(b=> b.classList.toggle('active', b.dataset.tab===tab));
   document.querySelectorAll('.pal-tab-panel').forEach(p=> p.classList.toggle('active', p.dataset.tabPanel===tab));
 }
-// 選第一位員工時，自動跳到「地點／時段」分頁；之後在員工分頁再勾選其他人，不會一直被跳走
-let _palAutoAdvanced = false;
-function maybeAutoAdvancePalTab(){
-  if(window.innerWidth > 1100) return; // 寬螢幕沒有分頁，不用跳
-  if(schedPick.staffIds.length>0 && !_palAutoAdvanced){ _palAutoAdvanced = true; switchPalTab('site'); }
-  if(schedPick.staffIds.length===0) _palAutoAdvanced = false; // 清空後，下次選人再自動跳一次
+// 分頁按鈕上打勾，讓使用者不用切過去看也知道哪一步還沒選
+function updatePalTabChecks(){
+  const set = (elId, done)=>{ const el=document.getElementById(elId); if(el) el.textContent = done ? ' ✓' : ''; };
+  set('palTabCheckStaff', schedPick.staffIds.length>0);
+  set('palTabCheckSite', !!schedPick.siteId);
+  set('palTabCheckTime', !!(schedPick.start && schedPick.end));
 }
 function togglePlaceMode(){ schedPick.placeMode = !schedPick.placeMode; updateSchedPaletteUI(); }
 function onPalTimeInput(){
@@ -3642,7 +3654,6 @@ function onPalTimeInput(){
     }
     if(kind==='staff'){
       schedPick.staffIds = schedPick.staffIds.includes(id) ? schedPick.staffIds.filter(x=>x!==id) : [...schedPick.staffIds, id];
-      maybeAutoAdvancePalTab();
     } else if(kind==='site'){
       schedPick.siteId = schedPick.siteId===id ? null : id;
     } else if(kind==='tpl'){
