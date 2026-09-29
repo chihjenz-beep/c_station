@@ -280,8 +280,15 @@
   }
 
   /* ===== 批量排班 styles ===== */
+  /* 這個彈窗內容較多，放大視窗寬度，讓人員／地點／日期／時段由左至右並排，不用整個視窗上下滑 */
+  #bulkScheduleOverlay .modal-box{width:min(94vw,960px);}
+  .bulk-form-grid{display:grid;grid-template-columns:1.3fr 1.3fr 1fr 1.3fr;gap:16px;align-items:start;margin-bottom:10px;}
+  .bulk-form-col{display:flex;flex-direction:column;gap:7px;min-width:0;}
+  .bulk-form-col>.bfc-label{font-size:12px;font-weight:600;color:var(--text-soft);}
+  @media(max-width:900px){ .bulk-form-grid{grid-template-columns:1fr 1fr;} }
+  @media(max-width:620px){ .bulk-form-grid{grid-template-columns:1fr;} }
   .bulk-staff-checklist{
-    flex:1;display:flex;flex-wrap:wrap;gap:5px;max-height:140px;overflow-y:auto;
+    flex:1;display:flex;flex-wrap:wrap;gap:5px;max-height:220px;overflow-y:auto;
     padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--paper);
   }
   .bulk-staff-chip{
@@ -1337,44 +1344,42 @@
         <div class="desc" id="bulkModeDesc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
           選人員＋地點＋日期範圍 → 選時段後點「設定」（可重複設定多個時段，例如上午、下午各設一次）→ 全部設定完後點「套用」一次性排入月曆。
         </div>
-        <div class="form-line">
-          <label>人員</label>
-          <div id="bulkStaffChecklist" class="bulk-staff-checklist"></div>
-        </div>
-        <div class="form-line">
-          <label>地點</label>
-          <div id="bulkSiteChecklist" class="bulk-staff-checklist"></div>
-        </div>
-        <div class="form-line">
-          <label>日期</label>
-          <div style="display:flex;gap:8px;align-items:center;">
-            <input type="date" id="bulkStartDate">
-            <span>至</span>
-            <input type="date" id="bulkEndDate">
+        <div class="bulk-form-grid">
+          <div class="bulk-form-col">
+            <span class="bfc-label">人員</span>
+            <div id="bulkStaffChecklist" class="bulk-staff-checklist"></div>
           </div>
-        </div>
-        <div class="form-line" id="bulkExcludeWeekendRow">
-          <label></label>
-          <label style="display:flex;align-items:center;gap:6px;flex:0 0 auto;font-size:12px;color:var(--text);">
-            <input type="checkbox" id="bulkExcludeWeekend" checked style="width:auto;">
-            排除週六、週日
-          </label>
-        </div>
-
-        <div id="bulkApplySection">
-          <div class="form-line" style="border-top:1px dashed var(--border);padding-top:10px;margin-top:4px;">
-            <label>時段</label>
+          <div class="bulk-form-col">
+            <span class="bfc-label">地點</span>
+            <div id="bulkSiteChecklist" class="bulk-staff-checklist"></div>
+          </div>
+          <div class="bulk-form-col">
+            <span class="bfc-label">日期</span>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <input type="date" id="bulkStartDate">
+              <span style="font-size:11px;color:var(--text-soft);text-align:center;">至</span>
+              <input type="date" id="bulkEndDate">
+            </div>
+            <label id="bulkExcludeWeekendRow" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);margin-top:4px;">
+              <input type="checkbox" id="bulkExcludeWeekend" checked style="width:auto;">
+              排除週六、週日
+            </label>
+          </div>
+          <div class="bulk-form-col" id="bulkApplyTimeCol">
+            <span class="bfc-label">時段</span>
             <div class="quick-btn-row" id="bulkQuickBtns"></div>
-          </div>
-          <div class="form-line">
-            <label></label>
-            <div style="display:flex;gap:8px;align-items:center;">
-              <input type="time" id="bulkStart" value="08:00">
-              <span>至</span>
-              <input type="time" id="bulkEnd" value="16:30">
-              <button class="btn outline" onclick="addBulkRule()">＋ 設定</button>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px;">
+              <div style="display:flex;gap:6px;align-items:center;">
+                <input type="time" id="bulkStart" value="08:00" style="flex:1;min-width:0;">
+                <span>至</span>
+                <input type="time" id="bulkEnd" value="16:30" style="flex:1;min-width:0;">
+              </div>
+              <button class="btn outline" style="width:100%;" onclick="addBulkRule()">＋ 設定</button>
             </div>
           </div>
+        </div>
+
+        <div id="bulkApplyBottom">
           <div id="bulkRuleCount" class="bulk-rule-count"></div>
           <button class="btn gold" style="width:100%;margin-top:10px;" onclick="runBulkSchedule()">⚡ 套用批量排班</button>
         </div>
@@ -4007,7 +4012,8 @@ function setBulkMode(mode){
   document.getElementById('bulkModeApplyBtn').classList.toggle('outline', mode!=='apply');
   document.getElementById('bulkModeCancelBtn').classList.toggle('gold', mode==='cancel');
   document.getElementById('bulkModeCancelBtn').classList.toggle('outline', mode!=='cancel');
-  document.getElementById('bulkApplySection').style.display = mode==='apply' ? '' : 'none';
+  document.getElementById('bulkApplyTimeCol').style.display = mode==='apply' ? '' : 'none';
+  document.getElementById('bulkApplyBottom').style.display = mode==='apply' ? '' : 'none';
   document.getElementById('bulkCancelSection').style.display = mode==='cancel' ? '' : 'none';
   document.getElementById('bulkExcludeWeekendRow').style.display = mode==='apply' ? '' : 'none';
   document.getElementById('bulkModeDesc').textContent = mode==='apply'
