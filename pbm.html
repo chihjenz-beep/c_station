@@ -700,8 +700,9 @@
   #panel-m1>.card,#panel-m2>.card,#panel-m4>.card,#panel-m5>.card,#panel-m7>.card,#panel-m8>.card,#panel-m9>.card{grid-column:span 12;width:100%;}
   /* M1：四張卡片（員工清單／診所上班日設定／據點指派／外師課程管理）改為全寬上下排列，由上至下四層 */
   #panel-m4>.card:nth-child(1),#panel-m4>.card:nth-child(2){grid-column:span 6;}
-  /* M7：兩張卡片改為全寬上下排列（原本左右各半寬會把矩陣檢視擠窄），查詢卡片的矩陣才有整排寬度可以檢視 */
-  #panel-m9>.card:nth-child(1),#panel-m9>.card:nth-child(2){grid-column:span 6;}
+  /* M9：改回左右並排，但不是各半寬——登記表單縮到原本(6)的2/3(=4)，省下的寬度都給總覽(8)，讓總覽的欄位名稱不會被擠 */
+  #panel-m9>.card:nth-child(1){grid-column:span 4;}
+  #panel-m9>.card:nth-child(2){grid-column:span 8;}
   @media(max-width:900px){
     #panel-m4>.card:nth-child(1),#panel-m4>.card:nth-child(2),#panel-m9>.card:nth-child(1),#panel-m9>.card:nth-child(2){grid-column:span 12;}
   }
