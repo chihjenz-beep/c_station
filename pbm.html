@@ -5162,10 +5162,11 @@ function renderConflictCalendar(){
   grid.innerHTML = html;
 }
 function renderConflictOverview(){
-  const { dayGroups, conflicts, gaps, halfDayGaps, closedScheduled } = buildConflictDayGroups();
   const summaryEl = document.getElementById('conflictSummary');
   const listEl = document.getElementById('conflictList');
+  if(!summaryEl || !listEl) return; // 員工模式看不到 M5，這個區塊的 DOM 根本沒畫出來，直接跳過即可
 
+  const { dayGroups, conflicts, gaps, halfDayGaps, closedScheduled } = buildConflictDayGroups();
   const overlapCount = conflicts.filter(c=>c.reasons.includes('overlap')).length;
   const leaveCount = conflicts.filter(c=>c.reasons.includes('leave')).length;
   const dateCount = new Set([...conflicts.map(c=>c.dateStr), ...gaps.map(g=>g.dateStr), ...halfDayGaps.map(g=>g.dateStr), ...closedScheduled.map(g=>g.dateStr)]).size;
