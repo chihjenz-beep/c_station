@@ -131,7 +131,7 @@
   .pill.active.station{background:var(--station-bg);color:var(--station);border-color:var(--station);}
   .pill.active.both{background:var(--gold-light);color:var(--brown-dark);border-color:var(--gold);}
   .row-del{
-    background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px;padding:2px 6px;
+    background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px;padding:2px 6px;white-space:nowrap;
   }
   .row-del.force-del{
     background:var(--danger-bg);border:1px solid var(--danger);border-radius:6px;font-weight:700;
@@ -476,12 +476,12 @@
   .report-table th:first-child, .report-table td:first-child{width:30%;}
   .attendance-table th:first-child, .attendance-table td:first-child{width:11%;}
   .attendance-table th:nth-child(2), .attendance-table td:nth-child(2){width:12%;}
-  .attendance-table th:nth-child(3), .attendance-table td:nth-child(3){width:14%;}
+  .attendance-table th:nth-child(3), .attendance-table td:nth-child(3){width:12%;}
   .attendance-table th:nth-child(4), .attendance-table td:nth-child(4){width:14%;}
-  .attendance-table th:nth-child(5), .attendance-table td:nth-child(5){width:18%;}
-  .attendance-table th:nth-child(6), .attendance-table td:nth-child(6){width:8%;}
+  .attendance-table th:nth-child(5), .attendance-table td:nth-child(5){width:16%;}
+  .attendance-table th:nth-child(6), .attendance-table td:nth-child(6){width:9%;}
   .attendance-table th:nth-child(7), .attendance-table td:nth-child(7){width:13%;}
-  .attendance-table th:nth-child(8), .attendance-table td:nth-child(8){width:10%;}
+  .attendance-table th:nth-child(8), .attendance-table td:nth-child(8){width:13%;}
   .report-table td{padding:7px 10px;border-bottom:1px solid var(--border);overflow:hidden;text-overflow:ellipsis;}
   .report-table tr:hover td{background:#f9f5eb;}
   .report-table td.num{text-align:right;font-weight:600;}
@@ -6187,7 +6187,7 @@ function renderAttendanceOverview(){
   }
   let html = empHint + `<table class="report-table attendance-table">
     <thead><tr>
-      <th>姓名</th><th>日期</th><th>時間區間</th><th>地點</th><th>事由</th><th class="num-head">支援時數</th><th>照片</th><th></th>
+      <th>姓名</th><th>日期</th><th>時間區間</th><th>地點</th><th>事由</th><th class="num-head">時數</th><th>照片</th><th></th>
     </tr></thead><tbody>`;
   rows.forEach(r=>{
     const hours = timeToHours(r.start, r.end).toFixed(1);
