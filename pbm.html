@@ -987,6 +987,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -1064,6 +1065,10 @@
   <div class="panel active" id="panel-m1">
     <div class="card">
       <h2>👥 員工清單 <span class="badge gold">22位（自 checkin.html 匯入）</span></h2>
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <button class="btn outline" onclick="exportM1XLSX()">⬇️ 匯出 Excel（員工＋據點）</button>
+        <button class="btn outline" onclick="importM1XLSX()">⬆️ 匯入 Excel</button>
+      </div>
       <div id="staffList" class="staff-grid"></div>
       <div style="margin-top:10px;display:flex;gap:8px;">
         <input type="text" id="newStaffName" placeholder="新增員工姓名" style="flex:1;">
@@ -1134,6 +1139,10 @@
         時段不綁地點 —— 排班時（M3）再選人員與地點（診所或任一據點）。<br>
         同一人同一天可分別建立上午診所＋下午據點等跨地點組合。按鈕只是快速套用起點，套用後仍可手動調整時間。
       </div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <button class="btn outline" onclick="exportM2XLSX()">⬇️ 匯出 Excel</button>
+        <button class="btn outline" onclick="importM2XLSX()">⬆️ 匯入 Excel</button>
+      </div>
       <div id="shiftTplList"></div>
       <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
         <input type="text" id="newTplName" placeholder="按鈕名稱（如：18點起）" style="flex:1;min-width:120px;">
@@ -1165,6 +1174,8 @@
           <button class="btn gold" onclick="openBulkScheduleModal()">⚡ 批量排班</button>
           <button class="btn gold" onclick="openCopyScheduleModal()">📋 複製排班</button>
           <button class="btn outline" onclick="exportScheduleBackupXlsx()" title="把排班、請假、外師課程、臨時休診等全部月份資料匯出成 Excel 備份檔">💾 備份匯出 XLSX</button>
+          <button class="btn outline" onclick="exportM3XLSX()" title="只匯出排班本體，欄位簡化，方便離線編輯後再匯入">⬇️ 匯出排班 Excel</button>
+          <button class="btn outline" onclick="importM3XLSX()" title="匯入排班（只會新增，不會刪除或覆蓋既有排班；完全相同的那一筆會自動略過不重複新增）">⬆️ 匯入排班 Excel</button>
           <button class="btn outline" id="viewModeMonthBtn" onclick="setCalView('month')">月</button>
           <button class="btn outline" id="viewModeWeekBtn" onclick="setCalView('week')">週</button>
           <button class="btn outline" id="viewModeMatrixBtn" onclick="setCalView('matrix')">矩陣總覽</button>
@@ -1552,6 +1563,7 @@
           <button class="btn outline" id="conflictViewListBtn" onclick="setConflictView('list')">列表檢視</button>
           <button class="btn outline" id="conflictViewCalBtn" onclick="setConflictView('calendar')">🗓️ 月曆檢視</button>
           <button class="btn outline" onclick="renderConflictOverview()">🔄 重新掃描</button>
+          <button class="btn outline" onclick="exportM5XLSX()">⬇️ 匯出 Excel</button>
         </div>
       </div>
       <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
@@ -1653,7 +1665,8 @@
         <label style="font-size:12px;color:var(--text-soft);">結束日</label>
         <input type="date" id="reportEndDate">
         <button class="btn gold" onclick="runReport()">產生報表</button>
-        <button class="btn outline" onclick="exportReportCSV()" style="margin-left:auto;">⬇ 匯出CSV</button>
+        <button class="btn outline" onclick="exportM8XLSX()" style="margin-left:auto;">⬇️ 匯出 Excel</button>
+        <button class="btn outline" onclick="exportReportCSV()">⬇ 匯出CSV</button>
       </div>
     </div>
 
@@ -1738,6 +1751,10 @@
       <h2>📋 支援總覽</h2>
       <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
         可依人員/日期區間篩選，顯示總工時；可直接刪除錯誤紀錄。
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <button class="btn outline" onclick="exportM9XLSX()">⬇️ 匯出 Excel</button>
+        <button class="btn outline" onclick="importM9XLSX()">⬆️ 匯入 Excel</button>
       </div>
       <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
         <select id="m9FilterStaff" onchange="renderAttendanceOverview()" style="flex:1;min-width:120px;">
@@ -2192,6 +2209,43 @@ function uid(prefix){
   return prefix+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 }
 
+// ===== 共用的 Excel 匯出／匯入工具（靠 SheetJS，CDN 載入，見 <head>） =====
+// sheets: [{ name:'工作表名稱', rows:[{欄位1:值, 欄位2:值, ...}, ...] }, ...]
+function exportXLSX(filename, sheets){
+  const wb = XLSX.utils.book_new();
+  sheets.forEach(s=>{
+    const ws = XLSX.utils.json_to_sheet(s.rows, { header: s.header });
+    XLSX.utils.book_append_sheet(wb, ws, s.name.slice(0,31)); // Excel 工作表名稱上限31字
+  });
+  XLSX.writeFile(wb, filename);
+}
+// 讀取使用者選的 .xlsx 檔，回傳 { 工作表名稱: [ {欄位:值,...}, ... ] }
+function readXLSXFile(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = e=>{
+      try{
+        const wb = XLSX.read(e.target.result, { type:'array' });
+        const out = {};
+        wb.SheetNames.forEach(name=>{
+          out[name] = XLSX.utils.sheet_to_json(wb.Sheets[name], { defval:'' });
+        });
+        resolve(out);
+      }catch(err){ reject(err); }
+    };
+    reader.onerror = ()=>reject(new Error('檔案讀取失敗'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+// 觸發隱藏的 <input type="file">，選檔後呼叫 onFile(file)
+function pickXLSXFile(onFile){
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.xlsx,.xls';
+  input.onchange = ()=>{ if(input.files && input.files[0]) onFile(input.files[0]); };
+  input.click();
+}
+
 // 預設時段快速按鈕（不綁地點，純時段模板，排班時另選人員＋地點）
 const DEFAULT_SHIFT_TEMPLATES = [
   { id:'tpl_full',    name:'整天',   start:'08:00', end:'16:30' },
@@ -2470,6 +2524,85 @@ function addStaff(){
   inp.value='';
   renderStaffTable(); populateTeacherStaffSelect(); renderSites();
   if(typeof populateLeaveFilterSelects==='function') populateLeaveFilterSelects();
+}
+
+// ===== M1 匯出／匯入（員工清單＋據點指派） =====
+const SITES_LABEL = { clinic:'診所', station:'據點', both:'皆可' };
+function exportM1XLSX(){
+  const staffRows = staff.map(s=>({
+    id: s.id, 姓名: s.name, 可排地點: SITES_LABEL[s.sites] || s.sites, 在職: s.active ? '是' : '否'
+  }));
+  const siteRows = sites.map(s=>({
+    id: s.id, 名稱: s.name, 類型: s.isClinic ? '診所' : '據點',
+    主要人員: (s.mainStaffIds||[]).map(getStaffName).join('、'),
+    代班人員: (s.reliefStaffIds||[]).map(getStaffName).join('、'),
+    主責人員: (s.dutyStaffIds||[]).map(getStaffName).join('、'),
+    營運星期: (s.operatingWeekdays||[]).join('、')
+  }));
+  exportXLSX('員工與據點.xlsx', [ { name:'員工', rows: staffRows }, { name:'據點', rows: siteRows } ]);
+}
+function importM1XLSX(){
+  pickXLSXFile(async file=>{
+    let data;
+    try{ data = await readXLSXFile(file); }catch(e){ alert('讀取檔案失敗：'+e.message); return; }
+    const staffSheet = data['員工'] || [];
+    const siteSheet = data['據點'] || [];
+    if(!staffSheet.length && !siteSheet.length){ alert('這個檔案裡找不到「員工」或「據點」工作表，請確認是用「匯出 Excel」產生的檔案。'); return; }
+
+    let staffNew=0, staffUpdated=0;
+    const byId = Object.fromEntries(staff.map(s=>[s.id, s]));
+    staffSheet.forEach(row=>{
+      const name = String(row['姓名']||'').trim();
+      if(!name) return;
+      const typeLabel = String(row['可排地點']||'皆可').trim();
+      const sitesVal = typeLabel==='診所' ? 'clinic' : typeLabel==='據點' ? 'station' : 'both';
+      const activeVal = !(String(row['在職']||'是').trim()==='否');
+      const id = String(row['id']||'').trim();
+      if(id && byId[id]){
+        Object.assign(byId[id], { name, sites: sitesVal, active: activeVal });
+        staffUpdated++;
+      }else{
+        const s = { id: uid('st'), name, sites: sitesVal, active: activeVal };
+        staff.push(s); byId[s.id] = s; staffNew++;
+      }
+    });
+
+    const nameToId = {};
+    staff.forEach(s=>{ nameToId[s.name] = s.id; });
+    const namesToIds = txt => String(txt||'').split(/[、,，\s]+/).map(n=>n.trim()).filter(Boolean)
+      .map(n=>{ const id=nameToId[n]; if(!id) console.warn('[匯入] 找不到人員「'+n+'」，已略過'); return id; }).filter(Boolean);
+
+    let siteNew=0, siteUpdated=0;
+    const siteById = Object.fromEntries(sites.map(s=>[s.id, s]));
+    siteSheet.forEach(row=>{
+      const name = String(row['名稱']||'').trim();
+      if(!name) return;
+      const id = String(row['id']||'').trim();
+      const patch = {
+        name,
+        mainStaffIds: namesToIds(row['主要人員']),
+        reliefStaffIds: namesToIds(row['代班人員']),
+        dutyStaffIds: namesToIds(row['主責人員']),
+        operatingWeekdays: String(row['營運星期']||'').split(/[、,，\s]+/).map(n=>parseInt(n,10)).filter(n=>!isNaN(n))
+      };
+      if(id && siteById[id]){
+        Object.assign(siteById[id], patch);
+        siteUpdated++;
+      }else{
+        const s = Object.assign({ id: uid('site') }, patch);
+        sites.push(s); siteById[s.id] = s; siteNew++;
+      }
+    });
+    ensureClinicSites(); // 補回診所旗標（固定id辨識，不受匯入影響）
+
+    if(!confirm(`即將套用匯入結果：\n員工：新增 ${staffNew} 位、更新 ${staffUpdated} 位\n據點：新增 ${siteNew} 個、更新 ${siteUpdated} 個\n\n匯入前請確認「id」欄位沒有被手動改動過（有 id 會視為更新既有資料，沒有 id 會視為新增）。確定要套用嗎？`)){
+      return; // 使用者取消：前面只是改在記憶體裡，重新整理頁面即可還原，不用額外復原
+    }
+    saveStore(STORE_KEYS.staff, staff);
+    saveStore(STORE_KEYS.sites, sites);
+    renderAllAfterSync();
+    alert('✅ 匯入完成');
+  });
 }
 
 // ===========================================================
@@ -2957,6 +3090,40 @@ function addShiftTemplate(){
   saveStore(STORE_KEYS.shiftTemplates, shiftTemplates);
   nameInp.value='';
   renderShiftTemplates();
+}
+
+// ===== M2 匯出／匯入（快速時段按鈕） =====
+function exportM2XLSX(){
+  const rows = shiftTemplates.map(t=>({ id:t.id, 名稱:t.name, 開始:t.start, 結束:t.end }));
+  exportXLSX('快速時段按鈕.xlsx', [ { name:'時段範本', rows } ]);
+}
+function importM2XLSX(){
+  pickXLSXFile(async file=>{
+    let data;
+    try{ data = await readXLSXFile(file); }catch(e){ alert('讀取檔案失敗：'+e.message); return; }
+    const sheet = data['時段範本'] || [];
+    if(!sheet.length){ alert('這個檔案裡找不到「時段範本」工作表，請確認是用「匯出 Excel」產生的檔案。'); return; }
+    let created=0, updated=0, skipped=0;
+    const byId = Object.fromEntries(shiftTemplates.map(t=>[t.id, t]));
+    sheet.forEach(row=>{
+      const name = String(row['名稱']||'').trim();
+      const start = String(row['開始']||'').trim();
+      const end = String(row['結束']||'').trim();
+      if(!name || !start || !end || start>=end){ skipped++; return; }
+      const id = String(row['id']||'').trim();
+      if(id && byId[id]){
+        Object.assign(byId[id], { name, start, end });
+        updated++;
+      }else{
+        const t = { id: uid('tpl'), name, start, end };
+        shiftTemplates.push(t); byId[t.id]=t; created++;
+      }
+    });
+    if(!confirm(`即將套用匯入結果：新增 ${created} 個、更新 ${updated} 個${skipped?`、略過 ${skipped} 列（欄位不完整或時間顛倒）`:''}。確定要套用嗎？`)) return;
+    saveStore(STORE_KEYS.shiftTemplates, shiftTemplates);
+    renderAllAfterSync();
+    alert('✅ 匯入完成');
+  });
 }
 function renderTplPreviewBtns(){
   const container = document.getElementById('tplPreviewBtns');
@@ -4011,6 +4178,47 @@ function exportScheduleBackupXlsx(){
     console.error('備份匯出失敗', err);
     alert('備份匯出失敗：' + (err && err.message ? err.message : err));
   }
+}
+
+// ===== M3 匯出／匯入（排班本體，簡化欄位版，方便離線編輯後匯入） =====
+function exportM3XLSX(){
+  const rows = [];
+  Object.keys(schedule).sort().forEach(date=>{
+    (schedule[date]||[]).forEach(e=>{
+      rows.push({ 日期:date, 員工:getStaffName(e.staffId), 地點:getSiteName(e.site), 開始:e.start, 結束:e.end, 狀態: e.status==='published'?'已發布':'草稿' });
+    });
+  });
+  exportXLSX('排班.xlsx', [ { name:'排班', rows } ]);
+}
+function importM3XLSX(){
+  pickXLSXFile(async file=>{
+    let data;
+    try{ data = await readXLSXFile(file); }catch(e){ alert('讀取檔案失敗：'+e.message); return; }
+    const sheet = data['排班'] || [];
+    if(!sheet.length){ alert('這個檔案裡找不到「排班」工作表，請確認是用「匯出排班 Excel」產生的檔案。'); return; }
+    const nameToStaffId = {}; staff.forEach(s=>{ nameToStaffId[s.name]=s.id; });
+    const nameToSiteId = {}; sites.forEach(s=>{ nameToSiteId[s.name]=s.id; });
+    let added=0, skippedDup=0, skippedBad=0;
+    sheet.forEach(row=>{
+      const date = String(row['日期']||'').trim();
+      const staffId = nameToStaffId[String(row['員工']||'').trim()];
+      const site = nameToSiteId[String(row['地點']||'').trim()];
+      const start = String(row['開始']||'').trim();
+      const end = String(row['結束']||'').trim();
+      const status = String(row['狀態']||'').trim()==='已發布' ? 'published' : 'draft';
+      if(!date || !staffId || !site || !start || !end || start>=end){ skippedBad++; return; }
+      if(!schedule[date]) schedule[date]=[];
+      // 完全相同的那一筆（日期＋員工＋地點＋時段）已存在就略過，避免重複匯入
+      const dup = schedule[date].some(e=>e.staffId===staffId && e.site===site && e.start===start && e.end===end);
+      if(dup){ skippedDup++; return; }
+      schedule[date].push({ staffId, site, start, end, status });
+      added++;
+    });
+    if(!confirm(`即將套用匯入結果：新增 ${added} 筆${skippedDup?`、略過 ${skippedDup} 筆重複`:''}${skippedBad?`、略過 ${skippedBad} 筆欄位有誤（找不到同名人員/地點、或時間顛倒）`:''}。\n匯入只會「新增」，不會刪除或覆蓋既有排班。確定要套用嗎？`)) return;
+    saveStore(STORE_KEYS.schedule, schedule);
+    renderAllAfterSync();
+    alert('✅ 匯入完成');
+  });
 }
 
 // ===========================================================
@@ -5075,6 +5283,26 @@ function scanClosedClinicScheduled(){
 }
 // 把①②③④四種掃描結果，依日期分組成 dayGroups：同一天只建立一組，彙整當天涉及的據點與各項風險，
 // 供「列表檢視」與「月曆檢視」共用，避免兩邊各自重複掃描與分組邏輯。
+// M5：匯出 Excel（只匯出，沒有匯入意義——這是根據排班/請假/課程即時算出來的檢查結果，不是可編輯回填的來源資料）
+function exportM5XLSX(){
+  const { dayGroups } = buildConflictDayGroups();
+  const kindLabel = { conflict:'衝突', gap:'未安排人力', half:'只排半天', closed:'休診異常' };
+  const rows = [];
+  Object.keys(dayGroups).sort().forEach(dateStr=>{
+    dayGroups[dateStr].rows.forEach(r=>{
+      rows.push({
+        日期: dateStr,
+        類型: kindLabel[r.kind] || r.kind,
+        人員: r.staffId ? getStaffName(r.staffId) : '',
+        地點: r.siteId ? siteLabelPlain(r.siteId) : '',
+        時段: (r.start && r.end) ? `${r.start}-${r.end}` : '',
+        說明: r.reason
+      });
+    });
+  });
+  if(rows.length===0){ alert('目前沒有任何衝突或提醒可以匯出。'); return; }
+  exportXLSX('衝突偵測總覽.xlsx', [ { name:'衝突偵測', rows } ]);
+}
 function buildConflictDayGroups(){
   const conflicts = scanAllConflicts();
   const gaps = scanSiteCoverageGaps();
@@ -5870,6 +6098,33 @@ function renderReportBySite(bySite){
   container.innerHTML = html;
 }
 
+// M8：匯出 Excel（多工作表），跟既有的 CSV 匯出資料來源相同（lastReportData），純粹多一種檔案格式可選
+function exportM8XLSX(){
+  if(!lastReportData){ alert('請先產生報表'); return; }
+  const { startDate, endDate, byStaff, hoursByStaff, bySite, overtimeRecords, overtimeHoursByStaff } = lastReportData;
+  const byStaffRows = Object.keys(byStaff).map(id=>{
+    const d = byStaff[id];
+    return { 姓名: getStaffName(id), 診所班數: d.clinicCount, 據點班數: d.stationCount, 總班數: d.clinicCount+d.stationCount };
+  });
+  const hoursRows = Object.keys(hoursByStaff).map(id=>({ 姓名: getStaffName(id), 總工時: Number(hoursByStaff[id].toFixed(1)) }));
+  const overtimeRows = overtimeRecords.map(r=>({
+    姓名: getStaffName(r.staffId), 日期: r.date, 時間區間: `${r.start}-${r.end}`,
+    地點: attendanceSiteLabelPlain(r), 事由: r.note || '（支援）', 支援時數: Number(timeToHours(r.start, r.end).toFixed(1))
+  }));
+  const combinedIds = Array.from(new Set([...Object.keys(hoursByStaff), ...Object.keys(overtimeHoursByStaff)]));
+  const combinedRows = combinedIds.map(id=>{
+    const sched = hoursByStaff[id] || 0, ot = overtimeHoursByStaff[id] || 0;
+    return { 姓名: getStaffName(id), 排班工時: Number(sched.toFixed(1)), 加班工時: Number(ot.toFixed(1)), 合計工時: Number((sched+ot).toFixed(1)) };
+  });
+  const bySiteRows = Object.keys(bySite).map(key=>({ 地點: siteLabelPlain(key), 班次數: bySite[key] }));
+  exportXLSX(`排班報表_${startDate}_至_${endDate}.xlsx`, [
+    { name:'每人總班數', rows: byStaffRows },
+    { name:'每人總工時', rows: hoursRows },
+    { name:'加班明細', rows: overtimeRows },
+    { name:'彙整總工時', rows: combinedRows },
+    { name:'每據點人力分布', rows: bySiteRows }
+  ]);
+}
 function exportReportCSV(){
   if(!lastReportData){ alert('請先產生報表'); return; }
   const { startDate, endDate, byStaff, hoursByStaff, bySite, overtimeRecords, overtimeHoursByStaff } = lastReportData;
@@ -5942,6 +6197,54 @@ function attendanceSiteLabel(rec){
 function attendanceSiteLabelPlain(rec){
   if(rec.site==='other') return rec.otherLabel || '其他';
   return siteLabelPlain(rec.site);
+}
+
+// ===== M9 匯出／匯入（支援填報，Firestore 一筆一份文件） =====
+// 匯出的範圍跟目前畫面上「支援總覽」看得到的一樣：管理員是全部人，員工端只有這台裝置自己填過的。
+function exportM9XLSX(){
+  const rows = attendanceRecords.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(r=>({
+    日期: r.date, 員工: getStaffName(r.staffId), 地點: attendanceSiteLabelPlain(r),
+    開始: r.start, 結束: r.end, 事由: r.note||'', 支援時數: timeToHours(r.start, r.end).toFixed(1)
+  }));
+  exportXLSX('支援填報.xlsx', [ { name:'支援填報', rows } ]);
+}
+function importM9XLSX(){
+  if(!fbAuth.currentUser){ alert('⚠️ 裝置正在跟伺服器建立連線，請稍等幾秒後再試一次。'); return; }
+  pickXLSXFile(async file=>{
+    let data;
+    try{ data = await readXLSXFile(file); }catch(e){ alert('讀取檔案失敗：'+e.message); return; }
+    const sheet = data['支援填報'] || [];
+    if(!sheet.length){ alert('這個檔案裡找不到「支援填報」工作表，請確認是用「匯出 Excel」產生的檔案。'); return; }
+    const nameToStaffId = {}; staff.forEach(s=>{ nameToStaffId[s.name]=s.id; });
+    const nameToSiteId = {}; sites.forEach(s=>{ nameToSiteId[s.name]=s.id; });
+    const todo = []; let skipped = 0;
+    sheet.forEach(row=>{
+      const date = String(row['日期']||'').trim();
+      const staffId = nameToStaffId[String(row['員工']||'').trim()];
+      const start = String(row['開始']||'').trim();
+      const end = String(row['結束']||'').trim();
+      if(!date || !staffId || !start || !end || start>=end){ skipped++; return; }
+      const siteName = String(row['地點']||'').trim();
+      const siteId = nameToSiteId[siteName];
+      const site = siteId || 'other';
+      const otherLabel = siteId ? '' : siteName;
+      todo.push({ staffId, date, site, otherLabel, start, end, note:String(row['事由']||'').trim(), photos:[] });
+    });
+    if(todo.length===0){ alert('沒有任何一列可以匯入（請檢查日期／員工／時間欄位）。'); return; }
+    if(!confirm(`即將新增 ${todo.length} 筆支援紀錄到雲端${skipped?`（另外 ${skipped} 列欄位有誤已略過）`:''}。\n匯入只會「新增」，不會比對重複，請留意避免重複匯入同一份檔案。確定要送出嗎？`)) return;
+    try{
+      const batch = fbDb.batch();
+      todo.forEach(rec=>{
+        batch.set(fbDb.collection('attendance').doc(uid9()), Object.assign({}, rec, {
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(), ownerUid: fbAuth.currentUser.uid
+        }));
+      });
+      await batch.commit();
+      alert(`✅ 已匯入 ${todo.length} 筆（即時監聽會自動顯示在總覽上）`);
+    }catch(err){
+      alert('匯入失敗：' + (err && err.code || err && err.message || '未知錯誤'));
+    }
+  });
 }
 // ===========================================================
 // M9 照片上傳：選擇後在瀏覽器端壓縮(最長邊1200px)，暫存於記憶體，
