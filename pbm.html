@@ -1793,8 +1793,8 @@ try{
   fbDb.enablePersistence({ synchronizeTabs:true }).catch(e=>{
     console.warn('[Firestore] 離線持久化未啟用（' + (e && e.code) + '），寫入仍可用，但關閉頁面前需連上網路', e);
   });
-  // 沿用舊行為：關閉分頁即登出。想改成「同一台裝置長期保持登入」，把 SESSION 改成 LOCAL
-  fbAuth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(()=>{});
+  // 持久化改成在每次登入「當下」分別設定（見 submitAdminLogin 跟下面的匿名登入）：
+  // 管理員密碼登入沿用舊行為（關閉分頁即登出）；匿名身分則要長期留在裝置上，兩者不能共用同一個設定。
 }catch(e){ console.error('[Firebase] 初始化失敗，請檢查 FIREBASE_CONFIG：', e); }
 localStorage.removeItem('sched_adminPwdHash'); // 清掉舊版存在本機的密碼雜湊
 
@@ -1803,9 +1803,26 @@ if(fbAuth){
   fbAuth.onAuthStateChanged(user=>{
     const ok = !!(user && user.email === ADMIN_EMAIL);
     if(IS_ADMIN) document.body.classList.toggle('locked', !ok);
-    // firestore.rules：attendance、leaves 都僅管理員可讀，所以登入確認後才拉全部紀錄
-    if(ok && IS_ADMIN){ startAttendanceListener(); startLeavesListener(); }
-    else { stopAttendanceListener(); stopLeavesListener(); }
+    // firestore.rules：attendance、leaves 整個集合都僅管理員可讀，所以登入確認後才拉全部紀錄
+    if(ok && IS_ADMIN){
+      startAttendanceListener(); startLeavesListener();
+      stopOwnAttendanceListener(); stopOwnLeavesListener();
+    }else{
+      stopAttendanceListener(); stopLeavesListener();
+      if(user){
+        // 不是管理員（含匿名身分）：改成只即時監聽「這台裝置自己 ownerUid」寫過的紀錄，
+        // 這樣管理員那邊刪除掉的，這台裝置也能馬上看到，不會一直留著已經不存在的紀錄。
+        startOwnAttendanceListener(user.uid);
+        startOwnLeavesListener(user.uid);
+      }else{
+        // 完全沒有任何登入狀態（第一次開啟、或清過瀏覽器資料）：安靜地給這台裝置一個匿名身分，
+        // 不需要員工做任何事；LOCAL 持久化讓這個身分留在裝置上，下次開啟還是同一個人。
+        stopOwnAttendanceListener(); stopOwnLeavesListener();
+        fbAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+          .then(()=>fbAuth.signInAnonymously())
+          .catch(e=>console.warn('[Firebase] 匿名登入失敗，裝置暫時無法使用「只看自己」功能：', e));
+      }
+    }
   });
 }
 function authErrMsg(e){
@@ -1819,6 +1836,8 @@ function authErrMsg(e){
 }
 async function adminSignIn(pwd){
   if(!fbAuth) throw { code:'app/no-firebase' };
+  // 管理員密碼登入維持舊行為：關閉分頁即登出（跟匿名身分的「長期留在裝置上」分開設定，互不影響）
+  await fbAuth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(()=>{});
   await fbAuth.signInWithEmailAndPassword(ADMIN_EMAIL, pwd);
 }
 async function submitLogin(){
@@ -3332,35 +3351,17 @@ function addLeaveEntry(){
     alert('此人員當日已登記相同類型的請假');
     return;
   }
-  // 跟 M4 的登記共用同一個 Firestore 集合：樂觀更新畫面，寫入確認後補上文件 id
-  const entry = { staffId, type: selectedLeaveType, note:'' };
-  leaves[modalDate].push(entry);
-  saveLocalOnly(STORE_KEYS.leaves, leaves);
-  renderModalLeaves();
-  renderModalEntries();
-  renderCalendar();
-  if(typeof renderLeaveOverview==='function') renderLeaveOverview();
-  if(typeof renderConflictOverview==='function') renderConflictOverview();
+  if(!fbAuth.currentUser){ alert('⚠️ 裝置正在跟伺服器建立連線，請稍等幾秒後再按一次登記。'); return; }
+  // 跟 M4 的登記共用同一個 Firestore 集合，標上這台裝置（這裡通常是管理員）的 ownerUid。
+  // 不用自己手動更新本機陣列，管理員的即時監聽會自動反映這筆新寫入。
   let m4bSettled = false;
   const m4bTimeoutId = setTimeout(()=>{
     if(!m4bSettled) alert('⚠️ ' + modalDate + ' 的請假登記已送出一段時間，但尚未收到伺服器確認送達，可能是網路（尤其行動網路）不穩。請確認網路後，稍等一下看紀錄會不會自動出現；若一直沒出現，請重新整理頁面後再登記一次。');
   }, 12000);
-  fbDb.collection('leaves').add({ date: modalDate, staffId, type: selectedLeaveType, note:'' }).then(doc=>{
+  fbDb.collection('leaves').add({ date: modalDate, staffId, type: selectedLeaveType, note:'', ownerUid: fbAuth.currentUser.uid }).then(()=>{
     m4bSettled = true; clearTimeout(m4bTimeoutId);
-    entry._id = doc.id;
-    saveLocalOnly(STORE_KEYS.leaves, leaves);
   }).catch(err=>{
     m4bSettled = true; clearTimeout(m4bTimeoutId);
-    const arr = leaves[modalDate] || [];
-    const i = arr.indexOf(entry);
-    if(i>-1) arr.splice(i,1);
-    if(arr.length===0) delete leaves[modalDate];
-    saveLocalOnly(STORE_KEYS.leaves, leaves);
-    renderModalLeaves();
-    renderModalEntries();
-    renderCalendar();
-    if(typeof renderLeaveOverview==='function') renderLeaveOverview();
-    if(typeof renderConflictOverview==='function') renderConflictOverview();
     alert('⚠️ 請假登記被伺服器拒絕，未成功送出：' + (err && err.code || err && err.message || '未知錯誤'));
   });
 }
@@ -3443,36 +3444,21 @@ function addLeaveEntryM4(){
     alert('此人員當日已登記相同類型的請假');
     return;
   }
-  // 一筆請假 = Firestore 一份獨立文件（leaves/{自動ID}）。先樂觀更新畫面，寫入確認後補上文件 id；
-  // 員工端只會 create（跟 firestore.rules 一致）；之後要改、要刪，一律要求管理員登入。
-  const entry = { staffId, type: m4SelectedLeaveType, note:'' };
-  leaves[dateStr].push(entry);
-  saveLocalOnly(STORE_KEYS.leaves, leaves);
-  if(typeof renderLeaveOverview==='function') renderLeaveOverview();
-  if(typeof renderConflictOverview==='function') renderConflictOverview();
-  if(typeof renderCalendar==='function') renderCalendar();
-  updateM4ScheduleHint();
+  if(!fbAuth.currentUser){ alert('⚠️ 裝置正在跟伺服器建立連線，請稍等幾秒後再按一次登記。'); return; }
+  // 一筆請假 = Firestore 一份獨立文件（leaves/{自動ID}），標上這台裝置的 ownerUid（含管理員自己）。
+  // 不用自己手動更新本機陣列：管理員監聽整個集合、員工監聽自己 ownerUid 那些，兩邊都靠 Firestore
+  // 的即時監聽統一處理，寫入後幾乎立刻會自動反映在總覽上。員工端只會 create（跟 firestore.rules
+  // 一致）；之後要改、要刪，一律要求管理員登入。
   // 送出後 12 秒內若還沒確認送達，主動跳警告——理由跟 M9 支援填報一樣：行動網路卡住寫入時不會報錯，
   // 「已登記」提示只代表本機沒有立即出錯，不代表已送達伺服器。
   let m4Settled = false;
   const m4TimeoutId = setTimeout(()=>{
     if(!m4Settled) alert('⚠️ ' + dateStr + ' 的請假登記已送出一段時間，但尚未收到伺服器確認送達，可能是網路（尤其行動網路）不穩。請確認網路後，稍等一下看紀錄會不會自動出現；若一直沒出現，請重新整理頁面後再登記一次。');
   }, 12000);
-  fbDb.collection('leaves').add({ date: dateStr, staffId, type: m4SelectedLeaveType, note:'' }).then(doc=>{
+  fbDb.collection('leaves').add({ date: dateStr, staffId, type: m4SelectedLeaveType, note:'', ownerUid: fbAuth.currentUser.uid }).then(()=>{
     m4Settled = true; clearTimeout(m4TimeoutId);
-    entry._id = doc.id;
-    saveLocalOnly(STORE_KEYS.leaves, leaves);
   }).catch(err=>{
     m4Settled = true; clearTimeout(m4TimeoutId);
-    const arr = leaves[dateStr] || [];
-    const i = arr.indexOf(entry);
-    if(i>-1) arr.splice(i,1);
-    if(arr.length===0) delete leaves[dateStr];
-    saveLocalOnly(STORE_KEYS.leaves, leaves);
-    if(typeof renderLeaveOverview==='function') renderLeaveOverview();
-    if(typeof renderConflictOverview==='function') renderConflictOverview();
-    if(typeof renderCalendar==='function') renderCalendar();
-    updateM4ScheduleHint();
     alert('⚠️ ' + dateStr + ' 的請假登記被伺服器拒絕，未成功送出：' + (err && err.code || err && err.message || '未知錯誤') + '\n請洽管理者。');
   });
   const isAdminNow = isAdminAuthed();
@@ -4859,6 +4845,34 @@ function stopLeavesListener(){
   legacyLeavesMigrationOffered = false;
 }
 
+// 員工（匿名身分）：只即時監聽「這台裝置自己 ownerUid」寫過的請假紀錄，不是全部人的。
+// 這樣管理員刪除之後，這台裝置也會馬上更新，不會一直留著已經不存在的舊紀錄。
+let ownLeavesUnsub = null;
+function startOwnLeavesListener(uid){
+  if(ownLeavesUnsub || !fbDb || !uid) return;
+  ownLeavesUnsub = fbDb.collection('leaves').where('ownerUid','==',uid).onSnapshot(snap=>{
+    const rebuilt = {};
+    snap.docs.forEach(d=>{
+      const x = d.data();
+      if(!x || !x.date) return;
+      if(!rebuilt[x.date]) rebuilt[x.date] = [];
+      rebuilt[x.date].push({ staffId:x.staffId, type:x.type, note:x.note||'', _id:d.id });
+    });
+    leaves = rebuilt;
+    saveLocalOnly(STORE_KEYS.leaves, leaves);
+    renderLeaveOverview();
+    renderCalendar();
+    if(typeof renderConflictOverview==='function') renderConflictOverview();
+    updateM4ScheduleHint();
+  }, err=>{
+    ownLeavesUnsub = null;
+    console.error('[Firestore] 監聽自己的 leaves 失敗：', err);
+  });
+}
+function stopOwnLeavesListener(){
+  if(ownLeavesUnsub){ ownLeavesUnsub(); ownLeavesUnsub = null; }
+}
+
 // 一次性搬家：把舊版存在 GAS/Google Sheet 的請假紀錄，寫成 Firestore 文件（舊資料本來就沒有 id，改用自動配 ID；
 // 用「日期＋人員＋類型」去比對避免重複匯入，量不大所以一次寫完，不分批）
 async function offerLegacyLeavesMigration(){
@@ -4877,7 +4891,7 @@ async function offerLegacyLeavesMigration(){
   try{
     const batch = fbDb.batch();
     todo.forEach(l=>{
-      batch.set(fbDb.collection('leaves').doc(), { date:l.date, staffId:l.staffId, type:l.type, note:l.note||'' });
+      batch.set(fbDb.collection('leaves').doc(), { date:l.date, staffId:l.staffId, type:l.type, note:l.note||'', ownerUid: fbAuth.currentUser.uid });
     });
     await batch.commit();
     localStorage.setItem('m4_migrated_to_firestore','1');
@@ -6039,19 +6053,17 @@ async function addAttendanceRecord(){
     if(btn) btn.disabled = false;
   }
 
+  if(!fbAuth.currentUser){ alert('⚠️ 裝置正在跟伺服器建立連線，請稍等幾秒後再按一次登記。'); return; }
   const rec = {
     id: uid9(), staffId, date: dateStr, site,
     otherLabel: site==='other' ? otherLabel : '',
     start, end, note, photos: photoUrls
   };
-  // 一筆紀錄 = Firestore 一份獨立文件（attendance/{id}）。
-  // 有離線持久化時，set() 要等伺服器確認才會完成，所以不 await：先把紀錄記在本機並標「待上傳」，
-  // 確認後才拿掉標記。員工端只會 create；之後要改、要刪，伺服器規則一律要求管理員登入。
+  // 一筆紀錄 = Firestore 一份獨立文件（attendance/{id}），標上這台裝置的 ownerUid（含管理員自己）。
+  // 不用自己手動更新本機陣列：管理員監聽整個集合、員工監聽自己 ownerUid 那些，兩邊都靠 Firestore
+  // 的即時監聽統一處理，寫入後幾乎立刻會自動反映在總覽上。員工端只會 create；之後要改、要刪，
+  // 伺服器規則一律要求管理員登入。
   const isAdminNow = isAdminAuthed();
-  if(!isAdminNow){ // 管理員的畫面由即時監聽維護，員工端才需要自己記一份本機快取
-    attendanceRecords.push(Object.assign({ _pending:true }, rec));
-    saveLocalOnly(STORE_KEYS.attendance, attendanceRecords);
-  }
   // 送出後 12 秒內若還沒確認送達，主動跳警告——避免像先前那樣，行動網路卡住寫入卻毫無察覺，
   // 讓員工誤以為已經成功（送出當下的「已登記」提示只代表本機沒有立即出錯，不代表已送達伺服器）。
   let attSettled = false;
@@ -6059,24 +6071,18 @@ async function addAttendanceRecord(){
     if(!attSettled) alert('⚠️ ' + dateStr + ' 的支援紀錄已送出一段時間，但尚未收到伺服器確認送達，可能是網路（尤其行動網路）不穩。請確認網路後，稍等一下看紀錄會不會自動出現；若一直沒出現，請重新整理頁面後再登記一次。');
   }, 12000);
   fbDb.collection('attendance').doc(rec.id).set(Object.assign({}, rec, {
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    ownerUid: fbAuth.currentUser.uid
   })).then(()=>{
     attSettled = true; clearTimeout(attTimeoutId);
-    const r = attendanceRecords.find(x=>x.id===rec.id);
-    if(r && r._pending){ delete r._pending; saveLocalOnly(STORE_KEYS.attendance, attendanceRecords); renderAttendanceOverview(); }
   }).catch(err=>{
     attSettled = true; clearTimeout(attTimeoutId);
-    // 伺服器明確拒絕（例如規則不允許）→ 撤回本機紀錄，別讓人以為已送出
-    attendanceRecords = attendanceRecords.filter(x=>x.id!==rec.id);
-    saveLocalOnly(STORE_KEYS.attendance, attendanceRecords);
-    renderAttendanceOverview();
     alert('⚠️ ' + dateStr + ' 的支援紀錄被伺服器拒絕，未成功登記：' + (err && err.code || err && err.message || '未知錯誤') + '\n請洽管理者。');
   });
   document.getElementById('m9OtherLabel').value = '';
   document.getElementById('m9Note').value = '';
   m9PendingPhotos = [];
   renderM9PhotoPreview();
-  renderAttendanceOverview();
   alert(`已為 ${getStaffName(staffId)} 登記 ${dateStr} 的支援紀錄${photoUrls.length>0?`（含${photoUrls.length}張照片）`:''}` +
     (isAdminNow ? '' : '\n若目前網路不穩，紀錄會先保存在這台裝置，恢復連線後會自動上傳。'));
 }
@@ -6121,16 +6127,27 @@ function stopAttendanceListener(){
   legacyMigrationOffered = false;
 }
 
-// 員工端：開啟頁面時，若先前「待上傳」的寫入已全部送達伺服器，就清掉本機的待上傳標記
-function clearAttendancePendingWhenSynced(){
-  if(!fbDb || IS_ADMIN) return;
-  fbDb.waitForPendingWrites().then(()=>{
-    let changed = false;
-    attendanceRecords.forEach(r=>{ if(r._pending){ delete r._pending; changed = true; } });
-    if(changed){ saveLocalOnly(STORE_KEYS.attendance, attendanceRecords); renderAttendanceOverview(); }
-  }).catch(()=>{});
+// 員工（匿名身分）：只即時監聽「這台裝置自己 ownerUid」寫過的支援紀錄，不是全部人的。
+let ownAttendanceUnsub = null;
+function startOwnAttendanceListener(uid){
+  if(ownAttendanceUnsub || !fbDb || !uid) return;
+  ownAttendanceUnsub = fbDb.collection('attendance').where('ownerUid','==',uid).onSnapshot(snap=>{
+    attendanceRecords = snap.docs.map(d=>{
+      const x = d.data();
+      return { id:d.id, staffId:x.staffId, date:x.date, site:x.site, otherLabel:x.otherLabel||'',
+               start:x.start, end:x.end, note:x.note||'', photos:x.photos||[] };
+    });
+    saveLocalOnly(STORE_KEYS.attendance, attendanceRecords);
+    renderAttendanceOverview();
+  }, err=>{
+    ownAttendanceUnsub = null;
+    console.error('[Firestore] 監聽自己的 attendance 失敗：', err);
+  });
 }
-clearAttendancePendingWhenSynced();
+function stopOwnAttendanceListener(){
+  if(ownAttendanceUnsub){ ownAttendanceUnsub(); ownAttendanceUnsub = null; }
+}
+
 
 // 一次性搬家：把舊版存在 GAS/Google Sheet 的 M9 紀錄，逐筆寫成 Firestore 文件（沿用原 id，重複執行不會產生重複）
 async function offerLegacyAttendanceMigration(){
@@ -6151,7 +6168,8 @@ async function offerLegacyAttendanceMigration(){
       batch.set(fbDb.collection('attendance').doc(r.id), {
         staffId:r.staffId||'', date:r.date||'', site:r.site||'', otherLabel:r.otherLabel||'',
         start:r.start||'', end:r.end||'', note:r.note||'', photos:r.photos||[],
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(), migrated:true
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(), migrated:true,
+        ownerUid: fbAuth.currentUser.uid
       });
     });
     await batch.commit();
