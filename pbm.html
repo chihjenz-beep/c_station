@@ -4216,7 +4216,7 @@ function importM3XLSX(){
     if(!sheet.length){ alert('這個檔案裡找不到「排班」工作表，請確認是用「匯出排班 Excel」產生的檔案。'); return; }
     const nameToStaffId = {}; staff.forEach(s=>{ nameToStaffId[s.name]=s.id; });
     const nameToSiteId = {}; sites.forEach(s=>{ nameToSiteId[s.name]=s.id; });
-    let added=0, skippedDup=0, skippedBad=0, skippedLocked=0;
+    let added=0, skippedDup=0, skippedBad=0, skippedLocked=0, skippedType=0;
     sheet.forEach(row=>{
       const date = String(row['日期']||'').trim();
       const staffId = nameToStaffId[String(row['員工']||'').trim()];
@@ -4226,6 +4226,7 @@ function importM3XLSX(){
       const status = String(row['狀態']||'').trim()==='已發布' ? 'published' : 'draft';
       if(!date || !staffId || !site || !start || !end || start>=end){ skippedBad++; return; }
       if(isDateLocked(date)){ skippedLocked++; return; }
+      if(!staffAllowedAtSite(staff.find(x=>x.id===staffId), sites.find(x=>x.id===site))){ skippedType++; return; }
       if(!schedule[date]) schedule[date]=[];
       // 完全相同的那一筆（日期＋員工＋地點＋時段）已存在就略過，避免重複匯入
       const dup = schedule[date].some(e=>e.staffId===staffId && e.site===site && e.start===start && e.end===end);
@@ -4233,7 +4234,7 @@ function importM3XLSX(){
       schedule[date].push({ staffId, site, start, end, status });
       added++;
     });
-    if(!confirm(`即將套用匯入結果：新增 ${added} 筆${skippedDup?`、略過 ${skippedDup} 筆重複`:''}${skippedBad?`、略過 ${skippedBad} 筆欄位有誤（找不到同名人員/地點、或時間顛倒）`:''}${skippedLocked?`、略過 ${skippedLocked} 筆過去月份（已鎖定）`:''}。\n匯入只會「新增」，不會刪除或覆蓋既有排班。確定要套用嗎？`)) return;
+    if(!confirm(`即將套用匯入結果：新增 ${added} 筆${skippedDup?`、略過 ${skippedDup} 筆重複`:''}${skippedBad?`、略過 ${skippedBad} 筆欄位有誤（找不到同名人員/地點、或時間顛倒）`:''}${skippedLocked?`、略過 ${skippedLocked} 筆過去月份（已鎖定）`:''}${skippedType?`、略過 ${skippedType} 筆上班類型與地點不符`:''}。\n匯入只會「新增」，不會刪除或覆蓋既有排班。確定要套用嗎？`)) return;
     saveStore(STORE_KEYS.schedule, schedule);
     renderAllAfterSync();
     alert('✅ 匯入完成');
@@ -4264,6 +4265,7 @@ function closeBulkScheduleModal(e){
 }
 function setBulkMode(mode){
   bulkMode = mode;
+  if(typeof populateBulkStaffChecklist==='function' && document.getElementById('bulkStaffChecklist')) populateBulkStaffChecklist();
   document.getElementById('bulkModeApplyBtn').classList.toggle('gold', mode==='apply');
   document.getElementById('bulkModeApplyBtn').classList.toggle('outline', mode!=='apply');
   document.getElementById('bulkModeCancelBtn').classList.toggle('gold', mode==='cancel');
@@ -4277,13 +4279,27 @@ function setBulkMode(mode){
     : '選人員＋地點＋日期範圍 → 點「批量取消」，刪除這些人員在這個地點、這段期間內的所有排班（不影響他們在其他地點的班）。';
   document.getElementById('bulkResultReport').innerHTML = '';
 }
+// 批量「套用」時，上班類型與所選地點不符的人員不可選（例如設定為「據點」的人不能排進診所）；「取消」模式不限制，才能清掉舊的錯誤資料
+function bulkStaffBlocked(staffId){
+  if(typeof bulkMode!=='undefined' && bulkMode==='cancel') return false;
+  const siteObj = sites.find(x=>x.id===bulkSelectedSite);
+  return !staffAllowedAtSite(staff.find(x=>x.id===staffId), siteObj);
+}
 function populateBulkStaffChecklist(){
   const container = document.getElementById('bulkStaffChecklist');
-  container.innerHTML = staff.filter(s=>s.active).map(s=>
-    `<span class="bulk-staff-chip ${bulkSelectedStaffIds.includes(s.id)?'selected':''}" onclick="toggleBulkStaff('${s.id}')">${s.name}</span>`
-  ).join('');
+  // 地點或模式改變後，已選但不符的人員自動取消勾選
+  bulkSelectedStaffIds = bulkSelectedStaffIds.filter(id=>!bulkStaffBlocked(id));
+  container.innerHTML = staff.filter(s=>s.active).map(s=>{
+    const blocked = bulkStaffBlocked(s.id);
+    if(blocked){
+      const lab = SITE_PREF_LABEL[s.sites] || s.sites;
+      return `<span class="bulk-staff-chip" style="opacity:.4;cursor:not-allowed;text-decoration:line-through;" title="上班類型為「${lab}」，不能排進這個地點">${s.name}</span>`;
+    }
+    return `<span class="bulk-staff-chip ${bulkSelectedStaffIds.includes(s.id)?'selected':''}" onclick="toggleBulkStaff('${s.id}')">${s.name}</span>`;
+  }).join('');
 }
 function toggleBulkStaff(staffId){
+  if(bulkStaffBlocked(staffId)) return;
   const idx = bulkSelectedStaffIds.indexOf(staffId);
   if(idx>=0) bulkSelectedStaffIds.splice(idx,1);
   else bulkSelectedStaffIds.push(staffId);
@@ -4304,6 +4320,7 @@ function renderBulkSiteChecklist(){
 function selectBulkSite(siteId){
   bulkSelectedSite = siteId;
   renderBulkSiteChecklist();
+  populateBulkStaffChecklist();
 }
 function renderBulkQuickBtns(){
   const container = document.getElementById('bulkQuickBtns');
@@ -4369,6 +4386,11 @@ function isWeekend(dateStr){
 function runBulkSchedule(){
   if(bulkSelectedStaffIds.length===0){ alert('請至少選擇一位人員'); return; }
   const site = bulkSelectedSite;
+  // 保險檢查：上班類型與地點不符的人員一律不排入（即使畫面上被勾選）
+  const bulkSiteObj = sites.find(x=>x.id===site);
+  const bulkBlockedNames = bulkSelectedStaffIds.filter(id=>!staffAllowedAtSite(staff.find(x=>x.id===id), bulkSiteObj)).map(getStaffName);
+  const bulkStaffIds = bulkSelectedStaffIds.filter(id=>staffAllowedAtSite(staff.find(x=>x.id===id), bulkSiteObj));
+  if(bulkStaffIds.length===0){ alert(`${bulkBlockedNames.join('、')} 的上班類型不能排進「${siteLabelPlain(site)}」，未排入。如需調整請到 M1 員工管理修改。`); return; }
   const startDate = document.getElementById('bulkStartDate').value;
   const endDate = document.getElementById('bulkEndDate').value;
   const excludeWeekend = document.getElementById('bulkExcludeWeekend').checked;
@@ -4395,7 +4417,7 @@ function runBulkSchedule(){
   let addedCount = 0;
   const skipped = []; // { dateStr, staffName, reason }
 
-  bulkSelectedStaffIds.forEach(staffId=>{
+  bulkStaffIds.forEach(staffId=>{
     const staffName = getStaffName(staffId);
     allDates.forEach(dateStr=>{
       const dayLeaves = leaves[dateStr] || [];
@@ -4415,7 +4437,8 @@ function runBulkSchedule(){
   renderCalendar();
   if(typeof renderConflictOverview==='function') renderConflictOverview();
 
-  renderBulkReport(addedCount, skipped, allDates.length, bulkSelectedStaffIds.length, rulesToApply.length, excludedWeekendCount);
+  renderBulkReport(addedCount, skipped, allDates.length, bulkStaffIds.length, rulesToApply.length, excludedWeekendCount);
+  if(bulkBlockedNames.length>0) document.getElementById('bulkResultReport').insertAdjacentHTML('beforeend', `<div class="bulk-report-box" style="margin-top:6px;background:var(--danger-bg);border-color:var(--danger);color:var(--danger);">⚠ ${bulkBlockedNames.join('、')} 的上班類型不能排進「${siteLabelPlain(site)}」，未排入。</div>`);
   if(bulkLockedCount>0) document.getElementById('bulkResultReport').insertAdjacentHTML('beforeend', `<div class="bulk-report-box" style="margin-top:6px;">🔒 已略過 ${bulkLockedCount} 天過去月份的日期（已鎖定）。</div>`);
   // 套用完成後清空規則，避免重複按套用時誤加
   bulkRules = [];
@@ -4947,6 +4970,16 @@ function runCopyToPersons(){
   if(!sourceId){ alert('請選擇來源人員'); return; }
   if(months.length===0){ alert('請至少選擇一個月份'); return; }
   if(copyTargetStaffIds.length===0){ alert('請至少選擇一位目標人員'); return; }
+  {
+    const badTypes = [];
+    copyTargetStaffIds.forEach(id=>{
+      const st = staff.find(x=>x.id===id);
+      const forced = copyTargetSites[id];
+      const siteIds = (forced && forced!=='__keep__') ? [forced] : [...new Set(months.flatMap(m=>getStaffScheduleInMonth(sourceId, m).map(e=>e.site)))];
+      if(siteIds.some(sid=>!staffAllowedAtSite(st, sites.find(x=>x.id===sid)))) badTypes.push(getStaffName(id));
+    });
+    if(badTypes.length>0){ alert('以下人員的上班類型不能排進對應的地點，未複製：' + badTypes.join('、') + '\n請改選地點，或到 M1 員工管理調整上班類型。'); return; }
+  }
   const lockedCopyMonths = months.filter(isMonthLocked);
   if(lockedCopyMonths.length>0){ alert(LOCK_MSG + '\n以下月份已鎖定：' + lockedCopyMonths.join('、')); return; }
 
