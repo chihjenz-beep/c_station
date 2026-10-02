@@ -1733,6 +1733,10 @@
         </div>
       </div>
       <div class="form-line">
+        <label>時數</label>
+        <input type="number" id="m9Hours" step="0.5" min="0" placeholder="請輸入實際支援時數，如：8" style="flex:1;">
+      </div>
+      <div class="form-line">
         <label>備註</label>
         <input type="text" id="m9Note" placeholder="選填，如：支援代班、公務出差" style="flex:1;">
       </div>
@@ -5991,7 +5995,7 @@ function runReport(){
   const overtimeHoursByStaff = {}; // staffId -> totalOvertimeHours
   overtimeRecords.forEach(r=>{
     if(!overtimeHoursByStaff[r.staffId]) overtimeHoursByStaff[r.staffId] = 0;
-    overtimeHoursByStaff[r.staffId] += timeToHours(r.start, r.end);
+    overtimeHoursByStaff[r.staffId] += attendanceHours(r);
   });
 
   lastReportData = { startDate, endDate, byStaff, hoursByStaff, bySite, overtimeRecords, overtimeHoursByStaff };
@@ -6045,7 +6049,7 @@ function renderReportOvertime(overtimeRecords){
     <th>姓名</th><th>日期</th><th>時間區間</th><th>地點</th><th>事由</th><th class="num-head">支援時數</th>
   </tr></thead><tbody>`;
   overtimeRecords.forEach(r=>{
-    const hours = timeToHours(r.start, r.end).toFixed(1);
+    const hours = attendanceHours(r).toFixed(1);
     html += `<tr>
       <td>${getStaffName(r.staffId)}</td>
       <td>${r.date}</td>
@@ -6109,7 +6113,7 @@ function exportM8XLSX(){
   const hoursRows = Object.keys(hoursByStaff).map(id=>({ 姓名: getStaffName(id), 總工時: Number(hoursByStaff[id].toFixed(1)) }));
   const overtimeRows = overtimeRecords.map(r=>({
     姓名: getStaffName(r.staffId), 日期: r.date, 時間區間: `${r.start}-${r.end}`,
-    地點: attendanceSiteLabelPlain(r), 事由: r.note || '（支援）', 支援時數: Number(timeToHours(r.start, r.end).toFixed(1))
+    地點: attendanceSiteLabelPlain(r), 事由: r.note || '（支援）', 支援時數: Number(attendanceHours(r).toFixed(1))
   }));
   const combinedIds = Array.from(new Set([...Object.keys(hoursByStaff), ...Object.keys(overtimeHoursByStaff)]));
   const combinedRows = combinedIds.map(id=>{
@@ -6140,7 +6144,7 @@ function exportReportCSV(){
   });
   csv += '\n加班明細(M9支援紀錄)\n姓名,日期,時間區間,地點,事由,支援時數\n';
   overtimeRecords.forEach(r=>{
-    const hours = timeToHours(r.start, r.end).toFixed(1);
+    const hours = attendanceHours(r).toFixed(1);
     csv += `${getStaffName(r.staffId)},${r.date},${r.start}-${r.end},${attendanceSiteLabelPlain(r)},${r.note || '（支援）'},${hours}\n`;
   });
   csv += '\n彙整總工時(排班＋加班)\n姓名,排班工時,加班工時,合計工時\n';
@@ -6190,6 +6194,11 @@ function toggleM9OtherInput(){
   const site = document.getElementById('m9SiteSel').value;
   document.getElementById('m9OtherRow').style.display = site==='other' ? '' : 'none';
 }
+// 支援時數：改為登記時人工輸入（r.hours），不再用開始/結束時間反推。
+// 舊資料（搬家匯入或改版前登記的）沒有 hours 欄位時，才退回用時間區間概算，避免舊紀錄顯示0小時。
+function attendanceHours(r){
+  return (typeof r.hours === 'number' && !isNaN(r.hours)) ? r.hours : timeToHours(r.start, r.end);
+}
 function attendanceSiteLabel(rec){
   if(rec.site==='other') return '🚗 '+(rec.otherLabel || '其他');
   return siteLabel(rec.site);
@@ -6204,7 +6213,7 @@ function attendanceSiteLabelPlain(rec){
 function exportM9XLSX(){
   const rows = attendanceRecords.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(r=>({
     日期: r.date, 員工: getStaffName(r.staffId), 地點: attendanceSiteLabelPlain(r),
-    開始: r.start, 結束: r.end, 事由: r.note||'', 支援時數: timeToHours(r.start, r.end).toFixed(1)
+    開始: r.start, 結束: r.end, 事由: r.note||'', 支援時數: attendanceHours(r).toFixed(1)
   }));
   exportXLSX('支援填報.xlsx', [ { name:'支援填報', rows } ]);
 }
@@ -6223,12 +6232,15 @@ function importM9XLSX(){
       const staffId = nameToStaffId[String(row['員工']||'').trim()];
       const start = String(row['開始']||'').trim();
       const end = String(row['結束']||'').trim();
-      if(!date || !staffId || !start || !end || start>=end){ skipped++; return; }
+      // 時數改為人工登記，匯入時也以「時數」欄為準；若檔案沒有這欄（例如舊版匯出的檔案），才退回用時間區間概算
+      const hoursCell = row['時數'] !== undefined ? row['時數'] : row['支援時數'];
+      const hours = (hoursCell !== undefined && hoursCell !== '') ? parseFloat(hoursCell) : timeToHours(start, end);
+      if(!date || !staffId || !start || !end || start>=end || isNaN(hours) || hours<=0){ skipped++; return; }
       const siteName = String(row['地點']||'').trim();
       const siteId = nameToSiteId[siteName];
       const site = siteId || 'other';
       const otherLabel = siteId ? '' : siteName;
-      todo.push({ staffId, date, site, otherLabel, start, end, note:String(row['事由']||'').trim(), photos:[] });
+      todo.push({ staffId, date, site, otherLabel, start, end, hours, note:String(row['事由']||'').trim(), photos:[] });
     });
     if(todo.length===0){ alert('沒有任何一列可以匯入（請檢查日期／員工／時間欄位）。'); return; }
     if(!confirm(`即將新增 ${todo.length} 筆支援紀錄到雲端${skipped?`（另外 ${skipped} 列欄位有誤已略過）`:''}。\n匯入只會「新增」，不會比對重複，請留意避免重複匯入同一份檔案。確定要送出嗎？`)) return;
@@ -6328,11 +6340,14 @@ async function addAttendanceRecord(){
   const otherLabel = document.getElementById('m9OtherLabel').value.trim();
   const start = document.getElementById('m9Start').value;
   const end = document.getElementById('m9End').value;
+  const hoursRaw = document.getElementById('m9Hours').value;
+  const hours = parseFloat(hoursRaw);
   const note = document.getElementById('m9Note').value.trim();
   if(!staffId){ alert('請選擇人員'); return; }
   if(!dateStr){ alert('請選擇日期'); return; }
   if(site==='other' && !otherLabel){ alert('請輸入地點名稱'); return; }
   if(start>=end){ alert('結束時間需晚於開始時間'); return; }
+  if(!hoursRaw || isNaN(hours) || hours<=0){ alert('請輸入支援時數（需大於0）'); return; }
 
   const statusEl = document.getElementById('m9PhotoUploadStatus');
   let photoUrls = [];
@@ -6360,7 +6375,7 @@ async function addAttendanceRecord(){
   const rec = {
     id: uid9(), staffId, date: dateStr, site,
     otherLabel: site==='other' ? otherLabel : '',
-    start, end, note, photos: photoUrls
+    start, end, hours, note, photos: photoUrls
   };
   // 一筆紀錄 = Firestore 一份獨立文件（attendance/{id}），標上這台裝置的 ownerUid（含管理員自己）。
   // 不用自己手動更新本機陣列：管理員監聽整個集合、員工監聽自己 ownerUid 那些，兩邊都靠 Firestore
@@ -6383,6 +6398,7 @@ async function addAttendanceRecord(){
     alert('⚠️ ' + dateStr + ' 的支援紀錄被伺服器拒絕，未成功登記：' + (err && err.code || err && err.message || '未知錯誤') + '\n請洽管理者。');
   });
   document.getElementById('m9OtherLabel').value = '';
+  document.getElementById('m9Hours').value = '';
   document.getElementById('m9Note').value = '';
   m9PendingPhotos = [];
   renderM9PhotoPreview();
@@ -6498,7 +6514,7 @@ function renderAttendanceOverview(){
   }).sort((a,b)=> a.date===b.date ? a.start.localeCompare(b.start) : a.date.localeCompare(b.date));
 
   let totalHours = 0;
-  rows.forEach(r=> totalHours += timeToHours(r.start, r.end));
+  rows.forEach(r=> totalHours += attendanceHours(r));
   totalBox.textContent = `⏱️ 符合篩選條件的總工時：${totalHours.toFixed(1)} 小時（共 ${rows.length} 筆紀錄）`;
 
   const empHint = isAdminAuthed() ? '' :
@@ -6512,7 +6528,7 @@ function renderAttendanceOverview(){
       <th>姓名</th><th>日期</th><th>時間區間</th><th>地點</th><th>事由</th><th class="num-head">時數</th><th>照片</th><th></th>
     </tr></thead><tbody>`;
   rows.forEach(r=>{
-    const hours = timeToHours(r.start, r.end).toFixed(1);
+    const hours = attendanceHours(r).toFixed(1);
     const photosHtml = (r.photos && r.photos.length>0)
       ? r.photos.map(url=>`<a href="${url}" target="_blank" class="m9-photo-link"><img src="${url}" loading="lazy"></a>`).join('')
       : '<span style="color:var(--text-soft);font-size:11px;">無</span>';
