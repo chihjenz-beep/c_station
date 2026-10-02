@@ -1310,6 +1310,7 @@
           <button class="btn outline" style="width:100%;margin-top:4px;" onclick="addLeaveEntry()">🏖️ 登記請假/排休</button>
         </div>
 
+        <div id="schedLockNotice" style="display:none;margin-top:14px;padding:8px 10px;border-radius:8px;background:var(--warn-bg);color:var(--warn);font-size:12px;font-weight:600;">🔒 過去月份的班表已鎖定，僅供查看。</div>
         <div id="modalEntryList" style="margin-top:14px;"></div>
         <div class="modal-add-form" id="schedAddForm">
           <div class="form-line">
@@ -3153,6 +3154,10 @@ let modalDate = null; // 'YYYY-MM-DD' 目前彈窗對應日期
 function pad2(n){ return String(n).padStart(2,'0'); }
 function fmtDate(d){ return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
 function todayStr(){ return fmtDate(new Date()); }
+// ===== 過去月份鎖定：早於「本月」的班表視為定案，不可新增／修改／刪除 =====
+function isMonthLocked(ym){ return String(ym).slice(0,7) < todayStr().slice(0,7); }
+function isDateLocked(ds){ return isMonthLocked(ds); }
+const LOCK_MSG = '🔒 過去月份的班表已鎖定，不能新增、修改或刪除。';
 
 function timeOverlap(s1,e1,s2,e2){
   return s1 < e2 && s2 < e1;
@@ -3350,7 +3355,7 @@ function renderCalendar(){
   let cells = [];
   if(calMode==='month'){
     const y = calRefDate.getFullYear(), m = calRefDate.getMonth();
-    title.textContent = y+'年 '+(m+1)+'月';
+    title.textContent = y+'年 '+(m+1)+'月' + (isMonthLocked(y+'-'+pad2(m+1)) ? ' 🔒' : '');
     const firstDay = new Date(y,m,1);
     const startOffset = firstDay.getDay();
     const gridStart = new Date(y,m,1-startOffset);
@@ -3436,6 +3441,9 @@ function openSchedModal(dateStr){
   renderModalLeaves();
   renderModalEntries();
   updateScheduleFormAvailability();
+  const lockedNow = isDateLocked(dateStr);
+  document.getElementById('schedAddForm').style.display = lockedNow ? 'none' : '';
+  document.getElementById('schedLockNotice').style.display = lockedNow ? '' : 'none';
   document.getElementById('schedModalOverlay').classList.add('open');
 }
 function closeSchedModal(e){
@@ -3692,11 +3700,12 @@ function renderModalEntries(){
         <span>${start}–${end}</span>
         ${isConf?'<span style="color:var(--danger);font-weight:700;">⚠衝突</span>':''}
       </div>
-      <button class="row-del" onclick="deleteScheduleEntry(${e._idx})">✕</button>
+      ${isDateLocked(modalDate) ? '<span title="已鎖定">🔒</span>' : `<button class="row-del" onclick="deleteScheduleEntry(${e._idx})">✕</button>`}
     </div>`;
   }).join('');
 }
 function addScheduleEntry(){
+  if(isDateLocked(modalDate)){ alert(LOCK_MSG); return; }
   const staffId = document.getElementById('formStaffSel').value;
   const site = document.getElementById('formSiteSel').value;
   const start = document.getElementById('formStart').value;
@@ -3721,6 +3730,7 @@ function addScheduleEntry(){
   if(typeof renderConflictOverview==='function') renderConflictOverview();
 }
 function deleteScheduleEntry(idx){
+  if(isDateLocked(modalDate)){ alert(LOCK_MSG); return; }
   if(!schedule[modalDate]) return;
   schedule[modalDate].splice(idx,1);
   if(schedule[modalDate].length===0) delete schedule[modalDate];
@@ -3886,6 +3896,7 @@ function closedHalfNoticeFor(siteId, dateStr, start, end){
   return hits.length ? `⚠ ${getSiteName(siteId)}當日${hits.join('、')}已設為休診` : '';
 }
 function placeSchedCombo(dateStr){
+  if(isDateLocked(dateStr)){ showSchedToast(LOCK_MSG); return; }
   if(!isSchedComboReady()){ showSchedToast('請先在左側選好員工、地點與時段'); return; }
   const { staffIds, siteId, start, end } = schedPick;
   const site = sites.find(x=>x.id===siteId);
@@ -4205,7 +4216,7 @@ function importM3XLSX(){
     if(!sheet.length){ alert('這個檔案裡找不到「排班」工作表，請確認是用「匯出排班 Excel」產生的檔案。'); return; }
     const nameToStaffId = {}; staff.forEach(s=>{ nameToStaffId[s.name]=s.id; });
     const nameToSiteId = {}; sites.forEach(s=>{ nameToSiteId[s.name]=s.id; });
-    let added=0, skippedDup=0, skippedBad=0;
+    let added=0, skippedDup=0, skippedBad=0, skippedLocked=0;
     sheet.forEach(row=>{
       const date = String(row['日期']||'').trim();
       const staffId = nameToStaffId[String(row['員工']||'').trim()];
@@ -4214,6 +4225,7 @@ function importM3XLSX(){
       const end = String(row['結束']||'').trim();
       const status = String(row['狀態']||'').trim()==='已發布' ? 'published' : 'draft';
       if(!date || !staffId || !site || !start || !end || start>=end){ skippedBad++; return; }
+      if(isDateLocked(date)){ skippedLocked++; return; }
       if(!schedule[date]) schedule[date]=[];
       // 完全相同的那一筆（日期＋員工＋地點＋時段）已存在就略過，避免重複匯入
       const dup = schedule[date].some(e=>e.staffId===staffId && e.site===site && e.start===start && e.end===end);
@@ -4221,7 +4233,7 @@ function importM3XLSX(){
       schedule[date].push({ staffId, site, start, end, status });
       added++;
     });
-    if(!confirm(`即將套用匯入結果：新增 ${added} 筆${skippedDup?`、略過 ${skippedDup} 筆重複`:''}${skippedBad?`、略過 ${skippedBad} 筆欄位有誤（找不到同名人員/地點、或時間顛倒）`:''}。\n匯入只會「新增」，不會刪除或覆蓋既有排班。確定要套用嗎？`)) return;
+    if(!confirm(`即將套用匯入結果：新增 ${added} 筆${skippedDup?`、略過 ${skippedDup} 筆重複`:''}${skippedBad?`、略過 ${skippedBad} 筆欄位有誤（找不到同名人員/地點、或時間顛倒）`:''}${skippedLocked?`、略過 ${skippedLocked} 筆過去月份（已鎖定）`:''}。\n匯入只會「新增」，不會刪除或覆蓋既有排班。確定要套用嗎？`)) return;
     saveStore(STORE_KEYS.schedule, schedule);
     renderAllAfterSync();
     alert('✅ 匯入完成');
@@ -4376,6 +4388,9 @@ function runBulkSchedule(){
     allDates = allDates.filter(d=>!isWeekend(d));
     excludedWeekendCount = before - allDates.length;
   }
+  const bulkLockedCount = allDates.filter(isDateLocked).length;
+  allDates = allDates.filter(d=>!isDateLocked(d));
+  if(allDates.length===0){ alert(LOCK_MSG + '\n所選日期範圍內沒有可排班的日期。'); return; }
 
   let addedCount = 0;
   const skipped = []; // { dateStr, staffName, reason }
@@ -4401,6 +4416,7 @@ function runBulkSchedule(){
   if(typeof renderConflictOverview==='function') renderConflictOverview();
 
   renderBulkReport(addedCount, skipped, allDates.length, bulkSelectedStaffIds.length, rulesToApply.length, excludedWeekendCount);
+  if(bulkLockedCount>0) document.getElementById('bulkResultReport').insertAdjacentHTML('beforeend', `<div class="bulk-report-box" style="margin-top:6px;">🔒 已略過 ${bulkLockedCount} 天過去月份的日期（已鎖定）。</div>`);
   // 套用完成後清空規則，避免重複按套用時誤加
   bulkRules = [];
   renderBulkRuleCount();
@@ -4434,7 +4450,10 @@ function runBulkCancel(){
   const staffNames = bulkSelectedStaffIds.map(getStaffName).join('、');
   if(!confirm(`確定要刪除 ${staffNames} 在「${siteName}」於 ${startDate} ~ ${endDate} 期間的所有排班嗎？此操作無法復原。`)) return;
 
-  const dateList = listDatesInRange(startDate, endDate);
+  const dateListAll = listDatesInRange(startDate, endDate);
+  const dateList = dateListAll.filter(d=>!isDateLocked(d));
+  if(dateList.length===0){ alert(LOCK_MSG + '\n所選日期範圍內沒有可刪除的日期。'); return; }
+  const cancelLockedCount = dateListAll.length - dateList.length;
   let removedCount = 0;
   const affectedDates = new Set();
 
@@ -4455,6 +4474,7 @@ function runBulkCancel(){
   if(typeof renderConflictOverview==='function') renderConflictOverview();
 
   renderBulkCancelReport(removedCount, affectedDates.size, staffNames, siteName);
+  if(cancelLockedCount>0) document.getElementById('bulkResultReport').insertAdjacentHTML('beforeend', `<div class="bulk-report-box" style="margin-top:6px;">🔒 已略過 ${cancelLockedCount} 天過去月份的日期（已鎖定，未刪除）。</div>`);
 }
 
 function renderBulkCancelReport(removedCount, affectedDayCount, staffNames, siteName){
@@ -4665,6 +4685,7 @@ function runCopyMonth(){
   if(!staffId){ alert('請選擇人員'); return; }
   if(!sourceMonth || !targetMonth){ alert('請選擇來源與目標月份'); return; }
   if(sourceMonth===targetMonth){ alert('來源與目標月份不能相同'); return; }
+  if(isMonthLocked(targetMonth)){ alert(LOCK_MSG + '\n目標月份 ' + targetMonth + ' 已鎖定。'); return; }
 
   const staffName = getStaffName(staffId);
   const sourceEntries = getStaffScheduleInMonth(staffId, sourceMonth);
@@ -4756,6 +4777,7 @@ function runCopyFullMonth(){
   const targetMonth = document.getElementById('copyFullTargetMonth').value;
   if(!sourceMonth || !targetMonth){ alert('請選擇來源與目標月份'); return; }
   if(sourceMonth===targetMonth){ alert('來源與目標月份不能相同'); return; }
+  if(isMonthLocked(targetMonth)){ alert(LOCK_MSG + '\n目標月份 ' + targetMonth + ' 已鎖定。'); return; }
 
   // 診所（平安、清禾）的班不在整月複製範圍內：來源與「目標月份是否已有排班」的檢查都只看據點班
   const stationEntries = d => (schedule[d]||[]).filter(e=>!isClinicSite(e.site));
@@ -4842,6 +4864,9 @@ function runClearMonth(){
   const endMonth = document.getElementById('clearMonthEnd').value;
   if(!startMonth || !endMonth){ alert('請選擇起訖月份'); return; }
   if(startMonth > endMonth){ alert('起始月份不能晚於結束月份'); return; }
+  const clearMonths = listMonthsInRange(startMonth, endMonth);
+  if(clearMonths.every(isMonthLocked)){ alert(LOCK_MSG + '\n所選月份皆為過去月份。'); return; }
+  if(clearMonths.some(isMonthLocked)) alert('🔒 所選範圍含過去月份，已鎖定的月份不會被清空，只處理本月以後。');
 
   if(clearMode==='all'){
     runClearMonthAll(startMonth, endMonth);
@@ -4854,7 +4879,7 @@ function runClearMonth(){
   const staffName = getStaffName(staffId);
   let existingCount = 0;
   Object.keys(schedule).forEach(dateStr=>{
-    if(!isMonthInRange(dateStr, startMonth, endMonth)) return;
+    if(!isMonthInRange(dateStr, startMonth, endMonth) || isDateLocked(dateStr)) return;
     existingCount += schedule[dateStr].filter(e=>e.staffId===staffId).length;
   });
   const rangeLabel = startMonth===endMonth ? startMonth : `${startMonth} ~ ${endMonth}`;
@@ -4868,7 +4893,7 @@ function runClearMonth(){
 
   let removedCount = 0;
   Object.keys(schedule).forEach(dateStr=>{
-    if(!isMonthInRange(dateStr, startMonth, endMonth)) return;
+    if(!isMonthInRange(dateStr, startMonth, endMonth) || isDateLocked(dateStr)) return;
     const before = schedule[dateStr].length;
     schedule[dateStr] = schedule[dateStr].filter(e=>e.staffId!==staffId);
     removedCount += before - schedule[dateStr].length;
@@ -4888,7 +4913,7 @@ function runClearMonthAll(startMonth, endMonth){
   const rangeLabel = startMonth===endMonth ? startMonth : `${startMonth} ~ ${endMonth}`;
   let totalEntries = 0;
   Object.keys(schedule).forEach(dateStr=>{
-    if(isMonthInRange(dateStr, startMonth, endMonth)) totalEntries += schedule[dateStr].length;
+    if(isMonthInRange(dateStr, startMonth, endMonth) && !isDateLocked(dateStr)) totalEntries += schedule[dateStr].length;
   });
   if(totalEntries===0){
     document.getElementById('copyResultReport').innerHTML =
@@ -4903,7 +4928,7 @@ function runClearMonthAll(startMonth, endMonth){
 
   let removedCount = 0;
   Object.keys(schedule).forEach(dateStr=>{
-    if(!isMonthInRange(dateStr, startMonth, endMonth)) return;
+    if(!isMonthInRange(dateStr, startMonth, endMonth) || isDateLocked(dateStr)) return;
     removedCount += schedule[dateStr].length;
     delete schedule[dateStr];
   });
@@ -4922,6 +4947,8 @@ function runCopyToPersons(){
   if(!sourceId){ alert('請選擇來源人員'); return; }
   if(months.length===0){ alert('請至少選擇一個月份'); return; }
   if(copyTargetStaffIds.length===0){ alert('請至少選擇一位目標人員'); return; }
+  const lockedCopyMonths = months.filter(isMonthLocked);
+  if(lockedCopyMonths.length>0){ alert(LOCK_MSG + '\n以下月份已鎖定：' + lockedCopyMonths.join('、')); return; }
 
   const sourceName = getStaffName(sourceId);
   const sourceByMonth = {};
