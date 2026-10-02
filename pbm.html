@@ -1171,6 +1171,7 @@
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
         <h2 style="margin:0;">🗓️ 月曆排班</h2>
         <div style="display:flex;gap:6px;">
+          <button class="btn outline" id="pastUnlockBtn" onclick="togglePastMonthsUnlock()" title="過去月份預設鎖定；解鎖僅限本次開啟的頁面，重新整理後自動恢復鎖定">🔒 過去月份已鎖定（點此暫時解鎖）</button>
           <button class="btn gold" onclick="openBulkScheduleModal()">⚡ 批量排班</button>
           <button class="btn gold" onclick="openCopyScheduleModal()">📋 複製排班</button>
           <button class="btn outline" onclick="exportScheduleBackupXlsx()" title="把排班、請假、外師課程、臨時休診等全部月份資料匯出成 Excel 備份檔">💾 備份匯出 XLSX</button>
@@ -3155,8 +3156,26 @@ function pad2(n){ return String(n).padStart(2,'0'); }
 function fmtDate(d){ return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
 function todayStr(){ return fmtDate(new Date()); }
 // ===== 過去月份鎖定：早於「本月」的班表視為定案，不可新增／修改／刪除 =====
-function isMonthLocked(ym){ return String(ym).slice(0,7) < todayStr().slice(0,7); }
+function isPastMonth(ym){ return String(ym).slice(0,7) < todayStr().slice(0,7); }   // 純日期判斷：是否早於本月（衝突檢查用，不受解鎖影響）
+let pastMonthsUnlocked = false;   // 暫時解鎖：只在這次開啟的頁面有效，重新整理後自動恢復鎖定
+function isMonthLocked(ym){ return isPastMonth(ym) && !pastMonthsUnlocked; }
 function isDateLocked(ds){ return isMonthLocked(ds); }
+function togglePastMonthsUnlock(){
+  if(!pastMonthsUnlocked){
+    if(!confirm('確定要暫時解鎖過去月份嗎？\n解鎖後可修改已定案的舊班表，重新整理頁面會自動恢復鎖定。')) return;
+    pastMonthsUnlocked = true;
+  }else{
+    pastMonthsUnlocked = false;
+  }
+  updatePastUnlockBtn();
+  renderCalendar();
+}
+function updatePastUnlockBtn(){
+  const b = document.getElementById('pastUnlockBtn');
+  if(!b) return;
+  b.textContent = pastMonthsUnlocked ? '🔓 過去月份已解鎖（點此重新鎖定）' : '🔒 過去月份已鎖定（點此暫時解鎖）';
+  b.className = pastMonthsUnlocked ? 'btn gold' : 'btn outline';
+}
 const LOCK_MSG = '🔒 過去月份的班表已鎖定，不能新增、修改或刪除。';
 
 function timeOverlap(s1,e1,s2,e2){
@@ -3170,6 +3189,7 @@ function getEntriesForDate(dateStr){
 
 // 偵測某日某筆紀錄是否衝突：①同人同時段跨地點重疊 ②與請假/排休衝突
 function detectConflicts(dateStr){
+  if(isPastMonth(dateStr)) return new Set();   // 過去月份不做衝突檢查
   const entries = getEntriesForDate(dateStr);
   const dayLeaves = leaves[dateStr]||[];
   const conflictIdx = new Set();
@@ -5371,10 +5391,12 @@ function exportM5XLSX(){
   exportXLSX('衝突偵測總覽.xlsx', [ { name:'衝突偵測', rows } ]);
 }
 function buildConflictDayGroups(){
-  const conflicts = scanAllConflicts();
-  const gaps = scanSiteCoverageGaps();
-  const halfDayGaps = scanPartialDayCoverage();
-  const closedScheduled = scanClosedClinicScheduled();
+  // 衝突／漏排檢查只看本月以後，過去月份一律略過
+  const notPast = x => !isPastMonth(x.dateStr);
+  const conflicts = scanAllConflicts().filter(notPast);
+  const gaps = scanSiteCoverageGaps().filter(notPast);
+  const halfDayGaps = scanPartialDayCoverage().filter(notPast);
+  const closedScheduled = scanClosedClinicScheduled().filter(notPast);
 
   const dayGroups = {};
   const ensureDayGroup = dateStr => {
