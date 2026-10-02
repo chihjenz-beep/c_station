@@ -5112,9 +5112,11 @@ function renderLeaveOverview(){
 // 管理員：即時監聽 leaves 集合，員工端登記的請假會自動出現在總覽（員工端沒有讀取權限，不監聽）
 let leavesUnsub = null;
 let legacyLeavesMigrationOffered = false;
+let leavesRetry = 0;
 function startLeavesListener(){
   if(leavesUnsub || !fbDb || !isAdminAuthed()) return;
   leavesUnsub = fbDb.collection('leaves').onSnapshot(snap=>{
+    leavesRetry = 0;
     const rebuilt = {};
     snap.docs.forEach(d=>{
       const x = d.data();
@@ -5132,10 +5134,17 @@ function startLeavesListener(){
   }, err=>{
     leavesUnsub = null;
     console.error('[Firestore] 監聽 leaves 失敗：', err);
-    alert('讀取請假紀錄失敗：' + (err && err.code || err && err.message || '未知錯誤'));
+    // 登入剛完成時偶爾會因時間差被拒絕；自動重試最多 5 次（每次間隔拉長），都失敗才提示
+    if(leavesRetry < 5){
+      leavesRetry++;
+      setTimeout(()=>{ if(isAdminAuthed()) startLeavesListener(); }, 1500 * leavesRetry);
+    }else{
+      alert('讀取請假紀錄失敗：' + (err && err.code || err && err.message || '未知錯誤') + '\n請重新整理頁面並重新登入。');
+    }
   });
 }
 function stopLeavesListener(){
+  leavesRetry = 0;
   if(leavesUnsub){ leavesUnsub(); leavesUnsub = null; }
   legacyLeavesMigrationOffered = false;
 }
@@ -6560,9 +6569,11 @@ async function deleteAttendanceRecord(id){
 // 管理員：即時監聽 attendance 集合，別人新增/刪除的紀錄會自動出現在畫面上（員工端沒有讀取權限，不監聽）
 let attendanceUnsub = null;
 let legacyMigrationOffered = false;
+let attendanceRetry = 0;
 function startAttendanceListener(){
   if(attendanceUnsub || !fbDb || !isAdminAuthed()) return;
   attendanceUnsub = fbDb.collection('attendance').onSnapshot(snap=>{
+    attendanceRetry = 0;
     attendanceRecords = snap.docs.map(d=>{
       const x = d.data();
       return { id:d.id, staffId:x.staffId, date:x.date, site:x.site, otherLabel:x.otherLabel||'',
@@ -6575,10 +6586,16 @@ function startAttendanceListener(){
   }, err=>{
     attendanceUnsub = null;
     console.error('[Firestore] 監聽 attendance 失敗：', err);
-    alert('讀取支援填報紀錄失敗：' + (err && err.code || err && err.message || '未知錯誤'));
+    if(attendanceRetry < 5){
+      attendanceRetry++;
+      setTimeout(()=>{ if(isAdminAuthed()) startAttendanceListener(); }, 1500 * attendanceRetry);
+    }else{
+      alert('讀取支援填報紀錄失敗：' + (err && err.code || err && err.message || '未知錯誤') + '\n請重新整理頁面並重新登入。');
+    }
   });
 }
 function stopAttendanceListener(){
+  attendanceRetry = 0;
   if(attendanceUnsub){ attendanceUnsub(); attendanceUnsub = null; }
   legacyMigrationOffered = false;
 }
