@@ -1760,6 +1760,9 @@
         <button class="btn outline" onclick="exportM9XLSX()">⬇️ 匯出 Excel</button>
         <button class="btn outline" onclick="importM9XLSX()">⬆️ 匯入 Excel</button>
       </div>
+      <div style="margin-bottom:10px;">
+        <button class="btn gold" id="m9ExportAllBtn" onclick="exportAllM1M3M4M9XLSX()" style="width:100%;">📦 一鍵匯出 M1＋M3＋M4＋M9（單一 Excel）</button>
+      </div>
       <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
         <select id="m9FilterStaff" onchange="renderAttendanceOverview()" style="flex:1;min-width:120px;">
           <option value="">全部人員</option>
@@ -6208,6 +6211,58 @@ function attendanceSiteLabelPlain(rec){
   return siteLabelPlain(rec.site);
 }
 
+// ===== 一鍵同時匯出 M1（員工／據點）＋M3（排班）＋M4（請假排休）＋M9（支援填報）到同一個 Excel =====
+// 各工作表欄位與個別匯出一致；M9 的「時數」使用登記時自填的時數（attendanceHours）。
+function exportAllM1M3M4M9XLSX(){
+  try{
+    const WD = ['日','一','二','三','四','五','六'];
+    const wd = ds => '週' + WD[new Date(ds+'T00:00:00').getDay()];
+    // M1
+    const staffRows = staff.map(s=>({
+      id: s.id, 姓名: s.name, 可排地點: SITES_LABEL[s.sites] || s.sites, 在職: s.active ? '是' : '否'
+    }));
+    const siteRows = sites.map(s=>({
+      id: s.id, 名稱: s.name, 類型: s.isClinic ? '診所' : '據點',
+      主要人員: (s.mainStaffIds||[]).map(getStaffName).join('、'),
+      代班人員: (s.reliefStaffIds||[]).map(getStaffName).join('、'),
+      主責人員: (s.dutyStaffIds||[]).map(getStaffName).join('、'),
+      營運星期: (s.operatingWeekdays||[]).join('、')
+    }));
+    // M3
+    const m3Rows = [];
+    Object.keys(schedule).sort().forEach(date=>{
+      (schedule[date]||[]).forEach(e=>{
+        m3Rows.push({ 日期:date, 星期:wd(date), 員工:getStaffName(e.staffId), 地點:getSiteName(e.site), 開始:e.start, 結束:e.end, 狀態: e.status==='published'?'已發布':'草稿' });
+      });
+    });
+    // M4
+    const m4Rows = [];
+    Object.keys(leaves).sort().forEach(date=>{
+      (leaves[date]||[]).forEach(l=>{
+        m4Rows.push({ 日期:date, 星期:wd(date), 員工:getStaffName(l.staffId), 類型:l.type||'', 備註:l.note||'' });
+      });
+    });
+    // M9（全部紀錄，不受畫面篩選影響）
+    const m9Rows = attendanceRecords.slice().sort((a,b)=> a.date===b.date ? (a.start||'').localeCompare(b.start||'') : a.date.localeCompare(b.date)).map(r=>({
+      日期: r.date, 員工: getStaffName(r.staffId), 地點: attendanceSiteLabelPlain(r),
+      開始: r.start, 結束: r.end, 事由: r.note||'', 支援時數: Number(attendanceHours(r).toFixed(1))
+    }));
+    const now = new Date();
+    const fname = `M1M3M4M9整合匯出_${now.getFullYear()}${pad2(now.getMonth()+1)}${pad2(now.getDate())}_${pad2(now.getHours())}${pad2(now.getMinutes())}.xlsx`;
+    exportXLSX(fname, [
+      { name:'M1員工', rows: staffRows, header:['id','姓名','可排地點','在職'] },
+      { name:'M1據點', rows: siteRows, header:['id','名稱','類型','主要人員','代班人員','主責人員','營運星期'] },
+      { name:'M3排班', rows: m3Rows, header:['日期','星期','員工','地點','開始','結束','狀態'] },
+      { name:'M4請假排休', rows: m4Rows, header:['日期','星期','員工','類型','備註'] },
+      { name:'M9支援填報', rows: m9Rows, header:['日期','員工','地點','開始','結束','事由','支援時數'] }
+    ]);
+    alert(`已匯出 ${fname}\nM1：員工 ${staffRows.length}、據點 ${siteRows.length}\nM3：排班 ${m3Rows.length} 筆\nM4：請假排休 ${m4Rows.length} 筆\nM9：支援填報 ${m9Rows.length} 筆`);
+  }catch(err){
+    console.error('整合匯出失敗', err);
+    alert('整合匯出失敗：' + (err && err.message ? err.message : err));
+  }
+}
+
 // ===== M9 匯出／匯入（支援填報，Firestore 一筆一份文件） =====
 // 匯出的範圍跟目前畫面上「支援總覽」看得到的一樣：管理員是全部人，員工端只有這台裝置自己填過的。
 function exportM9XLSX(){
@@ -6503,6 +6558,8 @@ function renderAttendanceOverview(){
   const container = document.getElementById('attendanceOverviewList');
   const totalBox = document.getElementById('m9TotalHoursBox');
   if(!container || !totalBox) return;
+  const allBtn = document.getElementById('m9ExportAllBtn');
+  if(allBtn) allBtn.parentElement.style.display = isAdminAuthed() ? '' : 'none'; // 員工端沒有 M1／M3 全部資料，只給管理員用
   const filterStaff = document.getElementById('m9FilterStaff').value;
   const filterStart = document.getElementById('m9FilterStart').value;
   const filterEnd = document.getElementById('m9FilterEnd').value;
