@@ -3512,12 +3512,18 @@ function selectFormSite(id){
 function renderFormQuickBtns(){
   const container = document.getElementById('formQuickBtns');
   container.innerHTML = shiftTemplates.map(t=>
-    `<span class="qbtn" onclick="applyFormQuick('${t.start}','${t.end}')">${t.name}</span>`
+    `<span class="qbtn" data-start="${t.start}" data-end="${t.end}" onclick="applyFormQuick('${t.start}','${t.end}')">${t.name}</span>`
   ).join('');
+  ['formStart','formEnd'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el && !el.dataset.quickSync){ el.dataset.quickSync='1'; el.addEventListener('input', ()=>syncQuickBtnsSelected('formQuickBtns','formStart','formEnd')); el.addEventListener('change', ()=>syncQuickBtnsSelected('formQuickBtns','formStart','formEnd')); }
+  });
+  syncQuickBtnsSelected('formQuickBtns','formStart','formEnd');
 }
 function applyFormQuick(start,end){
   document.getElementById('formStart').value = start;
   document.getElementById('formEnd').value = end;
+  syncQuickBtnsSelected('formQuickBtns','formStart','formEnd');
 }
 function renderLeaveTypeBtns(){
   const container = document.getElementById('leaveTypeBtns');
@@ -4342,15 +4348,28 @@ function selectBulkSite(siteId){
   renderBulkSiteChecklist();
   populateBulkStaffChecklist();
 }
+// 時段快捷鈕的「選中」狀態：目前開始／結束時間與某個班別完全相同，該按鈕就亮起來（手動改時間也會跟著更新）
+function syncQuickBtnsSelected(containerId, startId, endId){
+  const c = document.getElementById(containerId);
+  if(!c) return;
+  const st = document.getElementById(startId).value, en = document.getElementById(endId).value;
+  c.querySelectorAll('.qbtn').forEach(b=> b.classList.toggle('selected', b.dataset.start===st && b.dataset.end===en));
+}
 function renderBulkQuickBtns(){
   const container = document.getElementById('bulkQuickBtns');
   container.innerHTML = shiftTemplates.map(t=>
-    `<span class="qbtn" onclick="applyBulkQuick('${t.start}','${t.end}')">${t.name}</span>`
+    `<span class="qbtn" data-start="${t.start}" data-end="${t.end}" onclick="applyBulkQuick('${t.start}','${t.end}')">${t.name}</span>`
   ).join('');
+  ['bulkStart','bulkEnd'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el && !el.dataset.quickSync){ el.dataset.quickSync='1'; el.addEventListener('input', ()=>syncQuickBtnsSelected('bulkQuickBtns','bulkStart','bulkEnd')); el.addEventListener('change', ()=>syncQuickBtnsSelected('bulkQuickBtns','bulkStart','bulkEnd')); }
+  });
+  syncQuickBtnsSelected('bulkQuickBtns','bulkStart','bulkEnd');
 }
 function applyBulkQuick(start,end){
   document.getElementById('bulkStart').value = start;
   document.getElementById('bulkEnd').value = end;
+  syncQuickBtnsSelected('bulkQuickBtns','bulkStart','bulkEnd');
 }
 
 // 按「設定」：把目前選定的時段累加進規則清單，不立即套用
@@ -4414,7 +4433,10 @@ function runBulkSchedule(){
   const startDate = document.getElementById('bulkStartDate').value;
   const endDate = document.getElementById('bulkEndDate').value;
   const excludeWeekend = document.getElementById('bulkExcludeWeekend').checked;
-  if(!startDate || !endDate){ alert('請選擇日期範圍'); return; }
+  if(!startDate || !endDate){
+    const badWhich = (!startDate && !endDate) ? '開始與結束日期' : (!startDate ? '開始日期' : '結束日期');
+    alert('請選擇日期範圍：' + badWhich + '尚未選擇，或日期不存在（例如 11/31、2/30）。'); return;
+  }
   if(startDate > endDate){ alert('起始日不能晚於結束日'); return; }
   // 若尚未按過「設定」，把目前畫面上選的時段視為唯一規則，方便只排單一時段時不用多按一次
   let rulesToApply = bulkRules.length>0 ? bulkRules : [{
@@ -4486,7 +4508,10 @@ function runBulkCancel(){
   const site = bulkSelectedSite;
   const startDate = document.getElementById('bulkStartDate').value;
   const endDate = document.getElementById('bulkEndDate').value;
-  if(!startDate || !endDate){ alert('請選擇日期範圍'); return; }
+  if(!startDate || !endDate){
+    const badWhich = (!startDate && !endDate) ? '開始與結束日期' : (!startDate ? '開始日期' : '結束日期');
+    alert('請選擇日期範圍：' + badWhich + '尚未選擇，或日期不存在（例如 11/31、2/30）。'); return;
+  }
   if(startDate > endDate){ alert('起始日不能晚於結束日'); return; }
 
   const siteName = siteLabel(site);
