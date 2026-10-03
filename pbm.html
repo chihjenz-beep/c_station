@@ -5346,9 +5346,22 @@ function getActiveCoverageDates(){
 // 該據點/診所當天原本就沒開，或是單純漏排忘記排班）。
 // 會先排除：①國定假日（一律停課，不檢查任何據點/診所）②當天本來就不營運的星期
 // （常規據點週六日不檢查；北華村除了週二以外都不檢查；平安、清禾依各自設定的上班日檢查）
+// 漏排檢查要看的日期：只要某個月「有任何排班或課程」，該月每一天都納入檢查（過去月份不看）。
+// 之前只檢查「當天已有紀錄」的日期，結果把某天的班全部刪光後，那天反而變成不在檢查範圍而警示消失。
+function getCoverageCheckDates(){
+  const months = new Set(getActiveCoverageDates().map(d=>d.slice(0,7)));
+  const dates = [];
+  months.forEach(ym=>{
+    if(isPastMonth(ym)) return;
+    const y = Number(ym.slice(0,4)), m = Number(ym.slice(5,7));
+    const days = new Date(y, m, 0).getDate();
+    for(let d=1; d<=days; d++) dates.push(`${ym}-${String(d).padStart(2,'0')}`);
+  });
+  return dates.sort();
+}
 function scanSiteCoverageGaps(){
   const gaps = [];
-  const activeDates = getActiveCoverageDates();
+  const activeDates = getCoverageCheckDates();
   activeDates.forEach(dateStr=>{
     if(isNationalHoliday(dateStr)) return; // 國定假日一律停課，不檢查
     const dow = new Date(dateStr+'T00:00:00').getDay();
