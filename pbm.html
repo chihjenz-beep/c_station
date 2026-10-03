@@ -3512,17 +3512,19 @@ function selectFormSite(id){
 function renderFormQuickBtns(){
   const container = document.getElementById('formQuickBtns');
   container.innerHTML = shiftTemplates.map(t=>
-    `<span class="qbtn" data-start="${t.start}" data-end="${t.end}" onclick="applyFormQuick('${t.start}','${t.end}')">${t.name}</span>`
+    `<span class="qbtn" data-id="${t.id}" data-start="${t.start}" data-end="${t.end}" onclick="applyFormQuick('${t.start}','${t.end}','${t.id}')">${t.name}</span>`
   ).join('');
+  quickSelId['formQuickBtns'] = null;
   ['formStart','formEnd'].forEach(id=>{
     const el = document.getElementById(id);
     if(el && !el.dataset.quickSync){ el.dataset.quickSync='1'; el.addEventListener('input', ()=>syncQuickBtnsSelected('formQuickBtns','formStart','formEnd')); el.addEventListener('change', ()=>syncQuickBtnsSelected('formQuickBtns','formStart','formEnd')); }
   });
   syncQuickBtnsSelected('formQuickBtns','formStart','formEnd');
 }
-function applyFormQuick(start,end){
+function applyFormQuick(start,end,id){
   document.getElementById('formStart').value = start;
   document.getElementById('formEnd').value = end;
+  quickSelId['formQuickBtns'] = id;
   syncQuickBtnsSelected('formQuickBtns','formStart','formEnd');
 }
 function renderLeaveTypeBtns(){
@@ -4276,6 +4278,7 @@ let bulkMode = 'apply'; // 'apply' | 'cancel'
 
 function openBulkScheduleModal(){
   bulkSelectedStaffIds = [];
+  bulkSelectedSite = null;   // 每次開啟都不預選地點
   bulkRules = [];
   setBulkMode('apply');
   populateBulkStaffChecklist();
@@ -4331,7 +4334,7 @@ function toggleBulkStaff(staffId){
   else bulkSelectedStaffIds.push(staffId);
   populateBulkStaffChecklist();
 }
-let bulkSelectedSite = sites[0] ? sites[0].id : null; // 批量排班目前選定的地點(單選)
+let bulkSelectedSite = null; // 批量排班目前選定的地點(單選)；開啟視窗時不預選，必須自己點選
 function populateBulkSiteSelect(){
   renderBulkSiteChecklist();
 }
@@ -4349,26 +4352,33 @@ function selectBulkSite(siteId){
   populateBulkStaffChecklist();
 }
 // 時段快捷鈕的「選中」狀態：目前開始／結束時間與某個班別完全相同，該按鈕就亮起來（手動改時間也會跟著更新）
+// 多個班別（據點上午、平安上午、清禾上午…）時間可能完全相同，所以「選中」以實際點的那一顆為準，同一時間只亮一顆；
+// 手動改時間讓時間不再等於該班別時，亮色自動取消。
+const quickSelId = {};   // { 容器id: 被點選的班別 id }
 function syncQuickBtnsSelected(containerId, startId, endId){
   const c = document.getElementById(containerId);
   if(!c) return;
   const st = document.getElementById(startId).value, en = document.getElementById(endId).value;
-  c.querySelectorAll('.qbtn').forEach(b=> b.classList.toggle('selected', b.dataset.start===st && b.dataset.end===en));
+  const cur = c.querySelector(`.qbtn[data-id="${quickSelId[containerId]}"]`);
+  if(!cur || cur.dataset.start!==st || cur.dataset.end!==en) quickSelId[containerId] = null;
+  c.querySelectorAll('.qbtn').forEach(b=> b.classList.toggle('selected', b.dataset.id===quickSelId[containerId]));
 }
 function renderBulkQuickBtns(){
   const container = document.getElementById('bulkQuickBtns');
   container.innerHTML = shiftTemplates.map(t=>
-    `<span class="qbtn" data-start="${t.start}" data-end="${t.end}" onclick="applyBulkQuick('${t.start}','${t.end}')">${t.name}</span>`
+    `<span class="qbtn" data-id="${t.id}" data-start="${t.start}" data-end="${t.end}" onclick="applyBulkQuick('${t.start}','${t.end}','${t.id}')">${t.name}</span>`
   ).join('');
+  quickSelId['bulkQuickBtns'] = null;   // 開啟時不預選任何時段
   ['bulkStart','bulkEnd'].forEach(id=>{
     const el = document.getElementById(id);
     if(el && !el.dataset.quickSync){ el.dataset.quickSync='1'; el.addEventListener('input', ()=>syncQuickBtnsSelected('bulkQuickBtns','bulkStart','bulkEnd')); el.addEventListener('change', ()=>syncQuickBtnsSelected('bulkQuickBtns','bulkStart','bulkEnd')); }
   });
   syncQuickBtnsSelected('bulkQuickBtns','bulkStart','bulkEnd');
 }
-function applyBulkQuick(start,end){
+function applyBulkQuick(start,end,id){
   document.getElementById('bulkStart').value = start;
   document.getElementById('bulkEnd').value = end;
+  quickSelId['bulkQuickBtns'] = id;
   syncQuickBtnsSelected('bulkQuickBtns','bulkStart','bulkEnd');
 }
 
@@ -4424,6 +4434,7 @@ function isWeekend(dateStr){
 
 function runBulkSchedule(){
   if(bulkSelectedStaffIds.length===0){ alert('請至少選擇一位人員'); return; }
+  if(!bulkSelectedSite){ alert('請選擇地點'); return; }
   const site = bulkSelectedSite;
   // 保險檢查：上班類型與地點不符的人員一律不排入（即使畫面上被勾選）
   const bulkSiteObj = sites.find(x=>x.id===site);
@@ -4505,6 +4516,7 @@ function renderBulkReport(addedCount, skipped, totalDays, totalStaff, ruleCount,
 // 精準刪除「該人在該地點」的紀錄，不影響該人在其他地點的正確排班
 function runBulkCancel(){
   if(bulkSelectedStaffIds.length===0){ alert('請至少選擇一位人員'); return; }
+  if(!bulkSelectedSite){ alert('請選擇地點'); return; }
   const site = bulkSelectedSite;
   const startDate = document.getElementById('bulkStartDate').value;
   const endDate = document.getElementById('bulkEndDate').value;
