@@ -1164,7 +1164,8 @@
       <h2>🕐 快速時段按鈕 <span class="badge gold">彈性排班</span></h2>
       <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
         時段不綁地點 —— 排班時（M3）再選人員與地點（診所或任一據點）。<br>
-        同一人同一天可分別建立上午診所＋下午據點等跨地點組合。按鈕只是快速套用起點，套用後仍可手動調整時間。
+        同一人同一天可分別建立上午診所＋下午據點等跨地點組合。按鈕只是快速套用起點，套用後仍可手動調整時間。<br>
+        🍱 全天班別可填「午休（小時）」，M8 報表的排班工時會自動扣除；排班的開始／結束時間與該按鈕完全相同才會扣，沒填就不扣。
       </div>
       <div style="display:flex;gap:8px;margin-bottom:10px;">
         <button class="btn outline" onclick="exportM2XLSX()">⬇️ 匯出 Excel</button>
@@ -1178,25 +1179,6 @@
         <input type="time" id="newTplEnd" value="12:00">
         <button class="btn" onclick="addShiftTemplate()">＋ 新增按鈕</button>
       </div>
-    </div>
-
-    <div class="card">
-      <h2>🍱 午休時間 <span class="badge gold">工時扣除</span></h2>
-      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:8px;">
-        設定各診所／據點的午休時段。M8 報表計算「排班工時」時，班別時間與午休重疊的部分會自動扣除
-        （例：08:00–17:00、午休 12:00–13:00 → 8 小時；上午 08:00–12:00 不受影響）。<b>未設定＝不扣</b>。M9 加班時數是員工自填，不扣午休。
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;padding:8px 10px;background:var(--cream-2,#faf3e0);border-radius:8px;">
-        <span style="font-size:12px;font-weight:600;">統一設定</span>
-        <input type="time" id="lunchBulkStart" value="12:00">
-        <span style="color:var(--text-soft);">至</span>
-        <input type="time" id="lunchBulkEnd" value="13:00">
-        <button class="btn" onclick="applyLunchBulk('all')">套用到全部</button>
-        <button class="btn outline" onclick="applyLunchBulk('clinic')">只套用診所</button>
-        <button class="btn outline" onclick="applyLunchBulk('station')">只套用據點</button>
-        <button class="btn outline" onclick="clearLunchAll()" style="margin-left:auto;">清除全部午休</button>
-      </div>
-      <div id="lunchSiteList"></div>
     </div>
 
     <div class="card">
@@ -2026,8 +2008,7 @@ const STORE_KEYS = {
   clinicClosures: 'sched_clinicClosures',
   deletedClinicIds: 'sched_deletedClinicIds',
   courseItems: 'sched_courseItems',
-  courseSchedule: 'sched_courseSchedule',
-  lunchBreaks: 'sched_lunchBreaks'     // 各據點／診所的午休時段（本機副本；雲端是跟快速時段按鈕一起存，見 buildTemplatesPayload）
+  courseSchedule: 'sched_courseSchedule'
 };
 
 function loadStore(key, fallback){
@@ -2199,13 +2180,15 @@ async function pullAllFromGAS(){
       } },
     { getAction:'getSchedTeachers',  apply: r => { if(r.teachers){ externalTeachers = r.teachers; saveLocalOnly(STORE_KEYS.externalTeachers, externalTeachers); } } },
     { getAction:'getSchedTemplates', apply: r => { if(r.templates && r.templates.length){
-        // 午休設定以 id「lunch:據點id」的特殊列跟時段按鈕一起存在雲端，這裡拆開還原
+        // 午休(小時)以 id「lunch:時段按鈕id」的特殊列跟時段按鈕一起存在雲端（只用後端本來就會保存的 id/名稱/開始/結束欄位），這裡拆開還原
         const isLunch = t => String(t.id).startsWith(LUNCH_ID_PREFIX);
-        lunchBreaks = {};
-        r.templates.filter(isLunch).forEach(t=>{ lunchBreaks[String(t.id).slice(LUNCH_ID_PREFIX.length)] = { start: normHM(t.start), end: normHM(t.end) }; });
-        saveLocalOnly(STORE_KEYS.lunchBreaks, lunchBreaks);
+        const lunchMap = {};
+        r.templates.filter(isLunch).forEach(t=>{ lunchMap[String(t.id).slice(LUNCH_ID_PREFIX.length)] = hmToMin(t.end)/60; });
         const real = r.templates.filter(t=>!isLunch(t));
-        if(real.length){ shiftTemplates = real; saveLocalOnly(STORE_KEYS.shiftTemplates, shiftTemplates); }
+        if(real.length){
+          real.forEach(t=>{ if(lunchMap[t.id] > 0) t.lunchHours = lunchMap[t.id]; else delete t.lunchHours; });
+          shiftTemplates = real; saveLocalOnly(STORE_KEYS.shiftTemplates, shiftTemplates);
+        }
       } } },
     { getAction:'getSchedSchedule',  apply: r => {
         if(r.entries){
@@ -2362,7 +2345,6 @@ function buildDefaultSites(){
 
 let staff = loadStore(STORE_KEYS.staff, null) || buildDefaultStaff();
 let shiftTemplates = loadStore(STORE_KEYS.shiftTemplates, null) || DEFAULT_SHIFT_TEMPLATES;
-let lunchBreaks = loadStore(STORE_KEYS.lunchBreaks, null) || {};   // { siteId: {start:'12:00', end:'13:00'} }；沒有設定 = 不扣午休
 // 相容性處理：舊版模板含有 site 欄位且只有3筆固定診所/據點班別 → 升級為新版彈性時段模板
 if(shiftTemplates.some(t=>t.site) && shiftTemplates.length<=3){
   shiftTemplates = DEFAULT_SHIFT_TEMPLATES;
@@ -3144,55 +3126,24 @@ function renderShiftTemplates(){
         <span class="tpl-time">至</span>
         <input type="time" value="${t.end}" onchange="updateTplTime('${t.id}','end',this.value)">
       </div>
+      <div class="tpl-info" style="margin-top:6px;">
+        <span class="tpl-time">🍱 午休</span>
+        <input type="number" min="0" max="4" step="0.25" placeholder="0" value="${t.lunchHours||''}" onchange="updateTplLunch('${t.id}',this.value)" style="width:70px;font-size:12px;padding:5px 6px;">
+        <span class="tpl-time">小時（排班工時扣除）</span>
+      </div>
     </div>
   `).join('');
   renderTplPreviewBtns();
-  renderLunchSettings();
 }
-// ===== M2 午休設定 =====
-function saveLunchBreaks(){
-  saveLocalOnly(STORE_KEYS.lunchBreaks, lunchBreaks);
-  schedulePush(STORE_KEYS.shiftTemplates);        // 午休跟時段按鈕一起同步到雲端
-}
-function renderLunchSettings(){
-  const box = document.getElementById('lunchSiteList');
-  if(!box) return;
-  const ordered = [...sites.filter(x=>x.isClinic), ...sites.filter(x=>!x.isClinic)];
-  box.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:6px 10px;">' + ordered.map(site=>{
-    const lb = lunchBreaks[site.id] || {};
-    return `<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--line,#ecdcb0);border-radius:8px;background:${lb.start?'var(--cream-2,#faf3e0)':'transparent'};">
-      <span style="flex:1;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${site.isClinic?'🏥':'📍'} ${site.name}</span>
-      <input type="time" value="${lb.start||''}" data-lunch-start="${site.id}" onchange="onLunchChange('${site.id}')" style="width:106px;">
-      <span style="color:var(--text-soft);">–</span>
-      <input type="time" value="${lb.end||''}" data-lunch-end="${site.id}" onchange="onLunchChange('${site.id}')" style="width:106px;">
-    </div>`;
-  }).join('') + '</div>';
-}
-function onLunchChange(siteId){
-  const st = document.querySelector(`[data-lunch-start="${siteId}"]`).value;
-  const en = document.querySelector(`[data-lunch-end="${siteId}"]`).value;
-  if(!st && !en){ delete lunchBreaks[siteId]; saveLunchBreaks(); renderLunchSettings(); return; }
-  if(!st || !en) return;                           // 還沒填完，等另一格
-  if(st >= en){ alert('午休結束時間需晚於開始時間'); renderLunchSettings(); return; }
-  lunchBreaks[siteId] = { start: st, end: en };
-  saveLunchBreaks();
-  renderLunchSettings();
-}
-function applyLunchBulk(scope){
-  const st = document.getElementById('lunchBulkStart').value, en = document.getElementById('lunchBulkEnd').value;
-  if(!st || !en || st >= en){ alert('請先設定正確的午休開始／結束時間'); return; }
-  const targets = sites.filter(x=> scope==='all' || (scope==='clinic' ? x.isClinic : !x.isClinic));
-  if(!confirm(`將 ${targets.length} 個地點的午休設為 ${st}–${en}？（會覆蓋這些地點原本的午休設定）`)) return;
-  targets.forEach(x=>{ lunchBreaks[x.id] = { start: st, end: en }; });
-  saveLunchBreaks();
-  renderLunchSettings();
-}
-function clearLunchAll(){
-  if(!Object.keys(lunchBreaks).length){ alert('目前沒有設定任何午休'); return; }
-  if(!confirm('確定清除所有地點的午休設定？清除後排班工時不再扣午休。')) return;
-  lunchBreaks = {};
-  saveLunchBreaks();
-  renderLunchSettings();
+function updateTplLunch(id, val){
+  const t = shiftTemplates.find(x=>x.id===id);
+  if(!t) return;
+  const h = parseFloat(val);
+  if(val==='' || isNaN(h) || h<=0){ delete t.lunchHours; }
+  else if(h>4){ alert('午休最多 4 小時'); renderShiftTemplates(); return; }
+  else { t.lunchHours = Math.round(h*100)/100; }
+  saveStore(STORE_KEYS.shiftTemplates, shiftTemplates);   // 會一併同步到雲端
+  renderShiftTemplates();
 }
 function updateTplTime(id, field, val){
   const t = shiftTemplates.find(x=>x.id===id);
@@ -3222,7 +3173,7 @@ function addShiftTemplate(){
 
 // ===== M2 匯出／匯入（快速時段按鈕） =====
 function exportM2XLSX(){
-  const rows = shiftTemplates.map(t=>({ id:t.id, 名稱:t.name, 開始:t.start, 結束:t.end }));
+  const rows = shiftTemplates.map(t=>({ id:t.id, 名稱:t.name, 開始:t.start, 結束:t.end, 午休小時:t.lunchHours||0 }));
   exportXLSX('快速時段按鈕.xlsx', [ { name:'時段範本', rows } ]);
 }
 function importM2XLSX(){
@@ -3239,11 +3190,14 @@ function importM2XLSX(){
       const end = String(row['結束']||'').trim();
       if(!name || !start || !end || start>=end){ skipped++; return; }
       const id = String(row['id']||'').trim();
+      const lh = parseFloat(row['午休小時']);
+      const lunchPart = (!isNaN(lh) && lh>0 && lh<=4) ? { lunchHours: lh } : null;
       if(id && byId[id]){
         Object.assign(byId[id], { name, start, end });
+        if(lunchPart) byId[id].lunchHours = lh; else if(row['午休小時']!==undefined) delete byId[id].lunchHours;
         updated++;
       }else{
-        const t = { id: uid('tpl'), name, start, end };
+        const t = { id: uid('tpl'), name, start, end, ...(lunchPart||{}) };
         shiftTemplates.push(t); byId[t.id]=t; created++;
       }
     });
@@ -6223,22 +6177,36 @@ function closeQueryDayDetail(e){
 // M8 報表統計
 // ===========================================================
 // ===== 午休：排班工時自動扣除 =====
+// 午休（小時）設定在 M2 的時段按鈕上（例：平安整天 午休 1 小時）。排班的開始／結束時間與該時段按鈕完全相同時，工時自動扣掉午休。
 const LUNCH_ID_PREFIX = 'lunch:';
+function hmToMin(t){ const [h,m] = normHM(t).split(':').map(Number); return h*60+m; }
+function minToHM(min){ return String(Math.floor(min/60)).padStart(2,'0') + ':' + String(min%60).padStart(2,'0'); }
 function buildTemplatesPayload(){
-  const lunchRows = Object.keys(lunchBreaks).filter(id=>lunchBreaks[id] && lunchBreaks[id].start && lunchBreaks[id].end)
-    .map(id=>({ id: LUNCH_ID_PREFIX + id, name:'午休', start: lunchBreaks[id].start, end: lunchBreaks[id].end }));
+  const lunchRows = shiftTemplates.filter(t=>t.lunchHours>0)
+    .map(t=>({ id: LUNCH_ID_PREFIX + t.id, name:'午休', start:'00:00', end: minToHM(Math.round(t.lunchHours*60)) }));
   return shiftTemplates.concat(lunchRows);
 }
-function hmToMin(t){ const [h,m] = normHM(t).split(':').map(Number); return h*60+m; }
-// 班別時間與該地點午休重疊的分鐘數（例：08:00–17:00、午休 12:00–13:00 → 60）
-function lunchMinutesFor(siteId, start, end){
-  const lb = lunchBreaks[siteId];
-  if(!lb || !lb.start || !lb.end) return 0;
-  return Math.max(0, Math.min(hmToMin(end), hmToMin(lb.end)) - Math.max(hmToMin(start), hmToMin(lb.start)));
+// 這筆排班對應哪個有午休的時段按鈕：時間要完全相同，而且按鈕要「適用」這個地點：
+//   名稱含某個地點名稱（如「平安整天」「清禾整天」）→ 只適用該地點；名稱含「據點」→ 適用所有據點；其他（如「整天」）→ 適用所有地點。
+// 同時有多個適用時，優先取「指名地點」的，其次「據點」類，最後才是通用的。
+function lunchHoursForEntry(e){
+  const st = normHM(e.start), en = normHM(e.end);
+  const cands = shiftTemplates.filter(t=> t.lunchHours>0 && normHM(t.start)===st && normHM(t.end)===en);
+  if(!cands.length) return 0;
+  const site = sites.find(x=>x.id===e.site);
+  const clinic = isClinicSite(e.site);
+  const rank = t=>{
+    const named = sites.filter(x=>t.name.includes(x.name)).sort((a,b)=>b.name.length-a.name.length)[0];
+    if(named) return named.id===e.site ? 0 : -1;         // 指名了別的地點 → 不適用
+    if(t.name.includes('據點')) return clinic ? -1 : 1;    // 據點類 → 診所不適用
+    return 2;                                              // 通用
+  };
+  const ok = cands.map(t=>({t, r:rank(t)})).filter(x=>x.r>=0).sort((a,b)=>a.r-b.r);
+  return ok.length ? ok[0].t.lunchHours : 0;
 }
-// 一筆排班的實際工時＝時間長度 − 午休重疊
+// 一筆排班的實際工時＝時間長度 − 午休
 function entryHours(e){
-  return Math.max(0, timeToHours(e.start, e.end) - lunchMinutesFor(e.site, e.start, e.end)/60);
+  return Math.max(0, timeToHours(e.start, e.end) - lunchHoursForEntry(e));
 }
 function timeToHours(start, end){
   const [sh, sm] = start.split(':').map(Number);
@@ -6322,7 +6290,7 @@ function renderReportByStaff(byStaff){
   container.innerHTML = html;
 }
 function lunchNoteHtml(){
-  return Object.keys(lunchBreaks).length ? '<div style="font-size:11px;color:var(--text-soft);margin-bottom:6px;">🍱 排班工時已扣除午休（M2 設定）</div>' : '';
+  return shiftTemplates.some(t=>t.lunchHours>0) ? '<div style="font-size:11px;color:var(--text-soft);margin-bottom:6px;">🍱 排班工時已扣除午休（M2 時段按鈕設定）</div>' : '';
 }
 function renderReportHours(hoursByStaff){
   const container = document.getElementById('reportHoursTable');
