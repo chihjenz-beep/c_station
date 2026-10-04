@@ -983,6 +983,33 @@
   .gate-card .gate-btns{display:flex;gap:8px;margin-top:14px;}
   .gate-card button{flex:1;padding:10px;border-radius:10px;border:1px solid var(--gold);background:var(--brown);color:#fff;font-size:14px;font-weight:700;cursor:pointer;}
   .gate-card button.ghost{background:transparent;color:var(--brown);}
+
+  /* ===== M8 緊湊版面：卡片併排、表格縮小列距 ===== */
+  #panel-m8{gap:0 12px;}
+  #panel-m8>.card{padding:12px 14px;margin-bottom:12px;}
+  #panel-m8>.card h2{margin:0 0 8px;padding-bottom:6px;font-size:14px;}
+  #panel-m8>.card .desc{margin-bottom:6px !important;}
+  #panel-m8>.card:nth-child(1){grid-column:span 12;}      /* 報表統計（篩選列） */
+  #panel-m8>.card:nth-child(2){grid-column:span 5;}       /* 每人總班數 */
+  #panel-m8>.card:nth-child(3){grid-column:span 3;}       /* 每人總工時 */
+  #panel-m8>.card:nth-child(4){grid-column:span 4;}       /* 彙整總工時 */
+  #panel-m8>.card:nth-child(5){grid-column:span 8;}       /* 加班明細 */
+  #panel-m8>.card:nth-child(6){grid-column:span 4;}       /* 每據點人力分布 */
+  #panel-m8 .report-table{font-size:12px;border-radius:8px;}
+  #panel-m8 .report-table th{padding:5px 8px;font-size:11px;}
+  #panel-m8 .report-table td{padding:4px 8px;line-height:1.35;}
+  #panel-m8 .report-table:not(.attendance-table) th:first-child,
+  #panel-m8 .report-table:not(.attendance-table) td:first-child{width:auto;}
+  #panel-m8 .report-empty{padding:10px;}
+  @media(max-width:1100px){
+    #panel-m8>.card:nth-child(2),#panel-m8>.card:nth-child(3),#panel-m8>.card:nth-child(4){grid-column:span 4;}
+    #panel-m8>.card:nth-child(5){grid-column:span 12;}
+    #panel-m8>.card:nth-child(6){grid-column:span 12;}
+  }
+  @media(max-width:760px){
+    #panel-m8>.card:nth-child(n){grid-column:span 12;}
+  }
+
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
@@ -1151,6 +1178,25 @@
         <input type="time" id="newTplEnd" value="12:00">
         <button class="btn" onclick="addShiftTemplate()">＋ 新增按鈕</button>
       </div>
+    </div>
+
+    <div class="card">
+      <h2>🍱 午休時間 <span class="badge gold">工時扣除</span></h2>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:8px;">
+        設定各診所／據點的午休時段。M8 報表計算「排班工時」時，班別時間與午休重疊的部分會自動扣除
+        （例：08:00–17:00、午休 12:00–13:00 → 8 小時；上午 08:00–12:00 不受影響）。<b>未設定＝不扣</b>。M9 加班時數是員工自填，不扣午休。
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;padding:8px 10px;background:var(--cream-2,#faf3e0);border-radius:8px;">
+        <span style="font-size:12px;font-weight:600;">統一設定</span>
+        <input type="time" id="lunchBulkStart" value="12:00">
+        <span style="color:var(--text-soft);">至</span>
+        <input type="time" id="lunchBulkEnd" value="13:00">
+        <button class="btn" onclick="applyLunchBulk('all')">套用到全部</button>
+        <button class="btn outline" onclick="applyLunchBulk('clinic')">只套用診所</button>
+        <button class="btn outline" onclick="applyLunchBulk('station')">只套用據點</button>
+        <button class="btn outline" onclick="clearLunchAll()" style="margin-left:auto;">清除全部午休</button>
+      </div>
+      <div id="lunchSiteList"></div>
     </div>
 
     <div class="card">
@@ -1659,9 +1705,9 @@
     <div class="card">
       <h2>📊 報表統計</h2>
       <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
-        統計範圍涵蓋所有已排的班（不論是否已發布）。可選擇任意日期區間，支援跨月。
+        統計範圍涵蓋所有已排的班（不論是否已發布），可選任意日期區間，支援跨月。
       </div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
         <label style="font-size:12px;color:var(--text-soft);">起始日</label>
         <input type="date" id="reportStartDate">
         <label style="font-size:12px;color:var(--text-soft);">結束日</label>
@@ -1683,19 +1729,19 @@
     </div>
 
     <div class="card">
-      <h2>🚗 加班明細 <span class="badge">M9支援紀錄</span></h2>
+      <h2>📐 彙整總工時 <span class="badge gold">排班＋加班</span></h2>
       <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
-        統計區間內的M9支援填報紀錄（與排班無關的額外出勤），逐筆列出。
+        排班工時＋M9加班工時的合計。
       </div>
-      <div id="reportOvertimeTable"></div>
+      <div id="reportCombinedTable"></div>
     </div>
 
     <div class="card">
-      <h2>📐 彙整總工時 <span class="badge gold">排班＋加班</span></h2>
+      <h2>🚗 加班明細 <span class="badge">M9支援紀錄</span></h2>
       <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
-        每人「排班工時」＋「M9加班工時」的合計，作為實際投入工時的完整參考。
+        區間內的M9支援填報，逐筆列出；與班表重疊的不計入。
       </div>
-      <div id="reportCombinedTable"></div>
+      <div id="reportOvertimeTable"></div>
     </div>
 
     <div class="card">
@@ -1980,7 +2026,8 @@ const STORE_KEYS = {
   clinicClosures: 'sched_clinicClosures',
   deletedClinicIds: 'sched_deletedClinicIds',
   courseItems: 'sched_courseItems',
-  courseSchedule: 'sched_courseSchedule'
+  courseSchedule: 'sched_courseSchedule',
+  lunchBreaks: 'sched_lunchBreaks'     // 各據點／診所的午休時段（本機副本；雲端是跟快速時段按鈕一起存，見 buildTemplatesPayload）
 };
 
 function loadStore(key, fallback){
@@ -2033,7 +2080,7 @@ const SYNC_MAP = {
   },
   sched_shiftTemplates: {
     saveAction: 'saveSchedTemplates',
-    buildPayload: () => ({ templates: shiftTemplates }),
+    buildPayload: () => ({ templates: buildTemplatesPayload() }),
   },
   sched_schedule: {
     saveAction: 'saveSchedSchedule',
@@ -2151,7 +2198,15 @@ async function pullAllFromGAS(){
         }
       } },
     { getAction:'getSchedTeachers',  apply: r => { if(r.teachers){ externalTeachers = r.teachers; saveLocalOnly(STORE_KEYS.externalTeachers, externalTeachers); } } },
-    { getAction:'getSchedTemplates', apply: r => { if(r.templates && r.templates.length){ shiftTemplates = r.templates; saveLocalOnly(STORE_KEYS.shiftTemplates, shiftTemplates); } } },
+    { getAction:'getSchedTemplates', apply: r => { if(r.templates && r.templates.length){
+        // 午休設定以 id「lunch:據點id」的特殊列跟時段按鈕一起存在雲端，這裡拆開還原
+        const isLunch = t => String(t.id).startsWith(LUNCH_ID_PREFIX);
+        lunchBreaks = {};
+        r.templates.filter(isLunch).forEach(t=>{ lunchBreaks[String(t.id).slice(LUNCH_ID_PREFIX.length)] = { start: normHM(t.start), end: normHM(t.end) }; });
+        saveLocalOnly(STORE_KEYS.lunchBreaks, lunchBreaks);
+        const real = r.templates.filter(t=>!isLunch(t));
+        if(real.length){ shiftTemplates = real; saveLocalOnly(STORE_KEYS.shiftTemplates, shiftTemplates); }
+      } } },
     { getAction:'getSchedSchedule',  apply: r => {
         if(r.entries){
           const rebuilt = {};
@@ -2307,6 +2362,7 @@ function buildDefaultSites(){
 
 let staff = loadStore(STORE_KEYS.staff, null) || buildDefaultStaff();
 let shiftTemplates = loadStore(STORE_KEYS.shiftTemplates, null) || DEFAULT_SHIFT_TEMPLATES;
+let lunchBreaks = loadStore(STORE_KEYS.lunchBreaks, null) || {};   // { siteId: {start:'12:00', end:'13:00'} }；沒有設定 = 不扣午休
 // 相容性處理：舊版模板含有 site 欄位且只有3筆固定診所/據點班別 → 升級為新版彈性時段模板
 if(shiftTemplates.some(t=>t.site) && shiftTemplates.length<=3){
   shiftTemplates = DEFAULT_SHIFT_TEMPLATES;
@@ -3091,6 +3147,52 @@ function renderShiftTemplates(){
     </div>
   `).join('');
   renderTplPreviewBtns();
+  renderLunchSettings();
+}
+// ===== M2 午休設定 =====
+function saveLunchBreaks(){
+  saveLocalOnly(STORE_KEYS.lunchBreaks, lunchBreaks);
+  schedulePush(STORE_KEYS.shiftTemplates);        // 午休跟時段按鈕一起同步到雲端
+}
+function renderLunchSettings(){
+  const box = document.getElementById('lunchSiteList');
+  if(!box) return;
+  const ordered = [...sites.filter(x=>x.isClinic), ...sites.filter(x=>!x.isClinic)];
+  box.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:6px 10px;">' + ordered.map(site=>{
+    const lb = lunchBreaks[site.id] || {};
+    return `<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--line,#ecdcb0);border-radius:8px;background:${lb.start?'var(--cream-2,#faf3e0)':'transparent'};">
+      <span style="flex:1;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${site.isClinic?'🏥':'📍'} ${site.name}</span>
+      <input type="time" value="${lb.start||''}" data-lunch-start="${site.id}" onchange="onLunchChange('${site.id}')" style="width:106px;">
+      <span style="color:var(--text-soft);">–</span>
+      <input type="time" value="${lb.end||''}" data-lunch-end="${site.id}" onchange="onLunchChange('${site.id}')" style="width:106px;">
+    </div>`;
+  }).join('') + '</div>';
+}
+function onLunchChange(siteId){
+  const st = document.querySelector(`[data-lunch-start="${siteId}"]`).value;
+  const en = document.querySelector(`[data-lunch-end="${siteId}"]`).value;
+  if(!st && !en){ delete lunchBreaks[siteId]; saveLunchBreaks(); renderLunchSettings(); return; }
+  if(!st || !en) return;                           // 還沒填完，等另一格
+  if(st >= en){ alert('午休結束時間需晚於開始時間'); renderLunchSettings(); return; }
+  lunchBreaks[siteId] = { start: st, end: en };
+  saveLunchBreaks();
+  renderLunchSettings();
+}
+function applyLunchBulk(scope){
+  const st = document.getElementById('lunchBulkStart').value, en = document.getElementById('lunchBulkEnd').value;
+  if(!st || !en || st >= en){ alert('請先設定正確的午休開始／結束時間'); return; }
+  const targets = sites.filter(x=> scope==='all' || (scope==='clinic' ? x.isClinic : !x.isClinic));
+  if(!confirm(`將 ${targets.length} 個地點的午休設為 ${st}–${en}？（會覆蓋這些地點原本的午休設定）`)) return;
+  targets.forEach(x=>{ lunchBreaks[x.id] = { start: st, end: en }; });
+  saveLunchBreaks();
+  renderLunchSettings();
+}
+function clearLunchAll(){
+  if(!Object.keys(lunchBreaks).length){ alert('目前沒有設定任何午休'); return; }
+  if(!confirm('確定清除所有地點的午休設定？清除後排班工時不再扣午休。')) return;
+  lunchBreaks = {};
+  saveLunchBreaks();
+  renderLunchSettings();
 }
 function updateTplTime(id, field, val){
   const t = shiftTemplates.find(x=>x.id===id);
@@ -6120,6 +6222,24 @@ function closeQueryDayDetail(e){
 // ===========================================================
 // M8 報表統計
 // ===========================================================
+// ===== 午休：排班工時自動扣除 =====
+const LUNCH_ID_PREFIX = 'lunch:';
+function buildTemplatesPayload(){
+  const lunchRows = Object.keys(lunchBreaks).filter(id=>lunchBreaks[id] && lunchBreaks[id].start && lunchBreaks[id].end)
+    .map(id=>({ id: LUNCH_ID_PREFIX + id, name:'午休', start: lunchBreaks[id].start, end: lunchBreaks[id].end }));
+  return shiftTemplates.concat(lunchRows);
+}
+function hmToMin(t){ const [h,m] = normHM(t).split(':').map(Number); return h*60+m; }
+// 班別時間與該地點午休重疊的分鐘數（例：08:00–17:00、午休 12:00–13:00 → 60）
+function lunchMinutesFor(siteId, start, end){
+  const lb = lunchBreaks[siteId];
+  if(!lb || !lb.start || !lb.end) return 0;
+  return Math.max(0, Math.min(hmToMin(end), hmToMin(lb.end)) - Math.max(hmToMin(start), hmToMin(lb.start)));
+}
+// 一筆排班的實際工時＝時間長度 − 午休重疊
+function entryHours(e){
+  return Math.max(0, timeToHours(e.start, e.end) - lunchMinutesFor(e.site, e.start, e.end)/60);
+}
 function timeToHours(start, end){
   const [sh, sm] = start.split(':').map(Number);
   const [eh, em] = end.split(':').map(Number);
@@ -6161,7 +6281,7 @@ function runReport(){
     else byStaff[e.staffId].stationCount++;
 
     if(!hoursByStaff[e.staffId]) hoursByStaff[e.staffId] = 0;
-    hoursByStaff[e.staffId] += timeToHours(e.start, e.end);
+    hoursByStaff[e.staffId] += entryHours(e);   // 已扣午休（M2 設定）
 
     if(!bySite[e.site]) bySite[e.site] = 0;
     bySite[e.site]++;
@@ -6201,6 +6321,9 @@ function renderReportByStaff(byStaff){
   html += '</tbody></table>';
   container.innerHTML = html;
 }
+function lunchNoteHtml(){
+  return Object.keys(lunchBreaks).length ? '<div style="font-size:11px;color:var(--text-soft);margin-bottom:6px;">🍱 排班工時已扣除午休（M2 設定）</div>' : '';
+}
 function renderReportHours(hoursByStaff){
   const container = document.getElementById('reportHoursTable');
   const staffIds = Object.keys(hoursByStaff);
@@ -6214,7 +6337,7 @@ function renderReportHours(hoursByStaff){
     html += `<tr><td>${getStaffName(id)}</td><td class="num">${hoursByStaff[id].toFixed(1)}</td></tr>`;
   });
   html += '</tbody></table>';
-  container.innerHTML = html;
+  container.innerHTML = lunchNoteHtml() + html;
 }
 
 function renderReportOvertime(overtimeRecords){
@@ -6263,7 +6386,7 @@ function renderReportCombined(hoursByStaff, overtimeHoursByStaff){
     html += `<tr><td>${getStaffName(c.id)}</td><td class="num">${c.schedHours.toFixed(1)}</td><td class="num">${c.otHours.toFixed(1)}</td><td class="num" style="color:var(--brown-dark);font-weight:700;">${total.toFixed(1)}</td></tr>`;
   });
   html += '</tbody></table>';
-  container.innerHTML = html;
+  container.innerHTML = lunchNoteHtml() + html;
 }
 function renderReportBySite(bySite){
   const container = document.getElementById('reportBySiteTable');
