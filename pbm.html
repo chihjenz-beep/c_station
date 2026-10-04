@@ -1012,14 +1012,20 @@
 
 
   /* 矩陣總覽（橫軸員工、縱軸日期） */
-  .matrix-table.by-date thead th{min-width:58px;padding:6px 4px;}
+  .matrix-table.by-date thead th{min-width:50px;padding:6px 4px;}
+  .matrix-table.by-date thead th.vname{line-height:1.2;min-width:50px;padding:8px 4px;vertical-align:middle;}   /* 姓名一字一行往下排（直式） */
   .matrix-table.by-date tbody th{min-width:74px;max-width:74px;font-size:12px;white-space:nowrap;}
-  .matrix-table.by-date .matrix-cell{min-width:58px;min-height:30px;height:30px;}
+  .matrix-table.by-date .matrix-cell{min-width:50px;min-height:30px;height:30px;}
   .matrix-table.by-date .matrix-cell .mc-seg{padding:1px 2px;}
   .matrix-table.by-date tr.weekend-row th{background:#fdf3e1;color:var(--danger);}
   .matrix-table.by-date tr.weekend-row td{background:#fbf3e3;}
   .matrix-table.by-date tr.today-row th{background:var(--gold);color:#fff;}
   .matrix-table.by-date tr.today-row td{box-shadow:inset 0 2px 0 var(--gold),inset 0 -2px 0 var(--gold);}
+
+  .weekday-toggle.half{width:auto;min-width:26px;padding:0 8px;border-radius:14px;gap:3px;}
+  .weekday-toggle small{font-size:9.5px;font-weight:600;opacity:.95;}
+  .weekday-toggle.half.am{background:#b8862b;border-color:#b8862b;}
+  .weekday-toggle.half.pm{background:#4f6f9a;border-color:#4f6f9a;}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
@@ -1136,7 +1142,7 @@
 
     <div class="card">
       <h2>🏘️ 據點指派 <span class="badge station">16個據點</span></h2>
-      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">每個據點可指派多位主責人員與多位延緩老師（皆從22位員工中選取）</div>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">每個據點可指派多位主責人員與多位延緩老師（皆從22位員工中選取）。<br>🗓️ 「上班日」每按一次星期會循環切換：<b>灰＝不營運 → 整天 → 上午 → 下午</b>；新增的據點預設全部不營運，請自行設定。</div>
       <div id="siteList"></div>
       <div style="margin-top:10px;display:flex;gap:8px;">
         <input type="text" id="newSiteName" placeholder="新增據點名稱" style="flex:1;">
@@ -2334,15 +2340,46 @@ function buildDefaultStaff(){
 // 營運星期的「完全不營運」要能被存檔：空陣列在雲端往返時會被當成「沒設定」而補回週一到週五，
 // 所以用 [-1] 當作「已設定，且沒有任何營運日」的標記（-1 不是任何星期，includes(dow) 永遠為 false）。
 const NO_OPERATING_DAY = -1;
+// 營運星期的編碼（沿用原本會同步到雲端的 operatingWeekdays 陣列，不新增欄位，避免後端漏存）：
+//   0–6 ＝ 該星期整天營運；10–16 ＝ 該星期只有上午（10＋星期）；20–26 ＝ 該星期只有下午（20＋星期）；-1 ＝ 完全不營運
+const SLOT_AM = 10, SLOT_PM = 20;
 function normalizeWeekdays(v){
   let arr = v;
   if(typeof v === 'string') arr = v.split(/[、,，\s]+/).filter(x=>x!=='');
   if(!Array.isArray(arr)) return null;
-  arr = arr.map(Number).filter(n=>!isNaN(n) && n>=-1 && n<=6);
+  arr = arr.map(Number).filter(n=>!isNaN(n) && (n===-1 || (n>=0 && n<=6) || (n>=10 && n<=16) || (n>=20 && n<=26)));
   return arr.length ? arr : null;      // null = 沒有設定（舊資料／雲端沒帶這個欄位）
 }
-function realOperatingDays(site){ return (site.operatingWeekdays||[]).filter(d=>d>=0 && d<=6).slice().sort((a,b)=>a-b); }
-function operatingDaysText(site){ const WD=['日','一','二','三','四','五','六']; const d=realOperatingDays(site); return d.length ? d.map(x=>'週'+WD[x]).join('、') : ''; }
+// 該據點在某個星期的營運時段：'full'整天／'am'上午／'pm'下午／null 不營運
+function siteDaySlot(site, dow){
+  const arr = (site.operatingWeekdays && site.operatingWeekdays.length) ? site.operatingWeekdays : DEFAULT_SITE_OPERATING_WEEKDAYS;
+  if(arr.includes(dow)) return 'full';
+  if(arr.includes(SLOT_AM + dow)) return 'am';
+  if(arr.includes(SLOT_PM + dow)) return 'pm';
+  return null;
+}
+function realOperatingDays(site){
+  const set = new Set((site.operatingWeekdays||[]).filter(d=>d>=0).map(d=>d%10).filter(d=>d<=6));
+  return [...set].sort((a,b)=>a-b);
+}
+function operatingDaysText(site){
+  const WD=['日','一','二','三','四','五','六'];
+  return realOperatingDays(site).map(d=>{ const sl=siteDaySlot(site,d); return '週'+WD[d]+(sl==='am'?'上午':sl==='pm'?'下午':''); }).join('、');
+}
+// 匯出／匯入用的文字編碼：1、2、3上午、4下午
+function operatingDaysCode(site){
+  return realOperatingDays(site).map(d=>{ const sl=siteDaySlot(site,d); return d+(sl==='am'?'上午':sl==='pm'?'下午':''); }).join('、');
+}
+function parseOperatingDaysCode(text){
+  const out = [];
+  String(text||'').split(/[、,，\s]+/).forEach(tok=>{
+    const m = tok.match(/^([0-6])(上午|下午)?$/);
+    if(!m) return;
+    const d = Number(m[1]);
+    out.push(m[2]==='上午' ? SLOT_AM+d : m[2]==='下午' ? SLOT_PM+d : d);
+  });
+  return out;
+}
 function buildDefaultSites(){
   return DEFAULT_SITE_NAMES.map(name=>({
     id: uid('site'),
@@ -2608,7 +2645,7 @@ function exportM1XLSX(){
     主要人員: (s.mainStaffIds||[]).map(getStaffName).join('、'),
     代班人員: (s.reliefStaffIds||[]).map(getStaffName).join('、'),
     主責人員: (s.dutyStaffIds||[]).map(getStaffName).join('、'),
-    營運星期: realOperatingDays(s).join('、')
+    營運星期: operatingDaysCode(s)
   }));
   exportXLSX('員工與據點.xlsx', [ { name:'員工', rows: staffRows }, { name:'據點', rows: siteRows } ]);
 }
@@ -2656,7 +2693,7 @@ function importM1XLSX(){
         dutyStaffIds: namesToIds(row['主責人員'])
       };
       {
-        const days = String(row['營運星期']||'').split(/[、,，\s]+/).map(n=>parseInt(n,10)).filter(n=>!isNaN(n) && n>=0 && n<=6);
+        const days = parseOperatingDaysCode(row['營運星期']);
         if(days.length) patch.operatingWeekdays = days;
         else if(row['營運星期']!==undefined) patch.operatingWeekdays = [NO_OPERATING_DAY];   // 欄位存在但空白 = 不營運
       }
@@ -2695,10 +2732,7 @@ function renderSites(){
       <div class="site-role-row">
         <span class="role-label">上班日</span>
         <div class="tag-list">
-          ${WEEKDAY_LABELS.map((label, dow)=>{
-            const active = (site.operatingWeekdays||[]).includes(dow);
-            return `<span class="weekday-toggle ${active?'active':''}" onclick="toggleSiteOperatingDay('${site.id}',${dow})">${label}</span>`;
-          }).join('')}
+          ${WEEKDAY_LABELS.map((label, dow)=>weekdayChipHtml(site, dow, label)).join('')}
           ${realOperatingDays(site).length===0 ? '<span style="font-size:11px;color:var(--warn);font-weight:600;align-self:center;">尚未設定營運日（目前視為不營運）</span>' : ''}
         </div>
       </div>
@@ -2738,13 +2772,25 @@ function renderSites(){
     </div>
   `).join('');
 }
+// 星期按鈕：灰＝不營運；深色＝整天；有「上午／下午」小字＝只有半天營運
+function weekdayChipHtml(site, dow, label){
+  const slot = siteDaySlot(site, dow);
+  const cls = slot ? 'active' + (slot!=='full' ? ' half '+slot : '') : '';
+  const sub = slot==='am' ? '上午' : slot==='pm' ? '下午' : '';
+  return `<span class="weekday-toggle ${cls}" title="${slot?(sub||'整天'):'不營運'}" onclick="toggleSiteOperatingDay('${site.id}',${dow})">${label}${sub?`<small>${sub}</small>`:''}</span>`;
+}
 function toggleSiteOperatingDay(siteId, dow){
   const site = sites.find(x=>x.id===siteId);
   if(!site) return;
   if(!site.operatingWeekdays) site.operatingWeekdays = [1,2,3,4,5];
-  let days = realOperatingDays(site);
-  days = days.includes(dow) ? days.filter(d=>d!==dow) : [...days, dow].sort((a,b)=>a-b);
-  site.operatingWeekdays = days.length ? days : [NO_OPERATING_DAY];   // 全取消也要存檔，不會被補回預設
+  // 據點：點一下循環「不營運 → 整天 → 上午 → 下午 → 不營運」；診所只有「不營運／整天」（診所的臨時半天休診另有休診設定）
+  const order = site.isClinic ? [null,'full'] : [null,'full','am','pm'];
+  const cur = siteDaySlot(site, dow);
+  const next = order[(order.indexOf(cur) + 1) % order.length];
+  const arr = (site.operatingWeekdays||[]).filter(d=>d>=0 && (d%10)!==dow);
+  if(next==='full') arr.push(dow); else if(next==='am') arr.push(SLOT_AM+dow); else if(next==='pm') arr.push(SLOT_PM+dow);
+  arr.sort((a,b)=>a-b);
+  site.operatingWeekdays = arr.length ? arr : [NO_OPERATING_DAY];   // 全取消也要存檔，不會被補回預設
   saveStore(STORE_KEYS.sites, sites);
   renderSites();
   renderClinicWeekdays(); // 診所卡片與據點指派共用同一份資料，兩邊一起刷新
@@ -2767,10 +2813,7 @@ function renderClinicWeekdays(){
       <div class="site-role-row" style="${i===0?'margin-top:0;':''}">
         <span class="role-label">${site.name}</span>
         <div class="tag-list">
-          ${WEEKDAY_LABELS.map((label, dow)=>{
-            const active = (site.operatingWeekdays||[]).includes(dow);
-            return `<span class="weekday-toggle ${active?'active':''}" onclick="toggleSiteOperatingDay('${site.id}',${dow})">${label}</span>`;
-          }).join('')}
+          ${WEEKDAY_LABELS.map((label, dow)=>weekdayChipHtml(site, dow, label)).join('')}
         </div>
       </div>`;
   }).join('');
@@ -3276,12 +3319,20 @@ function isEntryOffDay(e, dateStr){
   const site = sites.find(x=>x.id===e.site);
   if(!site) return false;
   const dow = new Date(dateStr+'T00:00:00').getDay();
-  return !getSiteOperatingWeekdays(site).includes(dow);
+  const slot = siteDaySlot(site, dow);
+  if(!slot) return true;                         // 當天完全不營運
+  if(slot==='am') return !(normHM(e.start) < '12:00');   // 只營運上午，卻排在下午
+  if(slot==='pm') return !(normHM(e.end) > '12:00');     // 只營運下午，卻排在上午
+  return false;
 }
 function offDayReasonText(e){
   const site = sites.find(x=>x.id===e.site);
   const days = operatingDaysText(site);
-  return days ? `非營運日仍排班（${siteLabelPlain(e.site)} 只營運 ${days}）` : `未設定營運日，仍排了班（${siteLabelPlain(e.site)}）`;
+  if(!days) return `未設定營運日，仍排了班（${siteLabelPlain(e.site)}）`;
+  const dow = e.dateStr ? new Date(e.dateStr+'T00:00:00').getDay() : -1;
+  const slot = dow>=0 ? siteDaySlot(site, dow) : null;
+  if(slot==='am' || slot==='pm') return `非營運時段仍排班（${siteLabelPlain(e.site)} 當天只營運${slot==='am'?'上午':'下午'}；營運日：${days}）`;
+  return `非營運日仍排班（${siteLabelPlain(e.site)} 只營運 ${days}）`;
 }
 function detectConflicts(dateStr){
   if(isPastMonth(dateStr)) return new Set();   // 過去月份不做衝突檢查
@@ -3437,7 +3488,7 @@ function buildMatrixTableHtml(year, month, onCellClick, orientation){
 
   if(orientation === 'dateRows'){
     const today = todayStr();
-    const theadHtml = '<thead><tr><th>日期</th>' + activeStaff.map(s=>`<th>${s.name}</th>`).join('') + '</tr></thead>';
+    const theadHtml = '<thead><tr><th>日期</th>' + activeStaff.map(s=>`<th class="vname">${Array.from(s.name).join('<br>')}</th>`).join('') + '</tr></thead>';
     const tbodyHtml = '<tbody>' + dateList.map(d=>{
       const dateStr = fmtDate(d);
       const dow = d.getDay();
@@ -5482,8 +5533,8 @@ function scanSiteCoverageGaps(){
     const assignedSites = new Set(getCoverageEntriesForDate(dateStr).map(e=>e.site));
     // 各社區據點（含平安、清禾兩間診所，已比照一般據點納入sites統一管理）
     sites.forEach(site=>{
-      const operatingWeekdays = getSiteOperatingWeekdays(site);
-      if(!operatingWeekdays.includes(dow)) return; // 該據點今天本來就不上課，不檢查
+      const slot = siteDaySlot(site, dow);
+      if(!slot) return; // 該據點今天本來就不上課，不檢查
       if(isClinicHalfClosed(site.id, dateStr, 'am') && isClinicHalfClosed(site.id, dateStr, 'pm')) return; // 臨時全天休診，不檢查
       if(!assignedSites.has(site.id)){
         gaps.push({ dateStr, siteId: site.id });
@@ -5518,11 +5569,14 @@ function scanPartialDayCoverage(){
     });
     // 各社區據點（含平安、清禾兩間診所，已比照一般據點納入sites統一管理）
     sites.forEach(site=>{
-      const operatingWeekdays = getSiteOperatingWeekdays(site);
-      if(!operatingWeekdays.includes(dow)) return;
+      const slot = siteDaySlot(site, dow);
+      if(!slot) return;
       const siteEntries = bySite[site.id];
       if(!siteEntries || siteEntries.length===0) return;
-      const missing = checkHalfDayCoverage(siteEntries, DAY_MIDPOINT);
+      let missing = checkHalfDayCoverage(siteEntries, DAY_MIDPOINT);
+      // 只營運半天的日子，只檢查營運的那半天有沒有人（另一半本來就不用排）
+      if(slot==='am') missing = siteEntries.some(e=>e.start < DAY_MIDPOINT) ? null : 'morning';
+      else if(slot==='pm') missing = siteEntries.some(e=>e.end > DAY_MIDPOINT) ? null : 'afternoon';
       // 缺的那半天若已被設為臨時休診，屬預期內的空著，不列入提醒
       if(missing && !isClinicHalfClosed(site.id, dateStr, missing==='morning'?'am':'pm')) results.push({ dateStr, siteId:site.id, missing });
     });
@@ -6007,11 +6061,11 @@ function runEmployeeQuery(){
     });
     container.innerHTML = hasAny ? rowsHtml : '<div class="report-empty">本月尚無排班資料</div>';
   } else {
-    container.innerHTML = buildMatrixTableHtml(y, m-1, 'showQueryDayDetail');
+    container.innerHTML = buildMatrixTableHtml(y, m-1, 'showQueryDayDetail', 'dateRows');
   }
 }
 
-// M7矩陣表下載成圖片：用Canvas手繪，不依賴外部函式庫
+// M7矩陣表下載成圖片：用Canvas手繪，不依賴外部函式庫（橫軸員工、縱軸日期；員工姓名直式書寫）
 function downloadMatrixImage(){
   const table = document.querySelector('#queryResultArea .matrix-table');
   if(!table){
@@ -6019,45 +6073,52 @@ function downloadMatrixImage(){
     return;
   }
   const monthVal = document.getElementById('queryMonthPicker').value;
-  const rows = Array.from(table.querySelectorAll('tr'));
-  const headerCells = Array.from(rows[0].querySelectorAll('th'));
-  const dayCount = headerCells.length - 1;
-  const staffRows = rows.slice(1);
+  const headerCells = Array.from(table.querySelectorAll('thead th'));
+  const staffNames = headerCells.slice(1).map(th=>th.innerText.replace(/\s+/g,''));   // 表頭姓名是一字一行，合回完整姓名
+  const bodyRows = Array.from(table.querySelectorAll('tbody tr'));
 
   // 版面參數
-  const nameColW = 76, dayColW = 40, baseRowH = 32, headRowH = 38;
-  const titleH = 40, legendH = 28, padding = 12;
-  const tableW = nameColW + dayColW * dayCount;
+  const dateColW = 64, staffColW = 46, baseRowH = 26, stackedSegH = 18;
+  const nameCharH = 12, headPad = 10;
+  const maxNameLen = Math.max(2, ...staffNames.map(n=>n.length));
+  const headRowH = maxNameLen * nameCharH + headPad;
+  const titleH = 40, padding = 12;
+  const tableW = dateColW + staffColW * staffNames.length;
 
-  // 每一列的高度依該列中「最多分段數」（多地點格子會有多個mc-seg）動態調整，
-  // 避免多地點的格子被壓縮成一行導致文字重疊、看起來像資料不見或跑版
-  const rowSegCounts = staffRows.map(tr=>{
-    const cells = Array.from(tr.querySelectorAll('td'));
-    let maxSegs = 1;
-    cells.forEach(td=>{
-      const segs = td.querySelectorAll('.mc-seg').length;
-      if(segs > maxSegs) maxSegs = segs;
-    });
-    return maxSegs;
+  // 圖例（地點色塊）太多時自動換行，避免超出圖片右邊被切掉
+  const mctx = document.createElement('canvas').getContext('2d');
+  mctx.font = '10px "Microsoft JhengHei", sans-serif';
+  const legendMaxW = Math.max(tableW, 320);
+  const legendItems = [];
+  let lx = 0, lrow = 0;
+  Object.keys(matrixColorMap).forEach(key=>{
+    const label = siteLabelPlain(key);
+    const w = mctx.measureText(label).width + 16;
+    if(lx > 0 && lx + w > legendMaxW){ lx = 0; lrow++; }
+    legendItems.push({ key, label, w, x: lx, row: lrow });
+    lx += w + 6;
   });
-  // 兩班以上疊在同一格時，每段改用較窄的高度（跟畫面上縮小mc-seg間距後的觀感一致），
-  // 避免像上下兩班8px的小字在32px的高格裡留下大片空白，顯得很「寬」
-  const stackedSegH = 20;
-  const rowHeights = rowSegCounts.map(segs => segs<=1 ? baseRowH : stackedSegH*segs);
+  const legendRowH = 22;
+  const legendH = (lrow + 1) * legendRowH + 6;
+
+  // 每一列的高度依該列中「最多分段數」（多地點格子會有多個mc-seg）動態調整，避免多地點格子文字重疊
+  const rowHeights = bodyRows.map(tr=>{
+    let maxSegs = 1;
+    tr.querySelectorAll('td').forEach(td=>{ maxSegs = Math.max(maxSegs, td.querySelectorAll('.mc-seg').length); });
+    return maxSegs<=1 ? baseRowH : stackedSegH*maxSegs;
+  });
   const totalRowsH = rowHeights.reduce((a,b)=>a+b, 0);
 
   const canvasW = tableW + padding * 2;
   const canvasH = titleH + legendH + headRowH + totalRowsH + padding * 2;
 
   const canvas = document.createElement('canvas');
-  // 提高解析度避免下載圖片模糊
-  const scale = 2;
+  const scale = 2;   // 提高解析度避免下載圖片模糊
   canvas.width = canvasW * scale;
   canvas.height = canvasH * scale;
   const ctx = canvas.getContext('2d');
   ctx.scale(scale, scale);
 
-  // 背景
   ctx.fillStyle = '#FFFDF8';
   ctx.fillRect(0, 0, canvasW, canvasH);
 
@@ -6068,55 +6129,60 @@ function downloadMatrixImage(){
   ctx.fillText(`${monthVal} 全體班表（矩陣總覽）`, padding, padding + titleH/2);
 
   // 圖例
-  let legendX = padding;
-  const legendY = padding + titleH + legendH/2;
   ctx.font = '10px "Microsoft JhengHei", sans-serif';
-  Object.keys(matrixColorMap).forEach(key=>{
-    const label = siteLabelPlain(key);
-    const w = ctx.measureText(label).width + 16;
-    ctx.fillStyle = matrixColorMap[key];
-    ctx.fillRect(legendX, legendY-9, w, 18);
+  ctx.textAlign = 'left';
+  legendItems.forEach(it=>{
+    const ly = padding + titleH + it.row*legendRowH + 11;
+    ctx.fillStyle = matrixColorMap[it.key];
+    ctx.fillRect(padding + it.x, ly-9, it.w, 18);
     ctx.fillStyle = '#FFFFFF';
-    ctx.fillText(label, legendX+8, legendY);
-    legendX += w + 6;
+    ctx.fillText(it.label, padding + it.x + 8, ly);
   });
 
   const tableTop = padding + titleH + legendH;
+  const left = padding;
 
-  // 表頭
-  ctx.font = 'bold 10px "Microsoft JhengHei", sans-serif';
+  // 表頭：左上「日期」＋各員工姓名（直式，一字一字往下排）
   ctx.fillStyle = '#F0E6CC';
-  ctx.fillRect(padding, tableTop, tableW, headRowH);
+  ctx.fillRect(left, tableTop, tableW, headRowH);
+  ctx.strokeStyle = '#DDD0B8';
+  ctx.lineWidth = 0.5;
   ctx.fillStyle = '#3A2E22';
   ctx.textAlign = 'center';
-  headerCells.forEach((th, i)=>{
-    const x = padding + (i===0 ? nameColW/2 : nameColW + (i-1)*dayColW + dayColW/2);
-    const lines = th.innerText.split('\n');
-    lines.forEach((line, li)=>{
-      ctx.fillText(line, x, tableTop + headRowH/2 + (li - (lines.length-1)/2) * 11);
-    });
+  ctx.font = 'bold 10px "Microsoft JhengHei", sans-serif';
+  ctx.fillText('日期', left + dateColW/2, tableTop + headRowH/2);
+  ctx.strokeRect(left, tableTop, dateColW, headRowH);
+  staffNames.forEach((name, i)=>{
+    const x = left + dateColW + i*staffColW;
+    ctx.strokeRect(x, tableTop, staffColW, headRowH);
+    const chars = Array.from(name);
+    const startY = tableTop + headRowH/2 - (chars.length-1)*nameCharH/2;
+    ctx.fillStyle = '#3A2E22';
+    ctx.font = 'bold 11px "Microsoft JhengHei", sans-serif';
+    chars.forEach((ch, ci)=> ctx.fillText(ch, x + staffColW/2, startY + ci*nameCharH));
   });
 
-  // 表身
+  // 表身：一天一列
   let cursorY = tableTop + headRowH;
-  staffRows.forEach((tr, rIdx)=>{
+  bodyRows.forEach((tr, rIdx)=>{
     const y = cursorY;
     const rowH = rowHeights[rIdx];
     const cells = Array.from(tr.querySelectorAll('th, td'));
-    // 姓名欄
-    ctx.fillStyle = '#F0E6CC';
-    ctx.fillRect(padding, y, nameColW, rowH);
-    ctx.fillStyle = '#3A2E22';
-    ctx.textAlign = 'left';
+    const isWeekend = tr.classList.contains('weekend-row');
+    // 日期欄（週末用淺橘底、紅字）
+    ctx.fillStyle = isWeekend ? '#FDF3E1' : '#F0E6CC';
+    ctx.fillRect(left, y, dateColW, rowH);
+    ctx.fillStyle = isWeekend ? '#B23A2E' : '#3A2E22';
+    ctx.textAlign = 'center';
     ctx.font = 'bold 10px "Microsoft JhengHei", sans-serif';
-    ctx.fillText(cells[0].innerText, padding+4, y+rowH/2, nameColW-8);
-    // 日期格
+    ctx.fillText(cells[0].innerText.trim(), left + dateColW/2, y + rowH/2);
+    ctx.strokeStyle = '#DDD0B8';
+    ctx.lineWidth = 0.5;
+    ctx.strokeRect(left, y, dateColW, rowH);
+    // 各員工格
     for(let c=1; c<cells.length; c++){
-      const cellX = padding + nameColW + (c-1)*dayColW;
+      const cellX = left + dateColW + (c-1)*staffColW;
       const td = cells[c];
-      ctx.strokeStyle = '#DDD0B8';
-      ctx.lineWidth = 0.5;
-
       const segs = Array.from(td.querySelectorAll('.mc-seg'));
       const leaveEl = td.querySelector('.mc-leave');
       if(segs.length > 0){
@@ -6124,34 +6190,30 @@ function downloadMatrixImage(){
         const segH = rowH / segs.length;
         segs.forEach((seg, si)=>{
           const segY = y + si*segH;
-          const segBg = seg.style.background || '#999';
-          ctx.fillStyle = segBg;
-          ctx.fillRect(cellX, segY, dayColW, segH);
+          ctx.fillStyle = seg.style.background || '#999';
+          ctx.fillRect(cellX, segY, staffColW, segH);
           const segText = seg.innerText.trim();
           if(segText){
             ctx.fillStyle = '#FFFFFF';
             ctx.textAlign = 'center';
             ctx.font = 'bold 8px "Microsoft JhengHei", sans-serif';
-            const lines = segText.split('\n');
-            lines.forEach((line, li)=>{
-              ctx.fillText(line, cellX+dayColW/2, segY+segH/2 + (li-(lines.length-1)/2)*9, dayColW-2);
-            });
+            ctx.fillText(segText, cellX + staffColW/2, segY + segH/2, staffColW-2);
           }
         });
       } else if(leaveEl){
-        // 請假/排休：淺灰底、深色文字
         ctx.fillStyle = '#E8E2D5';
-        ctx.fillRect(cellX, y, dayColW, rowH);
+        ctx.fillRect(cellX, y, staffColW, rowH);
         ctx.fillStyle = '#6B5E4F';
         ctx.textAlign = 'center';
         ctx.font = 'bold 8px "Microsoft JhengHei", sans-serif';
-        ctx.fillText(leaveEl.innerText.trim(), cellX+dayColW/2, y+rowH/2, dayColW-2);
+        ctx.fillText(leaveEl.innerText.trim(), cellX + staffColW/2, y + rowH/2, staffColW-2);
       } else {
-        // 空白格：無排班也無請假
-        ctx.fillStyle = '#FFFEFB';
-        ctx.fillRect(cellX, y, dayColW, rowH);
+        ctx.fillStyle = isWeekend ? '#FBF3E3' : '#FFFEFB';
+        ctx.fillRect(cellX, y, staffColW, rowH);
       }
-      ctx.strokeRect(cellX, y, dayColW, rowH);
+      ctx.strokeStyle = '#DDD0B8';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(cellX, y, staffColW, rowH);
     }
     cursorY += rowH;
   });
@@ -6159,7 +6221,7 @@ function downloadMatrixImage(){
   // 外框
   ctx.strokeStyle = '#DDD0B8';
   ctx.lineWidth = 1;
-  ctx.strokeRect(padding, tableTop, tableW, headRowH + totalRowsH);
+  ctx.strokeRect(left, tableTop, tableW, headRowH + totalRowsH);
 
   canvas.toBlob(blob=>{
     const url = URL.createObjectURL(blob);
@@ -6559,7 +6621,7 @@ function exportAllM1M3M4M9XLSX(){
       主要人員: (s.mainStaffIds||[]).map(getStaffName).join('、'),
       代班人員: (s.reliefStaffIds||[]).map(getStaffName).join('、'),
       主責人員: (s.dutyStaffIds||[]).map(getStaffName).join('、'),
-      營運星期: realOperatingDays(s).join('、')
+      營運星期: operatingDaysCode(s)
     }));
     // M3
     const m3Rows = [];
