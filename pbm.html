@@ -1010,6 +1010,16 @@
     #panel-m8>.card:nth-child(n){grid-column:span 12;}
   }
 
+
+  /* 矩陣總覽（橫軸員工、縱軸日期） */
+  .matrix-table.by-date thead th{min-width:58px;padding:6px 4px;}
+  .matrix-table.by-date tbody th{min-width:74px;max-width:74px;font-size:12px;white-space:nowrap;}
+  .matrix-table.by-date .matrix-cell{min-width:58px;min-height:30px;height:30px;}
+  .matrix-table.by-date .matrix-cell .mc-seg{padding:1px 2px;}
+  .matrix-table.by-date tr.weekend-row th{background:#fdf3e1;color:var(--danger);}
+  .matrix-table.by-date tr.weekend-row td{background:#fbf3e3;}
+  .matrix-table.by-date tr.today-row th{background:var(--gold);color:#fff;}
+  .matrix-table.by-date tr.today-row td{box-shadow:inset 0 2px 0 var(--gold),inset 0 -2px 0 var(--gold);}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
@@ -3381,7 +3391,36 @@ function getShiftHalfLabel(start, end){
   if(!startsMorning && endsAfternoon) return '下';
   return '全'; // 極端邊界情況（起訖剛好都是12:00）保底顯示為全
 }
-function buildMatrixTableHtml(year, month, onCellClick){
+// 矩陣單一格子（某員工在某天）
+function matrixCellHtml(s, dateStr, onCellClick){
+  const entries = getEntriesForDate(dateStr).filter(e=>e.staffId===s.id);
+  const conflictIdx = detectConflicts(dateStr);
+  const hasConflict = entries.some(e=>conflictIdx.has(e._idx));
+  const clickAttr = onCellClick ? `onclick="${onCellClick}('${dateStr}')"` : '';
+  if(entries.length===0){
+    // 沒有排班紀錄時，檢查該人員當天是否有登記請假/排休，若有則顯示假別文字，而不是留空白格
+    const leaveEntry = (leaves[dateStr]||[]).find(l=>l.staffId===s.id);
+    if(leaveEntry){
+      return `<td class="matrix-cell matrix-leave-cell" ${clickAttr}><span class="mc-leave">${leaveEntry.type}</span></td>`;
+    }
+    return `<td class="matrix-cell" ${clickAttr}></td>`;
+  }
+  const cellContent = `<div class="mc-cell-inner">` + entries.map(e=>{
+    const segColor = matrixColorMap[e.site] || '#999';
+    const halfLabel = getShiftHalfLabel(e.start, e.end);
+    return `<div class="mc-seg" style="background:${segColor};">
+      <span class="mc-site">${siteLabelPlain(e.site)}${halfLabel}</span>
+    </div>`;
+  }).join('') + `</div>`;
+  // 同一格內若涵蓋多個不同地點，每個地點各自用自己的顏色顯示（不再整格套用單一顏色），
+  // 並加上◆記號提醒使用者這天有跨地點排班，點擊可查看/編輯詳情
+  const distinctSites = new Set(entries.map(e=>e.site));
+  const multiSiteClass = distinctSites.size > 1 ? 'multi-site' : '';
+  return `<td class="matrix-cell ${hasConflict?'conflict-cell':''} ${multiSiteClass}" ${clickAttr}>${cellContent}</td>`;
+}
+
+// orientation: 'staffRows'（預設：橫軸日期、縱軸員工，M7 查詢與下載圖片用）／'dateRows'（橫軸員工、縱軸日期，M3 矩陣總覽用）
+function buildMatrixTableHtml(year, month, onCellClick, orientation){
   matrixColorMap = buildMatrixColorMap();
   const daysInMonth = new Date(year, month+1, 0).getDate();
   const dateList = [];
@@ -3396,6 +3435,19 @@ function buildMatrixTableHtml(year, month, onCellClick){
       `<span class="matrix-legend-chip" style="background:${matrixColorMap[key]};">${siteLabelPlain(key)}</span>`
     ).join('') + `</div>`;
 
+  if(orientation === 'dateRows'){
+    const today = todayStr();
+    const theadHtml = '<thead><tr><th>日期</th>' + activeStaff.map(s=>`<th>${s.name}</th>`).join('') + '</tr></thead>';
+    const tbodyHtml = '<tbody>' + dateList.map(d=>{
+      const dateStr = fmtDate(d);
+      const dow = d.getDay();
+      const isWeekend = dow===0 || dow===6;
+      const cls = (isWeekend?'weekend-row ':'') + (dateStr===today?'today-row':'');
+      return `<tr class="${cls}"><th>${d.getDate()}（${weekdayNames[dow]}）</th>${activeStaff.map(s=>matrixCellHtml(s, dateStr, onCellClick)).join('')}</tr>`;
+    }).join('') + '</tbody>';
+    return legendHtml + `<div class="matrix-scroll"><table class="matrix-table by-date">${theadHtml}${tbodyHtml}</table></div>`;
+  }
+
   let theadHtml = '<thead><tr><th>姓名</th>' + dateList.map(d=>{
     const dow = d.getDay();
     const isWeekend = dow===0 || dow===6;
@@ -3403,33 +3455,7 @@ function buildMatrixTableHtml(year, month, onCellClick){
   }).join('') + '</tr></thead>';
 
   let tbodyHtml = '<tbody>' + activeStaff.map(s=>{
-    const rowCells = dateList.map(d=>{
-      const dateStr = fmtDate(d);
-      const entries = getEntriesForDate(dateStr).filter(e=>e.staffId===s.id);
-      const conflictIdx = detectConflicts(dateStr);
-      const hasConflict = entries.some(e=>conflictIdx.has(e._idx));
-      const clickAttr = onCellClick ? `onclick="${onCellClick}('${dateStr}')"` : '';
-      if(entries.length===0){
-        // 沒有排班紀錄時，檢查該人員當天是否有登記請假/排休，若有則顯示假別文字，而不是留空白格
-        const leaveEntry = (leaves[dateStr]||[]).find(l=>l.staffId===s.id);
-        if(leaveEntry){
-          return `<td class="matrix-cell matrix-leave-cell" ${clickAttr}><span class="mc-leave">${leaveEntry.type}</span></td>`;
-        }
-        return `<td class="matrix-cell" ${clickAttr}></td>`;
-      }
-      const cellContent = `<div class="mc-cell-inner">` + entries.map(e=>{
-        const segColor = matrixColorMap[e.site] || '#999';
-        const halfLabel = getShiftHalfLabel(e.start, e.end);
-        return `<div class="mc-seg" style="background:${segColor};">
-          <span class="mc-site">${siteLabelPlain(e.site)}${halfLabel}</span>
-        </div>`;
-      }).join('') + `</div>`;
-      // 同一格內若涵蓋多個不同地點，每個地點各自用自己的顏色顯示（不再整格套用單一顏色），
-      // 並加上◆記號提醒使用者這天有跨地點排班，點擊可查看/編輯詳情
-      const distinctSites = new Set(entries.map(e=>e.site));
-      const multiSiteClass = distinctSites.size > 1 ? 'multi-site' : '';
-      return `<td class="matrix-cell ${hasConflict?'conflict-cell':''} ${multiSiteClass}" ${clickAttr}>${cellContent}</td>`;
-    }).join('');
+    const rowCells = dateList.map(d=>matrixCellHtml(s, fmtDate(d), onCellClick)).join('');
     return `<tr><th>${s.name}</th>${rowCells}</tr>`;
   }).join('') + '</tbody>';
 
@@ -3443,7 +3469,7 @@ function renderMatrixView(){
 
   const y = calRefDate.getFullYear(), m = calRefDate.getMonth();
   title.textContent = y+'年 '+(m+1)+'月（矩陣總覽）';
-  container.innerHTML = buildMatrixTableHtml(y, m, 'openCellSchedModal');
+  container.innerHTML = buildMatrixTableHtml(y, m, 'openCellSchedModal', 'dateRows');   // 橫軸員工、縱軸日期
 }
 
 function renderCalendar(){
