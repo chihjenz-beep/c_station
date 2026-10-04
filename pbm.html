@@ -2143,9 +2143,8 @@ async function pullAllFromGAS(){
           // 舊版後端尚未同步operatingWeekdays欄位時，拉回來的資料可能沒有這個欄位，
           // 此處重新補上預設值，避免拉取覆蓋掉本機原本補過的預設(尤其北華村的例外設定)
           sites.forEach(site=>{
-            if(!site.operatingWeekdays || !site.operatingWeekdays.length){
-              site.operatingWeekdays = site.name==='北華村' ? [2] : [1,2,3,4,5];
-            }
+            const wd = normalizeWeekdays(site.operatingWeekdays);   // [-1] 代表「已設定為完全不營運」，要保留
+            site.operatingWeekdays = wd || (site.name==='北華村' ? [2] : [1,2,3,4,5]);
           });
           ensureClinicSites(); // 雲端資料不含 isClinic，拉回後依固定 id 補回診所旗標
           saveLocalOnly(STORE_KEYS.sites, sites);
@@ -2284,6 +2283,18 @@ function buildDefaultStaff(){
     active: true
   }));
 }
+// 營運星期的「完全不營運」要能被存檔：空陣列在雲端往返時會被當成「沒設定」而補回週一到週五，
+// 所以用 [-1] 當作「已設定，且沒有任何營運日」的標記（-1 不是任何星期，includes(dow) 永遠為 false）。
+const NO_OPERATING_DAY = -1;
+function normalizeWeekdays(v){
+  let arr = v;
+  if(typeof v === 'string') arr = v.split(/[、,，\s]+/).filter(x=>x!=='');
+  if(!Array.isArray(arr)) return null;
+  arr = arr.map(Number).filter(n=>!isNaN(n) && n>=-1 && n<=6);
+  return arr.length ? arr : null;      // null = 沒有設定（舊資料／雲端沒帶這個欄位）
+}
+function realOperatingDays(site){ return (site.operatingWeekdays||[]).filter(d=>d>=0 && d<=6).slice().sort((a,b)=>a-b); }
+function operatingDaysText(site){ const WD=['日','一','二','三','四','五','六']; const d=realOperatingDays(site); return d.length ? d.map(x=>'週'+WD[x]).join('、') : ''; }
 function buildDefaultSites(){
   return DEFAULT_SITE_NAMES.map(name=>({
     id: uid('site'),
@@ -2361,6 +2372,8 @@ let sites    = loadStore(STORE_KEYS.sites, null) || buildDefaultSites();
 sites.forEach(site=>{
   if(!site.operatingWeekdays){
     site.operatingWeekdays = site.name==='北華村' ? [2] : [1,2,3,4,5];
+  }else if(Array.isArray(site.operatingWeekdays) && site.operatingWeekdays.length===0){
+    site.operatingWeekdays = [NO_OPERATING_DAY];   // 本機的空陣列一定是使用者把營運日全取消的結果
   }
 });
 // 診所預設上班日（週一、二、四、五、六）：僅作為平安、清禾尚無資料時的起始值；實際設定改存在各自的 site.operatingWeekdays，於M1「🏥 診所上班日設定」卡片分別調整
@@ -2547,7 +2560,7 @@ function exportM1XLSX(){
     主要人員: (s.mainStaffIds||[]).map(getStaffName).join('、'),
     代班人員: (s.reliefStaffIds||[]).map(getStaffName).join('、'),
     主責人員: (s.dutyStaffIds||[]).map(getStaffName).join('、'),
-    營運星期: (s.operatingWeekdays||[]).join('、')
+    營運星期: realOperatingDays(s).join('、')
   }));
   exportXLSX('員工與據點.xlsx', [ { name:'員工', rows: staffRows }, { name:'據點', rows: siteRows } ]);
 }
@@ -2592,9 +2605,13 @@ function importM1XLSX(){
         name,
         mainStaffIds: namesToIds(row['主要人員']),
         reliefStaffIds: namesToIds(row['代班人員']),
-        dutyStaffIds: namesToIds(row['主責人員']),
-        operatingWeekdays: String(row['營運星期']||'').split(/[、,，\s]+/).map(n=>parseInt(n,10)).filter(n=>!isNaN(n))
+        dutyStaffIds: namesToIds(row['主責人員'])
       };
+      {
+        const days = String(row['營運星期']||'').split(/[、,，\s]+/).map(n=>parseInt(n,10)).filter(n=>!isNaN(n) && n>=0 && n<=6);
+        if(days.length) patch.operatingWeekdays = days;
+        else if(row['營運星期']!==undefined) patch.operatingWeekdays = [NO_OPERATING_DAY];   // 欄位存在但空白 = 不營運
+      }
       if(id && siteById[id]){
         Object.assign(siteById[id], patch);
         siteUpdated++;
@@ -2634,6 +2651,7 @@ function renderSites(){
             const active = (site.operatingWeekdays||[]).includes(dow);
             return `<span class="weekday-toggle ${active?'active':''}" onclick="toggleSiteOperatingDay('${site.id}',${dow})">${label}</span>`;
           }).join('')}
+          ${realOperatingDays(site).length===0 ? '<span style="font-size:11px;color:var(--warn);font-weight:600;align-self:center;">尚未設定營運日（目前視為不營運）</span>' : ''}
         </div>
       </div>
       ${site.isClinic ? `
@@ -2676,11 +2694,9 @@ function toggleSiteOperatingDay(siteId, dow){
   const site = sites.find(x=>x.id===siteId);
   if(!site) return;
   if(!site.operatingWeekdays) site.operatingWeekdays = [1,2,3,4,5];
-  if(site.operatingWeekdays.includes(dow)){
-    site.operatingWeekdays = site.operatingWeekdays.filter(d=>d!==dow);
-  } else {
-    site.operatingWeekdays.push(dow);
-  }
+  let days = realOperatingDays(site);
+  days = days.includes(dow) ? days.filter(d=>d!==dow) : [...days, dow].sort((a,b)=>a-b);
+  site.operatingWeekdays = days.length ? days : [NO_OPERATING_DAY];   // 全取消也要存檔，不會被補回預設
   saveStore(STORE_KEYS.sites, sites);
   renderSites();
   renderClinicWeekdays(); // 診所卡片與據點指派共用同一份資料，兩邊一起刷新
@@ -2823,7 +2839,7 @@ function addSite(){
   const inp = document.getElementById('newSiteName');
   const name = inp.value.trim();
   if(!name){ alert('請輸入據點名稱'); return; }
-  sites.push({ id: uid('site'), name, mainStaffIds:[], reliefStaffIds:[], operatingWeekdays:[1,2,3,4,5] });
+  sites.push({ id: uid('site'), name, mainStaffIds:[], reliefStaffIds:[], operatingWeekdays:[NO_OPERATING_DAY] });   // 新增據點不預設營運日，需到「上班日」自行點選
   saveStore(STORE_KEYS.sites, sites);
   inp.value='';
   renderSites();
@@ -3198,9 +3214,8 @@ function isEntryOffDay(e, dateStr){
 }
 function offDayReasonText(e){
   const site = sites.find(x=>x.id===e.site);
-  const WD = ['日','一','二','三','四','五','六'];
-  const days = getSiteOperatingWeekdays(site).slice().sort((a,b)=>a-b).map(d=>'週'+WD[d]).join('、');
-  return `非營運日仍排班（${siteLabelPlain(e.site)} 只營運 ${days}）`;
+  const days = operatingDaysText(site);
+  return days ? `非營運日仍排班（${siteLabelPlain(e.site)} 只營運 ${days}）` : `未設定營運日，仍排了班（${siteLabelPlain(e.site)}）`;
 }
 function detectConflicts(dateStr){
   if(isPastMonth(dateStr)) return new Set();   // 過去月份不做衝突檢查
@@ -4198,7 +4213,7 @@ function buildScheduleBackupSheets(){
   const siteRows = [['名稱','類型','營運星期','主要人員','支援人員']];
   sites.forEach(st=>{
     siteRows.push([st.name, st.isClinic?'診所':'據點',
-      (st.operatingWeekdays||[]).slice().sort((a,b)=>a-b).map(d=>'週'+WD[d]).join('、'),
+      operatingDaysText(st),
       st.isClinic ? (st.dutyStaffIds||[]).map(getStaffName).join('、') : (st.mainStaffIds||[]).map(getStaffName).join('、'),
       st.isClinic ? '' : (st.reliefStaffIds||[]).map(getStaffName).join('、')]);
   });
@@ -6427,7 +6442,7 @@ function exportAllM1M3M4M9XLSX(){
       主要人員: (s.mainStaffIds||[]).map(getStaffName).join('、'),
       代班人員: (s.reliefStaffIds||[]).map(getStaffName).join('、'),
       主責人員: (s.dutyStaffIds||[]).map(getStaffName).join('、'),
-      營運星期: (s.operatingWeekdays||[]).join('、')
+      營運星期: realOperatingDays(s).join('、')
     }));
     // M3
     const m3Rows = [];
