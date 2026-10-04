@@ -1734,6 +1734,7 @@
           <input type="time" id="m9End" value="17:00">
         </div>
       </div>
+      <div id="m9ScheduleHint" style="font-size:12px;margin:-4px 0 8px;display:none;"></div>
       <div class="form-line">
         <label>時數</label>
         <input type="number" id="m9Hours" step="0.5" min="0" placeholder="請輸入實際支援時數，如：8" style="flex:1;">
@@ -6139,7 +6140,7 @@ function runReport(){
   const overtimeHoursByStaff = {}; // staffId -> totalOvertimeHours
   overtimeRecords.forEach(r=>{
     if(!overtimeHoursByStaff[r.staffId]) overtimeHoursByStaff[r.staffId] = 0;
-    overtimeHoursByStaff[r.staffId] += attendanceHours(r);
+    overtimeHoursByStaff[r.staffId] += attendanceOvertimeHours(r);   // 與班表重疊的不計入
   });
 
   lastReportData = { startDate, endDate, byStaff, hoursByStaff, bySite, overtimeRecords, overtimeHoursByStaff };
@@ -6194,13 +6195,14 @@ function renderReportOvertime(overtimeRecords){
   </tr></thead><tbody>`;
   overtimeRecords.forEach(r=>{
     const hours = attendanceHours(r).toFixed(1);
-    html += `<tr>
+    const bad = !attendanceIsOvertime(r);
+    html += `<tr${bad?' style="opacity:.6;"':''}>
       <td>${getStaffName(r.staffId)}</td>
       <td>${r.date}</td>
       <td>${r.start}–${r.end}</td>
       <td>${attendanceSiteLabel(r)}</td>
-      <td>${r.note || '（支援）'}</td>
-      <td class="num">${hours}</td>
+      <td>${r.note || '（支援）'}${bad?`<div style="font-size:11px;color:var(--danger);font-weight:600;">⚠ 與班表重疊（${attendanceOverlapText(r)}），不計入加班</div>`:''}</td>
+      <td class="num">${bad?`<s>${hours}</s> → 0.0`:hours}</td>
     </tr>`;
   });
   html += '</tbody></table>';
@@ -6257,7 +6259,8 @@ function exportM8XLSX(){
   const hoursRows = Object.keys(hoursByStaff).map(id=>({ 姓名: getStaffName(id), 總工時: Number(hoursByStaff[id].toFixed(1)) }));
   const overtimeRows = overtimeRecords.map(r=>({
     姓名: getStaffName(r.staffId), 日期: r.date, 時間區間: `${r.start}-${r.end}`,
-    地點: attendanceSiteLabelPlain(r), 事由: r.note || '（支援）', 支援時數: Number(attendanceHours(r).toFixed(1))
+    地點: attendanceSiteLabelPlain(r), 事由: r.note || '（支援）', 支援時數: Number(attendanceHours(r).toFixed(1)),
+    計入加班時數: Number(attendanceOvertimeHours(r).toFixed(1)), 備註: attendanceIsOvertime(r) ? '' : '與班表重疊（'+attendanceOverlapText(r)+'），不計入'
   }));
   const combinedIds = Array.from(new Set([...Object.keys(hoursByStaff), ...Object.keys(overtimeHoursByStaff)]));
   const combinedRows = combinedIds.map(id=>{
@@ -6286,10 +6289,10 @@ function exportReportCSV(){
   Object.keys(hoursByStaff).forEach(id=>{
     csv += `${getStaffName(id)},${hoursByStaff[id].toFixed(1)}\n`;
   });
-  csv += '\n加班明細(M9支援紀錄)\n姓名,日期,時間區間,地點,事由,支援時數\n';
+  csv += '\n加班明細(M9支援紀錄)\n姓名,日期,時間區間,地點,事由,支援時數,計入加班時數\n';
   overtimeRecords.forEach(r=>{
     const hours = attendanceHours(r).toFixed(1);
-    csv += `${getStaffName(r.staffId)},${r.date},${r.start}-${r.end},${attendanceSiteLabelPlain(r)},${r.note || '（支援）'},${hours}\n`;
+    csv += `${getStaffName(r.staffId)},${r.date},${r.start}-${r.end},${attendanceSiteLabelPlain(r)},${r.note || '（支援）'},${hours},${attendanceOvertimeHours(r).toFixed(1)}${attendanceIsOvertime(r)?'':'（與班表重疊，不計入）'}\n`;
   });
   csv += '\n彙整總工時(排班＋加班)\n姓名,排班工時,加班工時,合計工時\n';
   const combinedIds = Array.from(new Set([...Object.keys(hoursByStaff), ...Object.keys(overtimeHoursByStaff)]));
@@ -6343,6 +6346,45 @@ function toggleM9OtherInput(){
 function attendanceHours(r){
   return (typeof r.hours === 'number' && !isNaN(r.hours)) ? r.hours : timeToHours(r.start, r.end);
 }
+// 加班認定：M9 填報的時段必須是該員工「非班表時間」才算加班。
+// 與該員工當天任何一筆班表（含草稿）時間重疊 → 不算加班，不納入稽核（報表、總覽工時）。
+// 班表時間可能是 '8:00'、'08:00:00' 等格式，統一成 HH:MM 再比較
+function normHM(t){ const m = String(t||'').match(/(\d{1,2}):(\d{2})/); return m ? m[1].padStart(2,'0')+':'+m[2] : String(t||''); }
+// 員工當天有請假紀錄（M4）→ 當天班表視同不上班，加班不受班表時段限制
+function isStaffOnLeave(staffId, date){ return (leaves[date]||[]).some(l=>l.staffId===staffId); }
+function attendanceScheduleOverlap(r){
+  if(isStaffOnLeave(r.staffId, r.date)) return null;
+  const rs = normHM(r.start), re = normHM(r.end);
+  return (schedule[r.date]||[]).find(e=> e.staffId===r.staffId && normHM(e.start) < re && rs < normHM(e.end)) || null;
+}
+// 員工端：登記前先向雲端重新取得最新班表（員工的手機不會自己定時更新，可能是舊的或還沒載入完）。
+// 管理員端不做，避免覆蓋尚未存檔的排班修改。回傳 true 表示已取得最新班表。
+async function refreshScheduleForCheck(){
+  if(IS_ADMIN || !SYNC_ENABLED) return true;
+  try{
+    const r = await Promise.race([
+      gasGet({ action:'getSchedSchedule' }),
+      new Promise((_,rej)=> setTimeout(()=>rej(new Error('timeout')), 8000))
+    ]);
+    if(r && r.ok && r.entries){
+      const rebuilt = {};
+      r.entries.forEach(e=>{
+        if(!rebuilt[e.date]) rebuilt[e.date]=[];
+        rebuilt[e.date].push({ staffId:e.staffId, site:e.site, start:e.start, end:e.end, status:e.status||'draft' });
+      });
+      schedule = rebuilt;
+      saveLocalOnly(STORE_KEYS.schedule, schedule);
+      return true;
+    }
+  }catch(e){ console.warn('登記前更新班表失敗', e); }
+  return false;
+}
+function attendanceIsOvertime(r){ return !attendanceScheduleOverlap(r); }
+function attendanceOvertimeHours(r){ return attendanceIsOvertime(r) ? attendanceHours(r) : 0; }
+function attendanceOverlapText(r){
+  const e = attendanceScheduleOverlap(r);
+  return e ? `${getSiteName(e.site)} ${e.start}–${e.end}` : '';
+}
 function attendanceSiteLabel(rec){
   if(rec.site==='other') return '🚗 '+(rec.otherLabel || '其他');
   return siteLabel(rec.site);
@@ -6386,7 +6428,8 @@ function exportAllM1M3M4M9XLSX(){
     // M9（全部紀錄，不受畫面篩選影響）
     const m9Rows = attendanceRecords.slice().sort((a,b)=> a.date===b.date ? (a.start||'').localeCompare(b.start||'') : a.date.localeCompare(b.date)).map(r=>({
       日期: r.date, 員工: getStaffName(r.staffId), 地點: attendanceSiteLabelPlain(r),
-      開始: r.start, 結束: r.end, 事由: r.note||'', 支援時數: Number(attendanceHours(r).toFixed(1))
+      開始: r.start, 結束: r.end, 事由: r.note||'', 支援時數: Number(attendanceHours(r).toFixed(1)),
+      計入加班: attendanceIsOvertime(r) ? '是' : '否（與班表重疊）'
     }));
     const now = new Date();
     const fname = `M1M3M4M9整合匯出_${now.getFullYear()}${pad2(now.getMonth()+1)}${pad2(now.getDate())}_${pad2(now.getHours())}${pad2(now.getMinutes())}.xlsx`;
@@ -6395,7 +6438,7 @@ function exportAllM1M3M4M9XLSX(){
       { name:'M1據點', rows: siteRows, header:['id','名稱','類型','主要人員','代班人員','主責人員','營運星期'] },
       { name:'M3排班', rows: m3Rows, header:['日期','星期','員工','地點','開始','結束','狀態'] },
       { name:'M4請假排休', rows: m4Rows, header:['日期','星期','員工','類型','備註'] },
-      { name:'M9支援填報', rows: m9Rows, header:['日期','員工','地點','開始','結束','事由','支援時數'] }
+      { name:'M9支援填報', rows: m9Rows, header:['日期','員工','地點','開始','結束','事由','支援時數','計入加班'] }
     ]);
     alert(`已匯出 ${fname}\nM1：員工 ${staffRows.length}、據點 ${siteRows.length}\nM3：排班 ${m3Rows.length} 筆\nM4：請假排休 ${m4Rows.length} 筆\nM9：支援填報 ${m9Rows.length} 筆`);
   }catch(err){
@@ -6404,12 +6447,38 @@ function exportAllM1M3M4M9XLSX(){
   }
 }
 
+// M9 表單即時提示：顯示該員工當天的班表，並在選的時段與班表重疊時提醒（重疊的無法登記為加班）
+function updateM9ScheduleHint(){
+  const box = document.getElementById('m9ScheduleHint');
+  if(!box) return;
+  const staffId = document.getElementById('m9StaffSel').value, date = document.getElementById('m9Date').value;
+  const start = document.getElementById('m9Start').value, end = document.getElementById('m9End').value;
+  if(!staffId || !date){ box.style.display='none'; return; }
+  const mine = (schedule[date]||[]).filter(e=>e.staffId===staffId);
+  const ov = (start && end && start<end) ? attendanceScheduleOverlap({ staffId, date, start, end }) : null;
+  const onLeave = isStaffOnLeave(staffId, date);
+  let html = onLeave ? 'ℹ️ 當天已請假，加班時段不受班表限制' : mine.length ? `ℹ️ 當天班表：${mine.map(e=>`${getSiteName(e.site)} ${e.start}–${e.end}`).join('、')}（加班時段需在班表以外）` : 'ℹ️ 當天沒有班表';
+  if(ov) html = `<span style="color:var(--danger);font-weight:700;">⚠ 與班表重疊（${getSiteName(ov.site)} ${ov.start}–${ov.end}），無法登記為加班，請調整時段。</span><br>` + html;
+  if(!IS_ADMIN && syncStatus.state!=='success') html += '<br>⚠ 尚未取得最新班表，登記時會再向雲端取得並比對';
+  box.innerHTML = html;
+  box.style.color = 'var(--text-soft)';
+  box.style.display = '';
+}
+(function(){
+  const attach = ()=> ['m9StaffSel','m9Date','m9Start','m9End'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el){ el.addEventListener('input', updateM9ScheduleHint); el.addEventListener('change', updateM9ScheduleHint); }
+  });
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', attach); else attach();
+})();
+
 // ===== M9 匯出／匯入（支援填報，Firestore 一筆一份文件） =====
 // 匯出的範圍跟目前畫面上「支援總覽」看得到的一樣：管理員是全部人，員工端只有這台裝置自己填過的。
 function exportM9XLSX(){
   const rows = attendanceRecords.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(r=>({
     日期: r.date, 員工: getStaffName(r.staffId), 地點: attendanceSiteLabelPlain(r),
-    開始: r.start, 結束: r.end, 事由: r.note||'', 支援時數: attendanceHours(r).toFixed(1)
+    開始: r.start, 結束: r.end, 事由: r.note||'', 支援時數: attendanceHours(r).toFixed(1),
+    計入加班: attendanceIsOvertime(r) ? '是' : '否（與班表重疊）'
   }));
   exportXLSX('支援填報.xlsx', [ { name:'支援填報', rows } ]);
 }
@@ -6422,7 +6491,7 @@ function importM9XLSX(){
     if(!sheet.length){ alert('這個檔案裡找不到「支援填報」工作表，請確認是用「匯出 Excel」產生的檔案。'); return; }
     const nameToStaffId = {}; staff.forEach(s=>{ nameToStaffId[s.name]=s.id; });
     const nameToSiteId = {}; sites.forEach(s=>{ nameToSiteId[s.name]=s.id; });
-    const todo = []; let skipped = 0;
+    const todo = []; let skipped = 0, skippedOverlap = 0;
     sheet.forEach(row=>{
       const date = String(row['日期']||'').trim();
       const staffId = nameToStaffId[String(row['員工']||'').trim()];
@@ -6432,6 +6501,7 @@ function importM9XLSX(){
       const hoursCell = row['時數'] !== undefined ? row['時數'] : row['支援時數'];
       const hours = (hoursCell !== undefined && hoursCell !== '') ? parseFloat(hoursCell) : timeToHours(start, end);
       if(!date || !staffId || !start || !end || start>=end || isNaN(hours) || hours<=0){ skipped++; return; }
+      if(attendanceScheduleOverlap({ staffId, date, start, end })){ skippedOverlap++; return; }
       const siteName = String(row['地點']||'').trim();
       const siteId = nameToSiteId[siteName];
       const site = siteId || 'other';
@@ -6439,7 +6509,7 @@ function importM9XLSX(){
       todo.push({ staffId, date, site, otherLabel, start, end, hours, note:String(row['事由']||'').trim(), photos:[] });
     });
     if(todo.length===0){ alert('沒有任何一列可以匯入（請檢查日期／員工／時間欄位）。'); return; }
-    if(!confirm(`即將新增 ${todo.length} 筆支援紀錄到雲端${skipped?`（另外 ${skipped} 列欄位有誤已略過）`:''}。\n匯入只會「新增」，不會比對重複，請留意避免重複匯入同一份檔案。確定要送出嗎？`)) return;
+    if(!confirm(`即將新增 ${todo.length} 筆支援紀錄到雲端${skipped?`（另外 ${skipped} 列欄位有誤已略過）`:''}${skippedOverlap?`（另外 ${skippedOverlap} 列與班表重疊，不算加班已略過）`:''}。\n匯入只會「新增」，不會比對重複，請留意避免重複匯入同一份檔案。確定要送出嗎？`)) return;
     try{
       const batch = fbDb.batch();
       todo.forEach(rec=>{
@@ -6544,6 +6614,18 @@ async function addAttendanceRecord(){
   if(site==='other' && !otherLabel){ alert('請輸入地點名稱'); return; }
   if(start>=end){ alert('結束時間需晚於開始時間'); return; }
   if(!hoursRaw || isNaN(hours) || hours<=0){ alert('請輸入支援時數（需大於0）'); return; }
+  if(!IS_ADMIN){
+    // 加班一定發生在班表已發布的月份，員工端必須先取得雲端最新班表才能比對；取不到就不讓登記，避免漏擋
+    const fresh = await refreshScheduleForCheck();
+    if(!fresh){ alert('⚠️ 目前無法取得雲端最新班表，沒辦法確認這個時段是否與班表重疊，暫時無法登記。\n請確認網路後再按一次登記。'); return; }
+  }
+  {
+    const ov = attendanceScheduleOverlap({ staffId, date: dateStr, start, end });
+    if(ov){
+      alert(`⚠️ 這個時段與 ${getStaffName(staffId)} 當天的班表重疊（${getSiteName(ov.site)} ${ov.start}–${ov.end}）。\n加班時段必須是班表以外的時間，請修改開始／結束時間後再登記。`);
+      return;
+    }
+  }
 
   const statusEl = document.getElementById('m9PhotoUploadStatus');
   let photoUrls = [];
@@ -6721,8 +6803,9 @@ function renderAttendanceOverview(){
   }).sort((a,b)=> a.date===b.date ? a.start.localeCompare(b.start) : a.date.localeCompare(b.date));
 
   let totalHours = 0;
-  rows.forEach(r=> totalHours += attendanceHours(r));
-  totalBox.textContent = `⏱️ 符合篩選條件的總工時：${totalHours.toFixed(1)} 小時（共 ${rows.length} 筆紀錄）`;
+  rows.forEach(r=> totalHours += attendanceOvertimeHours(r));
+  const overlapCount = rows.filter(r=>!attendanceIsOvertime(r)).length;
+  totalBox.textContent = `⏱️ 符合篩選條件的加班總工時：${totalHours.toFixed(1)} 小時（共 ${rows.length} 筆紀錄${overlapCount?`，其中 ${overlapCount} 筆與班表重疊不計入`:''}）`;
 
   const empHint = isAdminAuthed() ? '' :
     '<div style="font-size:11px;color:var(--text-soft);margin-bottom:6px;">ℹ️ 員工端只顯示這台裝置上填報過的紀錄；完整紀錄由管理者查看。</div>';
@@ -6742,13 +6825,14 @@ function renderAttendanceOverview(){
     const delCell = isAdminAuthed()
       ? `<button class="row-del" onclick="deleteAttendanceRecord('${r.id}')">✕ 刪除</button>`
       : `<span style="font-size:11px;color:var(--warn);font-weight:600;" title="一般員工無法刪除，請洽管理者">🔒 僅管理者可刪除</span>`;
-    html += `<tr>
+    const badOv = !attendanceIsOvertime(r);
+    html += `<tr${badOv?' style="opacity:.65;"':''}>
       <td>${getStaffName(r.staffId)}</td>
       <td>${r.date}</td>
       <td>${r.start}–${r.end}</td>
       <td>${attendanceSiteLabel(r)}</td>
-      <td>${r.note || '（支援）'}</td>
-      <td class="num">${hours}</td>
+      <td>${r.note || '（支援）'}${badOv?`<div style="font-size:11px;color:var(--danger);font-weight:600;">⚠ 與班表重疊（${attendanceOverlapText(r)}），不計入加班</div>`:''}</td>
+      <td class="num">${badOv?`<s>${hours}</s>`:hours}</td>
       <td>${photosHtml}</td>
       <td>${delCell}</td>
     </tr>`;
