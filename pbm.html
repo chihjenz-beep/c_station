@@ -3189,6 +3189,19 @@ function getEntriesForDate(dateStr){
 }
 
 // 偵測某日某筆紀錄是否衝突：①同人同時段跨地點重疊 ②與請假/排休衝突
+// 排在據點「非營運日」（M1 設定的營運星期以外）：例如國姓村一週只營運一天，其他天卻排了人，會造成人力浪費、其他地點人力不足
+function isEntryOffDay(e, dateStr){
+  const site = sites.find(x=>x.id===e.site);
+  if(!site) return false;
+  const dow = new Date(dateStr+'T00:00:00').getDay();
+  return !getSiteOperatingWeekdays(site).includes(dow);
+}
+function offDayReasonText(e){
+  const site = sites.find(x=>x.id===e.site);
+  const WD = ['日','一','二','三','四','五','六'];
+  const days = getSiteOperatingWeekdays(site).slice().sort((a,b)=>a-b).map(d=>'週'+WD[d]).join('、');
+  return `非營運日仍排班（${siteLabelPlain(e.site)} 只營運 ${days}）`;
+}
 function detectConflicts(dateStr){
   if(isPastMonth(dateStr)) return new Set();   // 過去月份不做衝突檢查
   const entries = getEntriesForDate(dateStr);
@@ -3200,6 +3213,8 @@ function detectConflicts(dateStr){
     if(dayLeaves.some(l=>l.staffId===a.staffId)){
       conflictIdx.add(a._idx);
     }
+    // 排在據點非營運日
+    if(isEntryOffDay(a, dateStr)) conflictIdx.add(a._idx);
     for(let j=i+1;j<entries.length;j++){
       const b = entries[j];
       if(a.staffId===b.staffId){
@@ -5270,7 +5285,7 @@ async function deleteLeaveFromOverview(dateStr, idx, force=false){
 // M5 衝突偵測總覽
 // ===========================================================
 // 掃描所有已有排班資料的日期，回傳衝突清單
-// 每筆: { dateStr, staffId, site, start, end, reasons:['overlap'|'leave'] }
+// 每筆: { dateStr, staffId, site, start, end, reasons:['overlap'|'leave'|'offday'] }
 function scanAllConflicts(){
   const results = [];
   const allDates = Object.keys(schedule).sort();
@@ -5290,6 +5305,7 @@ function scanAllConflicts(){
         return timeOverlap(e.start, e.end, other.start, other.end);
       });
       if(hasOverlap) reasons.push('overlap');
+      if(isEntryOffDay(e, dateStr)) reasons.push('offday');
       results.push({ dateStr, staffId:e.staffId, site:e.site, start:e.start, end:e.end, reasons });
     });
   });
@@ -5472,7 +5488,7 @@ function buildConflictDayGroups(){
     addDaySite(group, c.site);
     group.rows.push({
       kind:'conflict', staffId:c.staffId, siteId:c.site, start:c.start, end:c.end,
-      reason:c.reasons.map(r=>r==='overlap'?'跨地點重疊':'與請假衝突').join('、')
+      reason:c.reasons.map(r=> r==='overlap' ? '跨地點重疊' : r==='offday' ? offDayReasonText(c) : '與請假衝突').join('、')
     });
   });
   gaps.forEach(g=>{
@@ -5560,6 +5576,7 @@ function renderConflictOverview(){
   const { dayGroups, conflicts, gaps, halfDayGaps, closedScheduled } = buildConflictDayGroups();
   const overlapCount = conflicts.filter(c=>c.reasons.includes('overlap')).length;
   const leaveCount = conflicts.filter(c=>c.reasons.includes('leave')).length;
+  const offDayCount = conflicts.filter(c=>c.reasons.includes('offday')).length;
   const dateCount = new Set([...conflicts.map(c=>c.dateStr), ...gaps.map(g=>g.dateStr), ...halfDayGaps.map(g=>g.dateStr), ...closedScheduled.map(g=>g.dateStr)]).size;
 
   summaryEl.innerHTML = `
@@ -5567,6 +5584,7 @@ function renderConflictOverview(){
       <div class="conflict-stat-card"><div class="num">${conflicts.length}</div><div class="lbl">總衝突筆數</div></div>
       <div class="conflict-stat-card"><div class="num">${overlapCount}</div><div class="lbl">跨地點重疊</div></div>
       <div class="conflict-stat-card"><div class="num">${leaveCount}</div><div class="lbl">與請假衝突</div></div>
+      <div class="conflict-stat-card"><div class="num">${offDayCount}</div><div class="lbl">非營運日排班</div></div>
       <div class="conflict-stat-card"><div class="num">${gaps.length}</div><div class="lbl">據點未安排人力</div></div>
       <div class="conflict-stat-card"><div class="num">${halfDayGaps.length}</div><div class="lbl">只排半天</div></div>
       <div class="conflict-stat-card"><div class="num">${dateCount}</div><div class="lbl">受影響日期</div></div>
