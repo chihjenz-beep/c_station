@@ -1784,10 +1784,11 @@
     <div class="card">
       <h2>🔍 員工查詢 <span class="badge">全體班表</span></h2>
       <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
-        只能查詢已發布的月份；顯示全體人員的班表。
+        只能查詢已發布的月份；預設顯示全體人員的班表，選擇姓名可條列出該位整個月的班表（含工時與請假）。
       </div>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
         <input type="month" id="queryMonthPicker">
+        <select id="queryStaffFilter" onchange="runEmployeeQuery()" title="選擇姓名，條列該位整月的班表"><option value="">全部人員</option></select>
         <button class="btn outline" onclick="runEmployeeQuery()">查詢</button>
         <div style="display:flex;gap:6px;margin-left:auto;">
           <button class="btn outline" id="queryViewCalBtn" onclick="setQueryView('calendar')">矩陣檢視</button>
@@ -6178,6 +6179,43 @@ function setQueryView(view){
   document.getElementById('queryDownloadBtn').style.display = view==='calendar' ? '' : 'none';
   runEmployeeQuery();
 }
+function populateQueryStaffSelect(){
+  const sel = document.getElementById('queryStaffFilter');
+  if(!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">全部人員</option>' + staff.filter(x=>x.active).map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
+  if(prev && staff.some(x=>x.id===prev && x.active)) sel.value = prev;
+}
+// 單一員工整月班表（逐日條列：日期、地點、時段、工時；有請假的日子一併列出）
+function buildPersonMonthListHtml(staffId, y, m, dateList){
+  const WD = ['日','一','二','三','四','五','六'];
+  let shiftCount = 0, hours = 0, rows = '';
+  dateList.forEach(ds=>{
+    const mine = getEntriesForDate(ds).filter(e=>e.staffId===staffId).sort((a,b)=>String(a.start).localeCompare(String(b.start)));
+    const lvs = (leaves[ds]||[]).filter(l=>l.staffId===staffId);
+    if(!mine.length && !lvs.length) return;
+    const dow = new Date(ds+'T00:00:00').getDay();
+    const dateLabel = `<span class="ql-date" style="min-width:92px;${(dow===0||dow===6)?'color:var(--danger);font-weight:700;':''}">${ds.slice(5).replace('-','/')}（${WD[dow]}）</span>`;
+    mine.forEach(e=>{
+      const h = entryHours(e);
+      shiftCount++; hours += h;
+      rows += `<div class="query-list-row">${dateLabel}
+        <span class="site-badge ${siteColorClass(e.site)}">${siteLabel(e.site)}</span>
+        <span>${normHM(e.start)}–${normHM(e.end)}</span>
+        <span style="margin-left:auto;font-weight:700;">${h.toFixed(1)} 小時</span>
+      </div>`;
+    });
+    lvs.forEach(l=>{
+      rows += `<div class="query-list-row" style="opacity:.85;">${dateLabel}
+        <span class="leave-type-badge" style="background:var(--warn);color:#fff;">🏖️ ${leaveDisplay(l)}</span>
+      </div>`;
+    });
+  });
+  const name = getStaffName(staffId);
+  const lunchNote = shiftTemplates.some(t=>t.lunchHours>0) ? '（已扣午休）' : '';
+  const summary = `<div class="bulk-report-box success" style="margin-bottom:10px;">👤 ${name}　${y} 年 ${m} 月　共 <b>${shiftCount}</b> 班・<b>${hours.toFixed(1)}</b> 小時${lunchNote}</div>`;
+  return rows ? summary + rows : summary + '<div class="report-empty">這個月沒有這位員工的班表</div>';
+}
 function runEmployeeQuery(){
   const monthVal = document.getElementById('queryMonthPicker').value; // 'YYYY-MM'
   const container = document.getElementById('queryResultArea');
@@ -6195,6 +6233,16 @@ function runEmployeeQuery(){
   for(let d=1; d<=daysInMonth; d++){
     dateList.push(`${y}-${pad2(m)}-${pad2(d)}`);
   }
+
+  // 選了姓名：條列該位整月的班表（不分矩陣／列表檢視）
+  const qStaff = (document.getElementById('queryStaffFilter')||{}).value || '';
+  const dlBtn = document.getElementById('queryDownloadBtn');
+  if(qStaff){
+    if(dlBtn) dlBtn.style.display = 'none';
+    container.innerHTML = buildPersonMonthListHtml(qStaff, y, m, dateList);
+    return;
+  }
+  if(dlBtn) dlBtn.style.display = queryView==='calendar' ? '' : 'none';
 
   if(queryView === 'list'){
     let rowsHtml = '';
@@ -7247,6 +7295,7 @@ function renderAllAfterSync(){
   renderPublishedMonthList();
   renderPublishCourseCheck();
   populateM9Selects();
+  populateQueryStaffSelect();
   renderAttendanceOverview();
   if(document.getElementById('queryMonthPicker') && document.getElementById('queryMonthPicker').value){
     runEmployeeQuery();
