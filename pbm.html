@@ -1055,11 +1055,11 @@
     letter-spacing:.015em;
   }
   body::before{display:none;}
-  /* 浮水印：固定在畫面上的溫馨圖樣（愛心捧在手心＋文字），透明度 30%，蓋在內容上但不擋點擊；選單列、標題列、彈窗仍在它上面 */
+  /* 浮水印：固定在畫面上的溫馨圖樣（愛心捧在手心＋文字），透明度 14%（原本 30%，已調淡），蓋在內容上但不擋點擊；選單列、標題列、彈窗仍在它上面 */
   #wm{
-    position:fixed;inset:0;z-index:30;pointer-events:none;opacity:.30;mix-blend-mode:multiply;
+    position:fixed;inset:0;z-index:30;pointer-events:none;opacity:.14;mix-blend-mode:multiply;
     background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='260' viewBox='0 0 300 260'><g transform='rotate(-14 150 130)'><g fill='none' stroke='%23d9825a' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M150 112c-9-13-31-9-31 9 0 15 20 26 31 37 11-11 31-22 31-37 0-18-22-22-31-9z'/><path d='M112 156c11 13 26 20 38 20s27-7 38-20'/><path d='M104 150c-6 4-8 11-4 17'/><path d='M196 150c6 4 8 11 4 17'/></g><text x='150' y='208' text-anchor='middle' font-size='21' font-weight='700' letter-spacing='7' fill='%23d9825a' font-family='Noto Sans TC,PingFang TC,Microsoft JhengHei,sans-serif'>%E5%B9%B3%E5%AE%89%E9%95%B7%E7%85%A7</text><text x='150' y='230' text-anchor='middle' font-size='10.5' letter-spacing='4' fill='%237fae93' font-family='Noto Sans TC,PingFang TC,Microsoft JhengHei,sans-serif'>%E7%94%A8%E5%BF%83%E9%99%AA%E4%BC%B4 %C2%B7 %E6%BA%AB%E6%9A%96%E7%9B%B8%E9%9A%A8</text></g><g fill='none' stroke='%237fae93' stroke-width='1.8' stroke-linecap='round'><path d='M12 24c10-2 16 4 18 14M12 24c4 8 12 10 18 6M30 38c-2 10-10 14-18 12'/><path d='M288 236c-10 2-16-4-18-14M288 236c-4-8-12-10-18-6M270 222c2-10 10-14 18-12'/></g></svg>");
-    background-size:380px 330px;background-repeat:repeat;
+    background-size:460px 400px;background-repeat:repeat;
   }
   body.locked #wm{display:none;}
 
@@ -1457,6 +1457,10 @@
             <label></label>
             <div class="quick-btn-row" id="leaveTypeBtns"></div>
           </div>
+          <div class="form-line">
+            <label>時段</label>
+            <div class="quick-btn-row" id="leavePartBtns"></div>
+          </div>
           <button class="btn outline" style="width:100%;margin-top:4px;" onclick="addLeaveEntry()">🏖️ 登記請假/排休</button>
         </div>
 
@@ -1682,6 +1686,10 @@
       <div class="form-line">
         <label></label>
         <div class="quick-btn-row" id="m4LeaveTypeBtns"></div>
+      </div>
+      <div class="form-line">
+        <label>時段</label>
+        <div class="quick-btn-row" id="m4LeavePartBtns"></div>
       </div>
       <div id="m4LeaveScheduleHint" style="display:none;font-size:11px;color:var(--warn);margin-bottom:6px;"></div>
       <button class="btn gold" style="width:100%;" onclick="addLeaveEntryM4()">🏖️ 登記請假/排休</button>
@@ -2506,6 +2514,42 @@ let leaves   = loadStore(STORE_KEYS.leaves, {});      // { 'YYYY-MM-DD': [ {staf
 
 // 請假類型
 const LEAVE_TYPES = ['請假','排休','特休','公假','事假','病假'];
+// 請假可選「全天／上午／下午」。為了不更動 Firestore 規則（leaves 文件只允許 date/staffId/type/note/ownerUid 五個欄位），
+// 半天資訊編碼在 type 字串裡：全天 = 「事假」，半天 = 「事假｜上午」「事假｜下午」。
+function leaveParts(l){
+  const m = String(l.type||'').match(/^(.*)｜(上午|下午)$/);
+  return m ? { base:m[1], part: m[2]==='上午' ? 'am' : 'pm' } : { base:String(l.type||''), part:'full' };
+}
+function encodeLeaveType(base, part){ return part==='am' ? base+'｜上午' : part==='pm' ? base+'｜下午' : base; }
+function leaveDisplay(l){ const p = leaveParts(l); return p.base + (p.part==='am' ? '（上午）' : p.part==='pm' ? '（下午）' : ''); }
+function leaveShortLabel(l){ const p = leaveParts(l); return p.base + (p.part==='am' ? '·上' : p.part==='pm' ? '·下' : ''); }
+// 這筆請假是否涵蓋某個時間範圍（上午＝12:00 前、下午＝12:00 後；跨中午的班兩邊都算）
+function leaveCoversRange(l, start, end){
+  const part = leaveParts(l).part;
+  if(part==='full') return true;
+  return part==='am' ? normHM(start) < '12:00' : normHM(end) > '12:00';
+}
+// 同一人同一天新增請假時，是否與既有請假重疊（全天與任何時段重疊；上午與上午、下午與下午重疊）
+function findOverlappingLeave(staffId, dateStr, part){
+  return (leaves[dateStr]||[]).find(l=>{
+    if(l.staffId!==staffId) return false;
+    const ex = leaveParts(l).part;
+    return ex==='full' || part==='full' || ex===part;
+  }) || null;
+}
+const LEAVE_PART_OPTIONS = [['full','全天'],['am','上午'],['pm','下午']];
+let selectedLeavePart = 'full';
+let m4SelectedLeavePart = 'full';
+function renderLeavePartBtns(){
+  const c = document.getElementById('leavePartBtns'); if(!c) return;
+  c.innerHTML = LEAVE_PART_OPTIONS.map(([k,t])=>`<span class="qbtn ${k===selectedLeavePart?'selected':''}" onclick="selectLeavePart('${k}')">${t}</span>`).join('');
+}
+function selectLeavePart(k){ selectedLeavePart = k; renderLeavePartBtns(); }
+function renderM4LeavePartBtns(){
+  const c = document.getElementById('m4LeavePartBtns'); if(!c) return;
+  c.innerHTML = LEAVE_PART_OPTIONS.map(([k,t])=>`<span class="qbtn ${k===m4SelectedLeavePart?'selected':''}" onclick="selectM4LeavePart('${k}')">${t}</span>`).join('');
+}
+function selectM4LeavePart(k){ m4SelectedLeavePart = k; renderM4LeavePartBtns(); }
 
 // ===========================================================
 // 請假登記鎖定規則（滾動式）：
@@ -3447,7 +3491,7 @@ function detectConflicts(dateStr){
   for(let i=0;i<entries.length;i++){
     const a = entries[i];
     // 與請假/排休衝突
-    if(dayLeaves.some(l=>l.staffId===a.staffId)){
+    if(dayLeaves.some(l=>l.staffId===a.staffId && leaveCoversRange(l, a.start, a.end))){
       conflictIdx.add(a._idx);
     }
     // 排在據點非營運日
@@ -3557,7 +3601,7 @@ function matrixCellHtml(s, dateStr, onCellClick){
     // 沒有排班紀錄時，檢查該人員當天是否有登記請假/排休，若有則顯示假別文字，而不是留空白格
     const leaveEntry = (leaves[dateStr]||[]).find(l=>l.staffId===s.id);
     if(leaveEntry){
-      return `<td class="matrix-cell matrix-leave-cell" ${clickAttr}><span class="mc-leave">${leaveEntry.type}</span></td>`;
+      return `<td class="matrix-cell matrix-leave-cell" ${clickAttr}><span class="mc-leave">${leaveShortLabel(leaveEntry)}</span></td>`;
     }
     return `<td class="matrix-cell" ${clickAttr}></td>`;
   }
@@ -3801,6 +3845,7 @@ function renderLeaveTypeBtns(){
   container.innerHTML = LEAVE_TYPES.map(t=>
     `<span class="qbtn leave-type ${t===selectedLeaveType?'selected':''}" onclick="selectLeaveType('${t}')">${t}</span>`
   ).join('');
+  renderLeavePartBtns();
 }
 function selectLeaveType(t){
   selectedLeaveType = t;
@@ -3814,7 +3859,7 @@ function renderModalLeaves(){
   } else {
     container.innerHTML = dayLeaves.map(l=>`
       <div class="leave-row">
-        <span><strong>${getStaffName(l.staffId)}</strong> <span class="leave-type-badge">${l.type}</span></span>
+        <span><strong>${getStaffName(l.staffId)}</strong> <span class="leave-type-badge">${leaveDisplay(l)}</span></span>
         <button class="row-del" onclick="deleteLeaveEntry(${l._idx})">✕</button>
       </div>
     `).join('');
@@ -3826,10 +3871,8 @@ function addLeaveEntry(){
   const staffId = document.getElementById('leaveStaffSel').value;
   if(!staffId){ alert('請選擇人員'); return; }
   if(!leaves[modalDate]) leaves[modalDate]=[];
-  if(leaves[modalDate].some(l=>l.staffId===staffId && l.type===selectedLeaveType)){
-    alert('此人員當日已登記相同類型的請假');
-    return;
-  }
+  { const dup = findOverlappingLeave(staffId, modalDate, selectedLeavePart);
+    if(dup){ alert('此人員當日已有重疊的請假：' + leaveDisplay(dup)); return; } }
   if(!fbAuth.currentUser){ alert('⚠️ 裝置正在跟伺服器建立連線，請稍等幾秒後再按一次登記。'); return; }
   // 跟 M4 的登記共用同一個 Firestore 集合，標上這台裝置（這裡通常是管理員）的 ownerUid。
   // 不用自己手動更新本機陣列，管理員的即時監聽會自動反映這筆新寫入。
@@ -3837,7 +3880,7 @@ function addLeaveEntry(){
   const m4bTimeoutId = setTimeout(()=>{
     if(!m4bSettled) alert('⚠️ ' + modalDate + ' 的請假登記已送出一段時間，但尚未收到伺服器確認送達，可能是網路（尤其行動網路）不穩。請確認網路後，稍等一下看紀錄會不會自動出現；若一直沒出現，請重新整理頁面後再登記一次。');
   }, 12000);
-  fbDb.collection('leaves').add({ date: modalDate, staffId, type: selectedLeaveType, note:'', ownerUid: fbAuth.currentUser.uid }).then(()=>{
+  fbDb.collection('leaves').add({ date: modalDate, staffId, type: encodeLeaveType(selectedLeaveType, selectedLeavePart), note:'', ownerUid: fbAuth.currentUser.uid }).then(()=>{
     m4bSettled = true; clearTimeout(m4bTimeoutId);
   }).catch(err=>{
     m4bSettled = true; clearTimeout(m4bTimeoutId);
@@ -3882,6 +3925,7 @@ function renderM4LeaveTypeBtns(){
   container.innerHTML = LEAVE_TYPES.map(t=>
     `<span class="qbtn leave-type ${t===m4SelectedLeaveType?'selected':''}" onclick="selectM4LeaveType('${t}')">${t}</span>`
   ).join('');
+  renderM4LeavePartBtns();
 }
 function selectM4LeaveType(t){
   m4SelectedLeaveType = t;
@@ -3919,10 +3963,8 @@ function addLeaveEntryM4(){
   if(!dateStr){ alert('請選擇日期'); return; }
   if(isDateLeaveLocked(dateStr)){ alert(leaveLockMessage()); return; }
   if(!leaves[dateStr]) leaves[dateStr]=[];
-  if(leaves[dateStr].some(l=>l.staffId===staffId && l.type===m4SelectedLeaveType)){
-    alert('此人員當日已登記相同類型的請假');
-    return;
-  }
+  { const dup = findOverlappingLeave(staffId, dateStr, m4SelectedLeavePart);
+    if(dup){ alert('此人員當日已有重疊的請假：' + leaveDisplay(dup)); return; } }
   if(!fbAuth.currentUser){ alert('⚠️ 裝置正在跟伺服器建立連線，請稍等幾秒後再按一次登記。'); return; }
   // 一筆請假 = Firestore 一份獨立文件（leaves/{自動ID}），標上這台裝置的 ownerUid（含管理員自己）。
   // 不用自己手動更新本機陣列：管理員監聽整個集合、員工監聽自己 ownerUid 那些，兩邊都靠 Firestore
@@ -3934,19 +3976,20 @@ function addLeaveEntryM4(){
   const m4TimeoutId = setTimeout(()=>{
     if(!m4Settled) alert('⚠️ ' + dateStr + ' 的請假登記已送出一段時間，但尚未收到伺服器確認送達，可能是網路（尤其行動網路）不穩。請確認網路後，稍等一下看紀錄會不會自動出現；若一直沒出現，請重新整理頁面後再登記一次。');
   }, 12000);
-  fbDb.collection('leaves').add({ date: dateStr, staffId, type: m4SelectedLeaveType, note:'', ownerUid: fbAuth.currentUser.uid }).then(()=>{
+  fbDb.collection('leaves').add({ date: dateStr, staffId, type: encodeLeaveType(m4SelectedLeaveType, m4SelectedLeavePart), note:'', ownerUid: fbAuth.currentUser.uid }).then(()=>{
     m4Settled = true; clearTimeout(m4TimeoutId);
   }).catch(err=>{
     m4Settled = true; clearTimeout(m4TimeoutId);
     alert('⚠️ ' + dateStr + ' 的請假登記被伺服器拒絕，未成功送出：' + (err && err.code || err && err.message || '未知錯誤') + '\n請洽管理者。');
   });
   const isAdminNow = isAdminAuthed();
-  alert(`已為 ${getStaffName(staffId)} 登記 ${dateStr} 的「${m4SelectedLeaveType}」` +
+  alert(`已為 ${getStaffName(staffId)} 登記 ${dateStr} 的「${leaveDisplay({ type: encodeLeaveType(m4SelectedLeaveType, m4SelectedLeavePart) })}」` +
     (isAdminNow ? '' : '\n若目前網路不穩，紀錄會先保存在這台裝置，恢復連線後會自動上傳。'));
 }
 // 取得當日已請假的員工id清單
+// 只回傳「全天請假」的人（半天請假的人仍可排班，但排進請假那半天會被標成衝突）
 function getLeaveStaffIds(dateStr){
-  return (leaves[dateStr]||[]).map(l=>l.staffId);
+  return (leaves[dateStr]||[]).filter(l=>leaveParts(l).part==='full').map(l=>l.staffId);
 }
 // 依目前表單選擇的人員，檢查是否被請假阻擋，更新UI禁用狀態
 function updateScheduleFormAvailability(){
@@ -3960,7 +4003,7 @@ function updateScheduleFormAvailability(){
   if(staffId && leaveStaffIds.includes(staffId)){
     const l = (leaves[modalDate]||[]).find(x=>x.staffId===staffId);
     notice.style.display='block';
-    notice.textContent = `⚠ ${getStaffName(staffId)} 當日已登記「${l?l.type:''}」，需先取消請假才能排班`;
+    notice.textContent = `⚠ ${getStaffName(staffId)} 當日已登記「${l?leaveDisplay(l):''}」，需先取消請假才能排班`;
     btn.disabled = true;
     btn.style.opacity = '.5';
     btn.style.cursor = 'not-allowed';
@@ -3971,7 +4014,13 @@ function updateScheduleFormAvailability(){
     btn.style.opacity = '.5';
     btn.style.cursor = 'not-allowed';
   } else {
-    notice.style.display='none';
+    const halfLeaves = staffId ? (leaves[modalDate]||[]).filter(x=>x.staffId===staffId) : [];
+    if(halfLeaves.length){
+      notice.style.display='block';
+      notice.textContent = `ℹ️ ${getStaffName(staffId)} 當日請了${halfLeaves.map(leaveDisplay).join('、')}，排班時段請避開請假的半天`;
+    } else {
+      notice.style.display='none';
+    }
     btn.disabled = false;
     btn.style.opacity = '';
     btn.style.cursor = '';
@@ -4428,7 +4477,7 @@ function buildScheduleBackupSheets(){
   });
   // 請假排休
   const leaveRows = [['日期','星期','員工','類型','備註']];
-  sortedDates(leaves).forEach(ds=>{ (leaves[ds]||[]).forEach(l=> leaveRows.push([ds, wd(ds), getStaffName(l.staffId), l.type||'', l.note||''])); });
+  sortedDates(leaves).forEach(ds=>{ (leaves[ds]||[]).forEach(l=> leaveRows.push([ds, wd(ds), getStaffName(l.staffId), leaveDisplay(l), l.note||''])); });
   // 外師課程
   const courseRows = [['日期','星期','據點','課程項目','外師','時段','備註']];
   sortedDates(courseSchedule).forEach(ds=>{
@@ -4743,11 +4792,10 @@ function runBulkSchedule(){
     const staffName = getStaffName(staffId);
     allDates.forEach(dateStr=>{
       const dayLeaves = leaves[dateStr] || [];
-      if(dayLeaves.some(l=>l.staffId===staffId)){
-        skipped.push({ dateStr, staffName });
-        return;
-      }
+      const blocked = rule => dayLeaves.some(l=>l.staffId===staffId && leaveCoversRange(l, rule.start, rule.end));   // 半天請假只擋請假那半天的時段
+      if(rulesToApply.some(blocked)) skipped.push({ dateStr, staffName });
       rulesToApply.forEach(rule=>{
+        if(blocked(rule)) return;
         if(!schedule[dateStr]) schedule[dateStr] = [];
         schedule[dateStr].push({ staffId, site, start:rule.start, end:rule.end, status:'draft' });
         addedCount++;
@@ -5387,7 +5435,7 @@ function renderLeaveOverview(){
   Object.keys(leaves).sort().forEach(dateStr=>{
     (leaves[dateStr]||[]).forEach((l, idx)=>{
       if(filterStaff && l.staffId!==filterStaff) return;
-      if(filterType && l.type!==filterType) return;
+      if(filterType && leaveParts(l).base!==filterType) return;
       rows.push({ dateStr, idx, ...l });
     });
   });
@@ -5410,7 +5458,7 @@ function renderLeaveOverview(){
     <div class="leave-overview-row">
       <span class="lo-date">${r.dateStr}</span>
       <span><strong>${getStaffName(r.staffId)}</strong></span>
-      <span class="leave-type-badge" style="background:var(--warn);color:#fff;">${r.type}</span>
+      <span class="leave-type-badge" style="background:var(--warn);color:#fff;">${leaveDisplay(r)}</span>
       ${delBtn}
     </div>
   `;}).join('');
@@ -5550,7 +5598,7 @@ function scanAllConflicts(){
     entries.forEach(e=>{
       if(!conflictIdx.has(e._idx)) return;
       const reasons = [];
-      if(dayLeaves.some(l=>l.staffId===e.staffId)) reasons.push('leave');
+      if(dayLeaves.some(l=>l.staffId===e.staffId && leaveCoversRange(l, e.start, e.end))) reasons.push('leave');
       // 跟同日其他紀錄比對是否有時間重疊（排除自己）
       const hasOverlap = entries.some(other=>{
         if(other._idx===e._idx) return false;
@@ -6668,11 +6716,21 @@ function attendanceHours(r){
 // 班表時間可能是 '8:00'、'08:00:00' 等格式，統一成 HH:MM 再比較
 function normHM(t){ const m = String(t||'').match(/(\d{1,2}):(\d{2})/); return m ? m[1].padStart(2,'0')+':'+m[2] : String(t||''); }
 // 員工當天有請假紀錄（M4）→ 當天班表視同不上班，加班不受班表時段限制
-function isStaffOnLeave(staffId, date){ return (leaves[date]||[]).some(l=>l.staffId===staffId); }
+function staffLeavesOn(staffId, date){ return (leaves[date]||[]).filter(l=>l.staffId===staffId); }
+function isStaffOnLeave(staffId, date){ return staffLeavesOn(staffId, date).length>0; }
+// 請假的那段時間，班表視同沒上班：全天請假 → 整天都沒有班表；上午請假 → 班表只剩 12:00 之後；下午請假 → 班表只剩 12:00 之前
 function attendanceScheduleOverlap(r){
-  if(isStaffOnLeave(r.staffId, r.date)) return null;
+  const myLeaves = staffLeavesOn(r.staffId, r.date);
+  if(myLeaves.some(l=>leaveParts(l).part==='full')) return null;
+  const hasAm = myLeaves.some(l=>leaveParts(l).part==='am'), hasPm = myLeaves.some(l=>leaveParts(l).part==='pm');
   const rs = normHM(r.start), re = normHM(r.end);
-  return (schedule[r.date]||[]).find(e=> e.staffId===r.staffId && normHM(e.start) < re && rs < normHM(e.end)) || null;
+  return (schedule[r.date]||[]).find(e=>{
+    if(e.staffId!==r.staffId) return false;
+    let es = normHM(e.start), ee = normHM(e.end);
+    if(hasAm && es < '12:00') es = '12:00';
+    if(hasPm && ee > '12:00') ee = '12:00';
+    return es < ee && es < re && rs < ee;
+  }) || null;
 }
 // 員工端：登記前先向雲端重新取得最新班表（員工的手機不會自己定時更新，可能是舊的或還沒載入完）。
 // 管理員端不做，避免覆蓋尚未存檔的排班修改。回傳 true 表示已取得最新班表。
@@ -6739,7 +6797,7 @@ function exportAllM1M3M4M9XLSX(){
     const m4Rows = [];
     Object.keys(leaves).sort().forEach(date=>{
       (leaves[date]||[]).forEach(l=>{
-        m4Rows.push({ 日期:date, 星期:wd(date), 員工:getStaffName(l.staffId), 類型:l.type||'', 備註:l.note||'' });
+        m4Rows.push({ 日期:date, 星期:wd(date), 員工:getStaffName(l.staffId), 類型:leaveDisplay(l), 備註:l.note||'' });
       });
     });
     // M9（全部紀錄，不受畫面篩選影響）
@@ -6773,8 +6831,10 @@ function updateM9ScheduleHint(){
   if(!staffId || !date){ box.style.display='none'; return; }
   const mine = (schedule[date]||[]).filter(e=>e.staffId===staffId);
   const ov = (start && end && start<end) ? attendanceScheduleOverlap({ staffId, date, start, end }) : null;
-  const onLeave = isStaffOnLeave(staffId, date);
-  let html = onLeave ? 'ℹ️ 當天已請假，加班時段不受班表限制' : mine.length ? `ℹ️ 當天班表：${mine.map(e=>`${getSiteName(e.site)} ${e.start}–${e.end}`).join('、')}（加班時段需在班表以外）` : 'ℹ️ 當天沒有班表';
+  const myLv = staffLeavesOn(staffId, date);
+  const fullLv = myLv.some(l=>leaveParts(l).part==='full');
+  const halfNote = (!fullLv && myLv.length) ? `（已請${myLv.map(leaveDisplay).join('、')}，請假的半天不受班表限制）` : '';
+  let html = fullLv ? 'ℹ️ 當天已請假，加班時段不受班表限制' : mine.length ? `ℹ️ 當天班表：${mine.map(e=>`${getSiteName(e.site)} ${e.start}–${e.end}`).join('、')}（加班時段需在班表以外）${halfNote}` : 'ℹ️ 當天沒有班表';
   if(ov) html = `<span style="color:var(--danger);font-weight:700;">⚠ 與班表重疊（${getSiteName(ov.site)} ${ov.start}–${ov.end}），無法登記為加班，請調整時段。</span><br>` + html;
   if(!IS_ADMIN && syncStatus.state!=='success') html += '<br>⚠ 尚未取得最新班表，登記時會再向雲端取得並比對';
   box.innerHTML = html;
