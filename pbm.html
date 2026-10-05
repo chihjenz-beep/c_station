@@ -7066,6 +7066,67 @@ async function uploadOnePhoto(photo){
   throw new Error(result && result.error || '上傳失敗');
 }
 
+// ===== M9 照片存在 Firestore =====
+const m9PhotoCache = {};   // { 照片文件id: dataUrl }，同一次開啟頁面內看過的照片不重複讀取
+function isFsPhoto(ref){ return typeof ref==='string' && ref.startsWith('fs:'); }
+async function savePhotoToFirestore(photo, recordId){
+  const pid = uid9();
+  const writing = fbDb.collection('attendancePhotos').doc(pid).set({
+    recordId, ownerUid: fbAuth.currentUser.uid, fileName: photo.fileName || '', dataUrl: photo.dataUrl,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  // 網路不通時 set 會一直等到連上線；等 20 秒仍沒回應就視為已排入本機佇列（連上網自動送出），不卡住使用者
+  let timedOut = false;
+  await Promise.race([
+    writing,
+    new Promise(res=> setTimeout(()=>{ timedOut = true; res(); }, 20000))
+  ]);
+  if(timedOut) writing.catch(err=> alert('⚠️ 有一張照片被伺服器拒絕：' + (err && err.code || err && err.message || '未知錯誤')));
+  m9PhotoCache[pid] = photo.dataUrl;
+  return pid;
+}
+async function getM9PhotoDataUrl(pid){
+  if(m9PhotoCache[pid]) return m9PhotoCache[pid];
+  const snap = await fbDb.collection('attendancePhotos').doc(pid).get();
+  if(!snap.exists) return null;
+  const url = snap.data().dataUrl || null;
+  if(url) m9PhotoCache[pid] = url;
+  return url;
+}
+// 點「📷 N 張」才讀取照片（不是每次開總覽都讀，省 Firestore 讀取額度）
+async function openM9Photos(recordId){
+  const rec = attendanceRecords.find(r=>r.id===recordId);
+  if(!rec) return;
+  const refs = (rec.photos||[]).filter(isFsPhoto).map(r=>r.slice(3));
+  document.getElementById('m9PhotoLightbox')?.remove();
+  const box = document.createElement('div');
+  box.id = 'm9PhotoLightbox';
+  box.style.cssText = 'position:fixed;inset:0;z-index:9998;background:rgba(60,35,20,.82);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 12px;';
+  box.innerHTML = `<div style="max-width:960px;width:100%;">
+    <div style="display:flex;justify-content:space-between;align-items:center;color:#fff;margin-bottom:10px;">
+      <b>${getStaffName(rec.staffId)}　${rec.date}　支援照片（${refs.length} 張）</b>
+      <button class="btn outline" onclick="document.getElementById('m9PhotoLightbox').remove()">✕ 關閉</button>
+    </div>
+    <div id="m9LightboxBody" style="display:flex;flex-direction:column;gap:12px;align-items:center;color:#fff;">載入中…</div>
+  </div>`;
+  box.addEventListener('click', e=>{ if(e.target===box) box.remove(); });
+  document.body.appendChild(box);
+  const body = document.getElementById('m9LightboxBody');
+  body.innerHTML = '';
+  for(const pid of refs){
+    const holder = document.createElement('div');
+    holder.style.cssText = 'width:100%;text-align:center;';
+    holder.textContent = '載入中…';
+    body.appendChild(holder);
+    try{
+      const url = await getM9PhotoDataUrl(pid);
+      holder.innerHTML = url ? `<img src="${url}" style="max-width:100%;border-radius:10px;background:#fff;">` : '<span>這張照片尚未送達伺服器，或已被刪除</span>';
+    }catch(err){
+      holder.textContent = '讀取失敗：' + (err && err.code || err && err.message || '未知錯誤');
+    }
+  }
+}
+
 async function addAttendanceRecord(){
   const staffId = document.getElementById('m9StaffSel').value;
   const dateStr = document.getElementById('m9Date').value;
@@ -7095,31 +7156,34 @@ async function addAttendanceRecord(){
   }
 
   const statusEl = document.getElementById('m9PhotoUploadStatus');
-  let photoUrls = [];
+  if(!fbAuth.currentUser){ alert('⚠️ 裝置正在跟伺服器建立連線，請稍等幾秒後再按一次登記。'); return; }
+  const recordId = uid9();
+  let photoUrls = [];   // 新照片存成 'fs:照片文件id'；舊紀錄裡的 Drive 網址維持原樣
 
+  // 照片改存 Firestore（attendancePhotos 集合，一張一份文件，已壓縮到約 150KB），不再經過 Google 雲端硬碟
   if(m9PendingPhotos.length>0){
     const btn = document.querySelector('button[onclick="addAttendanceRecord()"]');
     if(btn) btn.disabled = true;
+    if(statusEl) statusEl.dataset.uploading = '1';
     try{
-      if(statusEl) statusEl.dataset.uploading = '1';
       for(let i=0; i<m9PendingPhotos.length; i++){
-        if(statusEl) statusEl.textContent = `上傳照片中...（${i+1}/${m9PendingPhotos.length}，約 ${Math.round(m9PendingPhotos[i].size/1024)} KB）`;
-        const url = await uploadOnePhoto(m9PendingPhotos[i]);
-        photoUrls.push(url);
+        if(statusEl) statusEl.textContent = `儲存照片中...（${i+1}/${m9PendingPhotos.length}，約 ${Math.round(m9PendingPhotos[i].size/1024)} KB）`;
+        const pid = await savePhotoToFirestore(m9PendingPhotos[i], recordId);
+        photoUrls.push('fs:' + pid);
       }
-      if(statusEl){ delete statusEl.dataset.uploading; statusEl.textContent = ''; }
     }catch(err){
       if(statusEl){ delete statusEl.dataset.uploading; statusEl.textContent = ''; }
       if(btn) btn.disabled = false;
-      alert('照片上傳失敗，請檢查網路連線後重試：' + err.message);
+      const code = err && err.code || '';
+      alert('照片儲存失敗：' + (code || err && err.message || '未知錯誤') + (code==='permission-denied' ? '\n（伺服器拒絕：請管理者到 Firebase 規則新增 attendancePhotos 集合的權限）' : '\n請確認網路後再按一次登記。'));
       return;
     }
+    if(statusEl){ delete statusEl.dataset.uploading; statusEl.textContent = ''; }
     if(btn) btn.disabled = false;
   }
 
-  if(!fbAuth.currentUser){ alert('⚠️ 裝置正在跟伺服器建立連線，請稍等幾秒後再按一次登記。'); return; }
   const rec = {
-    id: uid9(), staffId, date: dateStr, site,
+    id: recordId, staffId, date: dateStr, site,
     otherLabel: site==='other' ? otherLabel : '',
     start, end, hours, note, photos: photoUrls
   };
@@ -7154,13 +7218,18 @@ async function addAttendanceRecord(){
 function isAdminAuthed(){ return !!(IS_ADMIN && fbAuth && fbAuth.currentUser && fbAuth.currentUser.email === ADMIN_EMAIL); }
 async function deleteAttendanceRecord(id){
   if(!isAdminAuthed()){ alert('⚠️ 一般員工僅能新增支援填報紀錄，無法修改或刪除已填報的紀錄。如需更正，請洽管理者協助處理。'); return; }
-  if(!confirm('確定刪除此筆支援紀錄？')) return;
+  if(!confirm('確定刪除此筆支援紀錄？（附的照片也會一併刪除）')) return;
+  const delRec = attendanceRecords.find(r=>r.id===id);
   try{
     await fbDb.collection('attendance').doc(id).delete(); // 伺服器端再驗一次：非管理員會被拒絕
   }catch(err){
     alert('刪除失敗：' + (err && err.code || err && err.message || '未知錯誤'));
     return;
   }
+  ((delRec && delRec.photos) || []).filter(isFsPhoto).forEach(ref=>{
+    const pid = ref.slice(3); delete m9PhotoCache[pid];
+    fbDb.collection('attendancePhotos').doc(pid).delete().catch(()=>{});   // 照片文件一併刪除（失敗不影響主流程）
+  });
   attendanceRecords = attendanceRecords.filter(r=>r.id!==id);
   saveLocalOnly(STORE_KEYS.attendance, attendanceRecords);
   renderAttendanceOverview();
@@ -7287,8 +7356,10 @@ function renderAttendanceOverview(){
     </tr></thead><tbody>`;
   rows.forEach(r=>{
     const hours = attendanceHours(r).toFixed(1);
-    const photosHtml = (r.photos && r.photos.length>0)
-      ? r.photos.map(url=>`<a href="${url}" target="_blank" class="m9-photo-link"><img src="${url}" loading="lazy"></a>`).join('')
+    const fsCount = (r.photos||[]).filter(isFsPhoto).length;
+    const legacyLinks = (r.photos||[]).filter(u=>!isFsPhoto(u)).map(url=>`<a href="${url}" target="_blank" class="m9-photo-link"><img src="${url}" loading="lazy"></a>`).join('');
+    const photosHtml = (fsCount>0 || legacyLinks)
+      ? (fsCount>0 ? `<button class="btn outline" style="padding:3px 9px;font-size:11px;" onclick="openM9Photos('${r.id}')">📷 ${fsCount} 張</button>` : '') + legacyLinks
       : '<span style="color:var(--text-soft);font-size:11px;">無</span>';
     const delCell = isAdminAuthed()
       ? `<button class="row-del" onclick="deleteAttendanceRecord('${r.id}')">✕ 刪除</button>`
