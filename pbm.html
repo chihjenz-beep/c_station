@@ -6955,58 +6955,100 @@ function importM9XLSX(){
 // ===========================================================
 let m9PendingPhotos = []; // [{dataUrl, blob, fileName}] 已選取且壓縮完成、尚未上傳的照片
 
-function handleM9PhotoSelect(event){
+// 每張照片自動壓縮到 150KB 以內（先縮小尺寸、再逐步降低品質），一筆紀錄最多 4 張；
+// 手機相機原檔常有 5～10MB，不壓縮直接上傳在行動網路下很容易逾時或失敗。
+const M9_PHOTO_MAX_COUNT = 4;
+const M9_PHOTO_TARGET_BYTES = 150 * 1024;
+const M9_PHOTO_RAW_LIMIT = 30 * 1024 * 1024;   // 原始檔超過 30MB 不處理（避免手機記憶體不足當機）
+
+async function handleM9PhotoSelect(event){
   const files = Array.from(event.target.files || []);
-  files.forEach(file=>{
-    compressImageFile(file, 1200, 0.7).then(({ dataUrl, blob })=>{
-      m9PendingPhotos.push({ dataUrl, blob, fileName: file.name });
+  event.target.value = '';   // 清空，允許重複選擇同一檔案
+  const statusEl = document.getElementById('m9PhotoUploadStatus');
+  for(const file of files){
+    if(m9PendingPhotos.length >= M9_PHOTO_MAX_COUNT){
+      alert(`一筆紀錄最多 ${M9_PHOTO_MAX_COUNT} 張照片，多選的已略過。`);
+      break;
+    }
+    if(file.type && !file.type.startsWith('image/')){ alert(`「${file.name}」不是圖片檔，已略過。`); continue; }
+    if(file.size > M9_PHOTO_RAW_LIMIT){ alert(`「${file.name}」檔案過大（${(file.size/1048576).toFixed(0)}MB），請改選較小的照片。`); continue; }
+    if(statusEl) statusEl.textContent = `照片壓縮中…（${file.name}）`;
+    try{
+      const { dataUrl, blob } = await compressImageToTarget(file, M9_PHOTO_TARGET_BYTES);
+      m9PendingPhotos.push({ dataUrl, blob, fileName: file.name, size: blob.size });
       renderM9PhotoPreview();
-    }).catch(err=>{
+    }catch(err){
       console.warn('圖片壓縮失敗:', err);
-      alert('其中一張照片處理失敗，請重新選擇');
-    });
-  });
-  event.target.value = ''; // 清空，允許重複選擇同一檔案
+      alert(`「${file.name}」處理失敗：${err && err.message || '無法讀取這張圖片'}\n若是 iPhone 的 HEIC 格式，請改在相機設定選「最相容」，或截圖後再上傳。`);
+    }
+  }
+  renderM9PhotoPreview();
 }
 
-// 壓縮圖片：等比例縮小到最長邊不超過maxSize，輸出JPEG格式並降低品質
-function compressImageFile(file, maxSize, quality){
+function loadImageFromFile(file){
   return new Promise((resolve, reject)=>{
-    const reader = new FileReader();
-    reader.onload = (e)=>{
-      const img = new Image();
-      img.onload = ()=>{
-        let { width, height } = img;
-        if(width > height && width > maxSize){
-          height = Math.round(height * maxSize / width);
-          width = maxSize;
-        } else if(height > maxSize){
-          width = Math.round(width * maxSize / height);
-          height = maxSize;
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width; canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL('image/jpeg', quality);
-        canvas.toBlob(blob=>{
-          resolve({ dataUrl, blob });
-        }, 'image/jpeg', quality);
-      };
-      img.onerror = reject;
-      img.src = e.target.result;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+    const url = URL.createObjectURL(file);   // 比 FileReader 轉 base64 省記憶體，大張原檔也不易當機
+    const img = new Image();
+    img.onload = ()=> resolve({ img, url });
+    img.onerror = ()=>{ URL.revokeObjectURL(url); reject(new Error('無法讀取這張圖片（格式不支援）')); };
+    img.src = url;
   });
+}
+function canvasToJpegBlob(canvas, quality){
+  return new Promise(res=> canvas.toBlob(res, 'image/jpeg', quality));
+}
+function blobToDataUrl(blob){
+  return new Promise((resolve, reject)=>{
+    const r = new FileReader();
+    r.onload = ()=> resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+}
+// 壓縮到目標大小以內：依序嘗試最長邊 1280→1024→800→640px，每個尺寸再由品質 0.8 降到 0.4，第一個符合大小的就採用
+async function compressImageToTarget(file, targetBytes){
+  const { img, url } = await loadImageFromFile(file);
+  try{
+    let best = null;
+    for(const maxSide of [1280, 1024, 800, 640]){
+      const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.max(1, Math.round(img.naturalWidth * scale)), h = Math.max(1, Math.round(img.naturalHeight * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h);   // 透明背景的 PNG 轉 JPEG 時不要變黑底
+      ctx.drawImage(img, 0, 0, w, h);
+      for(const q of [0.8, 0.7, 0.6, 0.5, 0.4]){
+        const blob = await canvasToJpegBlob(canvas, q);
+        if(!blob) continue;
+        if(!best || blob.size < best.size) best = blob;
+        if(blob.size <= targetBytes) return { blob, dataUrl: await blobToDataUrl(blob) };
+      }
+    }
+    if(!best) throw new Error('壓縮失敗');
+    return { blob: best, dataUrl: await blobToDataUrl(best) };   // 極少數細節很多的圖，取最小的那個
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+// （舊版固定品質壓縮，保留供其他地方引用）
+function compressImageFile(file, maxSize, quality){
+  return compressImageToTarget(file, M9_PHOTO_TARGET_BYTES);
 }
 
 function renderM9PhotoPreview(){
   const container = document.getElementById('m9PhotoPreview');
   if(!container) return;
   container.innerHTML = m9PendingPhotos.map((p, idx)=>
-    `<div class="m9-photo-thumb"><img src="${p.dataUrl}"><button class="m9-photo-remove" onclick="removeM9PendingPhoto(${idx})">✕</button></div>`
+    `<div class="m9-photo-thumb"><img src="${p.dataUrl}"><span style="position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);color:#fff;font-size:9px;text-align:center;line-height:14px;">${Math.round(p.size/1024)}KB</span><button class="m9-photo-remove" onclick="removeM9PendingPhoto(${idx})">✕</button></div>`
   ).join('');
+  const statusEl = document.getElementById('m9PhotoUploadStatus');
+  if(statusEl && !statusEl.dataset.uploading){
+    const total = m9PendingPhotos.reduce((a,p)=>a+p.size,0);
+    statusEl.textContent = m9PendingPhotos.length
+      ? `已選 ${m9PendingPhotos.length}／${M9_PHOTO_MAX_COUNT} 張，共約 ${Math.round(total/1024)} KB（每張自動壓縮到約 150KB 以內）`
+      : `最多 ${M9_PHOTO_MAX_COUNT} 張，每張會自動壓縮到約 150KB 以內，不用自己縮小`;
+  }
 }
 function removeM9PendingPhoto(idx){
   m9PendingPhotos.splice(idx,1);
@@ -7016,10 +7058,10 @@ function removeM9PendingPhoto(idx){
 // 把單張壓縮後的照片上傳到GAS，取得Drive網址（複用gasPost的同步機制）
 async function uploadOnePhoto(photo){
   const base64Data = photo.dataUrl.split(',')[1]; // 去掉 "data:image/jpeg;base64," 前綴
-  const result = await gasPost({
-    action: 'uploadAttendancePhoto',
-    base64Data, fileName: photo.fileName, mimeType: 'image/jpeg'
-  });
+  const result = await Promise.race([
+    gasPost({ action: 'uploadAttendancePhoto', base64Data, fileName: photo.fileName, mimeType: 'image/jpeg' }),
+    new Promise((_,rej)=> setTimeout(()=>rej(new Error('上傳逾時（超過 60 秒），請確認網路後重試')), 60000))
+  ]);
   if(result && result.ok) return result.url;
   throw new Error(result && result.error || '上傳失敗');
 }
@@ -7059,14 +7101,15 @@ async function addAttendanceRecord(){
     const btn = document.querySelector('button[onclick="addAttendanceRecord()"]');
     if(btn) btn.disabled = true;
     try{
+      if(statusEl) statusEl.dataset.uploading = '1';
       for(let i=0; i<m9PendingPhotos.length; i++){
-        if(statusEl) statusEl.textContent = `上傳照片中...（${i+1}/${m9PendingPhotos.length}）`;
+        if(statusEl) statusEl.textContent = `上傳照片中...（${i+1}/${m9PendingPhotos.length}，約 ${Math.round(m9PendingPhotos[i].size/1024)} KB）`;
         const url = await uploadOnePhoto(m9PendingPhotos[i]);
         photoUrls.push(url);
       }
-      if(statusEl) statusEl.textContent = '';
+      if(statusEl){ delete statusEl.dataset.uploading; statusEl.textContent = ''; }
     }catch(err){
-      if(statusEl) statusEl.textContent = '';
+      if(statusEl){ delete statusEl.dataset.uploading; statusEl.textContent = ''; }
       if(btn) btn.disabled = false;
       alert('照片上傳失敗，請檢查網路連線後重試：' + err.message);
       return;
