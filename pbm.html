@@ -995,6 +995,7 @@
   #panel-m8>.card:nth-child(4){grid-column:span 4;}       /* 彙整總工時 */
   #panel-m8>.card:nth-child(5){grid-column:span 8;}       /* 加班明細 */
   #panel-m8>.card:nth-child(6){grid-column:span 4;}       /* 每據點人力分布 */
+  #panel-m8>.card:nth-child(7){grid-column:span 8;}       /* 未到班明細 */
   #panel-m8 .report-table{font-size:12px;border-radius:8px;}
   #panel-m8 .report-table th{padding:5px 8px;font-size:11px;}
   #panel-m8 .report-table td{padding:4px 8px;line-height:1.35;}
@@ -1004,7 +1005,7 @@
   @media(max-width:1100px){
     #panel-m8>.card:nth-child(2),#panel-m8>.card:nth-child(3),#panel-m8>.card:nth-child(4){grid-column:span 4;}
     #panel-m8>.card:nth-child(5){grid-column:span 12;}
-    #panel-m8>.card:nth-child(6){grid-column:span 12;}
+    #panel-m8>.card:nth-child(6),#panel-m8>.card:nth-child(7){grid-column:span 12;}
   }
   @media(max-width:760px){
     #panel-m8>.card:nth-child(n){grid-column:span 12;}
@@ -1841,9 +1842,9 @@
     </div>
 
     <div class="card">
-      <h2>📐 彙整總工時 <span class="badge gold">排班＋加班</span></h2>
+      <h2>📐 彙整總工時 <span class="badge gold">排班－未到班＋加班</span></h2>
       <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
-        排班工時＋M9加班工時的合計。
+        合計 ＝ 排班工時 − M9當班未到班扣除 ＋ M9加班工時。
       </div>
       <div id="reportCombinedTable"></div>
     </div>
@@ -1859,6 +1860,12 @@
     <div class="card">
       <h2>🏘️ 每據點人力分布</h2>
       <div id="reportBySiteTable"></div>
+    </div>
+
+    <div class="card">
+      <h2>🚫 未到班明細 <span class="badge">M9當班未到班・已從總工時扣除</span></h2>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:6px;">區間內的當班未到班紀錄，逐筆列出；沒有對應班表的不扣。</div>
+      <div id="reportAbsenceTable"></div>
     </div>
   </div>
 
@@ -1904,7 +1911,7 @@
       <div class="form-line">
         <label>照片</label>
         <div style="flex:1;">
-          <input type="file" id="m9PhotoInput" accept="image/*" multiple onchange="handleM9PhotoSelect(event)">
+          <input type="file" id="m9PhotoInput" accept="image/*" multiple onchange="handleM9PhotoSelect(event,'ot')">
           <div id="m9PhotoPreview" class="m9-photo-preview"></div>
           <div id="m9PhotoUploadStatus" style="font-size:11px;color:var(--text-soft);margin-top:4px;"></div>
         </div>
@@ -1933,6 +1940,55 @@
       </div>
       <div id="m9TotalHoursBox" class="bulk-report-box success" style="margin-bottom:10px;"></div>
       <div id="attendanceOverviewList"></div>
+    </div>
+
+    <div class="card" id="m9AbsenceCard">
+      <h2>🚫 當班未到班紀錄 <span class="badge">有排班但臨時不能上班・扣工時</span></h2>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
+        登記「原本有排班、卻臨時不能上班」的時段。登記後，該時數會從 M8 報表的總工時中<b>扣除</b>。時段必須落在該員工當天的班表內（可點下方的班表快速帶入），扣除時數不能超過該班工時。欄位與支援填報相同；下方清單使用上面「支援總覽」的人員／日期篩選。
+      </div>
+      <div class="form-line">
+        <label>人員</label>
+        <select id="m9AbStaffSel" style="flex:1;"></select>
+      </div>
+      <div class="form-line">
+        <label>日期</label>
+        <input type="date" id="m9AbDate">
+      </div>
+      <div id="m9AbShiftChips" style="margin:-2px 0 8px;font-size:12px;"></div>
+      <div class="form-line">
+        <label>地點</label>
+        <select id="m9AbSiteSel" style="flex:1;"></select>
+      </div>
+      <div class="form-line">
+        <label>時段</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="time" id="m9AbStart" value="08:00">
+          <span>至</span>
+          <input type="time" id="m9AbEnd" value="17:00">
+        </div>
+      </div>
+      <div id="m9AbHint" style="font-size:12px;margin:-4px 0 8px;display:none;"></div>
+      <div class="form-line">
+        <label>扣除時數</label>
+        <input type="number" id="m9AbHours" step="0.5" min="0" placeholder="請輸入未到班要扣除的時數，如：8" style="flex:1;">
+      </div>
+      <div class="form-line">
+        <label>事由</label>
+        <input type="text" id="m9AbNote" placeholder="必填，如：臨時身體不適、家人急病" style="flex:1;">
+      </div>
+      <div class="form-line">
+        <label>照片</label>
+        <div style="flex:1;">
+          <input type="file" id="m9AbPhotoInput" accept="image/*" multiple onchange="handleM9PhotoSelect(event,'ab')">
+          <div id="m9AbPhotoPreview" class="m9-photo-preview"></div>
+          <div id="m9AbPhotoUploadStatus" style="font-size:11px;color:var(--text-soft);margin-top:4px;"></div>
+        </div>
+      </div>
+      <button class="btn gold" style="width:100%;margin-top:6px;" onclick="addAbsenceRecord()">🚫 登記當班未到班</button>
+
+      <div id="m9AbTotalBox" class="bulk-report-box" style="margin:14px 0 10px;"></div>
+      <div id="absenceOverviewList"></div>
     </div>
   </div>
 </main>
@@ -3258,6 +3314,10 @@ function addCourseSession(){
   const note = document.getElementById('courseSessionNote').value.trim();
   if(!dateStr){ alert('請選擇日期'); return; }
   if(!courseItemId){ alert('請先新增並選擇課程項目'); return; }
+  { // 同一據點同時段已有外師課程 → 提醒（可按確定仍要安排，M5 也會持續示警）
+    const existed = (courseSchedule[dateStr]||[]).filter(c=>c.siteId===siteId && c.half===half);
+    if(existed.length>0 && !confirm(`⚠️ ${siteLabelPlain(siteId)} 在 ${dateStr} ${COURSE_HALF_LABELS[half]} 已經有外師課程：\n${existed.map(courseSessionLabel).join('、')}\n\n同一據點同時段不能安排超過一堂外師課程。仍要安排嗎？`)) return;
+  }
   if(!courseSchedule[dateStr]) courseSchedule[dateStr] = [];
   courseSchedule[dateStr].push(normalizeCourseSession({ id: uid('csess'), siteId, courseItemId, teacherId, half, note }));
   saveStore(STORE_KEYS.courseSchedule, courseSchedule);
@@ -3266,6 +3326,7 @@ function addCourseSession(){
   document.getElementById('courseListMonthPicker').value = dateStr.slice(0,7);
   renderCourseSessionList();
   renderPublishCourseCheck();
+  if(typeof renderConflictOverview==='function') renderConflictOverview();
 }
 function deleteCourseSession(dateStr, sessionId){
   if(!courseSchedule[dateStr]) return;
@@ -3274,6 +3335,7 @@ function deleteCourseSession(dateStr, sessionId){
   saveStore(STORE_KEYS.courseSchedule, courseSchedule);
   renderCourseSessionList();
   renderPublishCourseCheck();
+  if(typeof renderConflictOverview==='function') renderConflictOverview();
 }
 function renderCourseSessionList(){
   const container = document.getElementById('courseSessionList');
@@ -3299,12 +3361,14 @@ function renderCourseSessionList(){
   container.innerHTML = rows.map(r=>{
     const courseName = (courseItems.find(c=>c.id===r.courseItemId)||{}).name || '（已刪除的課程項目）';
     const teacherName = r.teacherId ? (externalTeachers.find(t=>t.id===r.teacherId)||{}).name : '';
+    const clash = (courseSchedule[r.dateStr]||[]).filter(c=>c.siteId===r.siteId && c.half===r.half).length > 1;
     return `
-      <div class="leave-overview-row">
+      <div class="leave-overview-row"${clash?' style="border-color:var(--danger);background:var(--danger-bg);"':''}>
         <span class="lo-date">${r.dateStr}</span>
         <span><span class="site-badge ${siteColorClass(r.siteId)}">${siteLabel(r.siteId)}</span></span>
         <span><strong>${courseName}</strong>${teacherName?`　🎓${teacherName}`:''}</span>
         <span><strong>${COURSE_HALF_LABELS[r.half]||''}</strong></span>
+        ${clash ? '<span style="color:var(--danger);font-size:11px;font-weight:700;">⚠ 同據點同時段重複</span>' : ''}
         ${r.note ? `<span style="color:var(--text-soft);font-size:11px;">${r.note}</span>` : ''}
         <button class="row-del" onclick="deleteCourseSession('${r.dateStr}','${r.id}')">✕ 刪除</button>
       </div>
@@ -5737,6 +5801,25 @@ function scanPartialDayCoverage(){
   });
   return results;
 }
+// 外師課程衝突：同一個據點、同一天、同一個時段（上午／下午）不能安排超過一堂外師課程
+function courseConflictKey(siteId, half){ return siteId + '|' + half; }
+function scanCourseConflicts(){
+  const results = [];
+  Object.keys(courseSchedule).forEach(dateStr=>{
+    const groups = {};
+    (courseSchedule[dateStr]||[]).forEach(c=>{ (groups[courseConflictKey(c.siteId, c.half)] = groups[courseConflictKey(c.siteId, c.half)] || []).push(c); });
+    Object.keys(groups).forEach(k=>{
+      const list = groups[k];
+      if(list.length > 1) results.push({ dateStr, siteId: list[0].siteId, half: list[0].half, sessions: list });
+    });
+  });
+  return results;
+}
+function courseSessionLabel(c){
+  const name = (courseItems.find(x=>x.id===c.courseItemId)||{}).name || '（已刪除的課程項目）';
+  const teacher = c.teacherId ? ((externalTeachers.find(t=>t.id===c.teacherId)||{}).name || '') : '';
+  return name + (teacher ? `（${teacher}）` : '');
+}
 // 檢核診所臨時休診的時段是否仍有排班或課程（以中午12:00為上午/下午分界）
 function scanClosedClinicScheduled(){
   const results = [];
@@ -5754,7 +5837,7 @@ function scanClosedClinicScheduled(){
 // M5：匯出 Excel（只匯出，沒有匯入意義——這是根據排班/請假/課程即時算出來的檢查結果，不是可編輯回填的來源資料）
 function exportM5XLSX(){
   const { dayGroups } = buildConflictDayGroups();
-  const kindLabel = { conflict:'衝突', gap:'未安排人力', half:'只排半天', closed:'休診異常' };
+  const kindLabel = { conflict:'衝突', gap:'未安排人力', half:'只排半天', closed:'休診異常', course:'課程衝突' };
   const rows = [];
   Object.keys(dayGroups).sort().forEach(dateStr=>{
     dayGroups[dateStr].rows.forEach(r=>{
@@ -5778,6 +5861,7 @@ function buildConflictDayGroups(){
   const gaps = scanSiteCoverageGaps().filter(notPast);
   const halfDayGaps = scanPartialDayCoverage().filter(notPast);
   const closedScheduled = scanClosedClinicScheduled().filter(notPast);
+  const courseConflicts = scanCourseConflicts().filter(notPast);
 
   const dayGroups = {};
   const ensureDayGroup = dateStr => {
@@ -5811,7 +5895,13 @@ function buildConflictDayGroups(){
     addDaySite(group, g.siteId);
     group.rows.push({ kind:'closed', siteId:g.siteId, reason:`已設為${g.half==='am'?'上午':'下午'}休診，但該時段仍有排班或課程` });
   });
-  return { dayGroups, conflicts, gaps, halfDayGaps, closedScheduled };
+  courseConflicts.forEach(g=>{
+    const group = ensureDayGroup(g.dateStr);
+    addDaySite(group, g.siteId);
+    group.rows.push({ kind:'course', siteId:g.siteId,
+      reason:`同一據點同時段（${COURSE_HALF_LABELS[g.half]}）有 ${g.sessions.length} 堂外師課程，只能安排 1 堂：${g.sessions.map(courseSessionLabel).join('、')}` });
+  });
+  return { dayGroups, conflicts, gaps, halfDayGaps, closedScheduled, courseConflicts };
 }
 // 列表／月曆檢視切換
 let conflictView = 'list';
@@ -5858,12 +5948,12 @@ function renderConflictCalendar(){
     const group = dayGroups[dateStr];
     let severityCls = '', badgesHtml = '';
     if(group){
-      const hasSevere = group.rows.some(r=>r.kind==='conflict' || r.kind==='gap');
+      const hasSevere = group.rows.some(r=>r.kind==='conflict' || r.kind==='gap' || r.kind==='course');
       severityCls = hasSevere ? 'cc-severe' : 'cc-warn';
       // 每種問題各顯示一個小標籤（例如「⚠ 整天無人 ×3」），而非逐筆列出，避免格子被塞爆
       const byKind = {};
       group.rows.forEach(r=>{ (byKind[r.kind] = byKind[r.kind]||[]).push(r); });
-      const kindLabel = { conflict:'⚠ 人員衝突', gap:'⚠ 整天無人', half:'🌗 只排半天', closed:'🚫 休診異常' };
+      const kindLabel = { conflict:'⚠ 人員衝突', gap:'⚠ 整天無人', half:'🌗 只排半天', closed:'🚫 休診異常', course:'⚠ 課程衝突' };
       badgesHtml = Object.keys(byKind).map(k=>`<span class="cc-badge">${kindLabel[k]} <b>×${byKind[k].length}</b></span>`).join('');
     }
     html += `<div class="cal-cell ${otherMonth?'other-month':''} ${isToday?'today':''} ${severityCls} ${(dow===0||dow===6)?'weekend':''}" data-date="${dateStr}" onclick="jumpToScheduleDate('${dateStr}')">
@@ -5878,11 +5968,11 @@ function renderConflictOverview(){
   const listEl = document.getElementById('conflictList');
   if(!summaryEl || !listEl) return; // 員工模式看不到 M5，這個區塊的 DOM 根本沒畫出來，直接跳過即可
 
-  const { dayGroups, conflicts, gaps, halfDayGaps, closedScheduled } = buildConflictDayGroups();
+  const { dayGroups, conflicts, gaps, halfDayGaps, closedScheduled, courseConflicts } = buildConflictDayGroups();
   const overlapCount = conflicts.filter(c=>c.reasons.includes('overlap')).length;
   const leaveCount = conflicts.filter(c=>c.reasons.includes('leave')).length;
   const offDayCount = conflicts.filter(c=>c.reasons.includes('offday')).length;
-  const dateCount = new Set([...conflicts.map(c=>c.dateStr), ...gaps.map(g=>g.dateStr), ...halfDayGaps.map(g=>g.dateStr), ...closedScheduled.map(g=>g.dateStr)]).size;
+  const dateCount = new Set([...conflicts.map(c=>c.dateStr), ...gaps.map(g=>g.dateStr), ...halfDayGaps.map(g=>g.dateStr), ...closedScheduled.map(g=>g.dateStr), ...courseConflicts.map(g=>g.dateStr)]).size;
 
   summaryEl.innerHTML = `
     <div class="conflict-stat-row">
@@ -5892,11 +5982,12 @@ function renderConflictOverview(){
       <div class="conflict-stat-card"><div class="num">${offDayCount}</div><div class="lbl">非營運日排班</div></div>
       <div class="conflict-stat-card"><div class="num">${gaps.length}</div><div class="lbl">據點未安排人力</div></div>
       <div class="conflict-stat-card"><div class="num">${halfDayGaps.length}</div><div class="lbl">只排半天</div></div>
+      <div class="conflict-stat-card"><div class="num">${courseConflicts.length}</div><div class="lbl">外師課程衝突</div></div>
       <div class="conflict-stat-card"><div class="num">${dateCount}</div><div class="lbl">受影響日期</div></div>
     </div>
   `;
 
-  if(conflicts.length===0 && gaps.length===0 && halfDayGaps.length===0 && closedScheduled.length===0){
+  if(conflicts.length===0 && gaps.length===0 && halfDayGaps.length===0 && closedScheduled.length===0 && courseConflicts.length===0){
     listEl.innerHTML = '<div class="no-conflict-box">✅ 目前沒有偵測到任何排班衝突或據點漏排</div>';
     if(conflictView==='calendar') renderConflictCalendar();
     return;
@@ -5909,6 +6000,7 @@ function renderConflictOverview(){
     const halfRows = group.rows.filter(row=>row.kind==='half');
     const conflictRows = group.rows.filter(row=>row.kind==='conflict');
     const closedRows = group.rows.filter(row=>row.kind==='closed');
+    const courseRows = group.rows.filter(row=>row.kind==='course');
     const compactSiteLabels = rows => rows.map(row=>
       `<span class="site-badge ${siteColorClass(row.siteId)}">${siteLabel(row.siteId)}</span>`
     ).join('');
@@ -5945,7 +6037,13 @@ function renderConflictOverview(){
         <div class="conflict-inline-sites">${compactSiteLabels(rows)}</div>
       </div>
     `).join('') : '';
-    const rowsHtml = gapHtml + halfHtml + closedHtml + conflictRowsHtml;
+    const courseHtml = courseRows.map(row=>`
+      <div class="conflict-day-row conflict">
+        <strong>${siteLabel(row.siteId)}</strong>
+        <span class="ci-reason">🎓 ${row.reason}</span>
+      </div>
+    `).join('');
+    const rowsHtml = gapHtml + courseHtml + halfHtml + closedHtml + conflictRowsHtml;
     return `<div class="conflict-day-card" onclick="jumpToScheduleDate('${dateStr}')">
       <div class="conflict-day-head">
         <div class="ci-date">📅 ${dateStr}</div>
@@ -6545,7 +6643,7 @@ function runReport(){
   });
 
   // M9加班明細：統計區間內的支援填報紀錄
-  const overtimeRecords = attendanceRecords.filter(r=> r.date>=startDate && r.date<=endDate)
+  const overtimeRecords = overtimeRecordsOnly().filter(r=> r.date>=startDate && r.date<=endDate)
     .sort((a,b)=> a.date===b.date ? a.start.localeCompare(b.start) : a.date.localeCompare(b.date));
   const overtimeHoursByStaff = {}; // staffId -> totalOvertimeHours
   overtimeRecords.forEach(r=>{
@@ -6553,11 +6651,21 @@ function runReport(){
     overtimeHoursByStaff[r.staffId] += attendanceOvertimeHours(r);   // 與班表重疊的不計入
   });
 
-  lastReportData = { startDate, endDate, byStaff, hoursByStaff, bySite, overtimeRecords, overtimeHoursByStaff };
+  // M9當班未到班：有排班但臨時不能上班，從總工時扣除（沒有對應班表的不扣）
+  const absenceRecords = absenceRecordsOnly().filter(r=> r.date>=startDate && r.date<=endDate)
+    .sort((a,b)=> a.date===b.date ? a.start.localeCompare(b.start) : a.date.localeCompare(b.date));
+  const absentHoursByStaff = {};
+  absenceRecords.forEach(r=>{
+    if(!absentHoursByStaff[r.staffId]) absentHoursByStaff[r.staffId] = 0;
+    absentHoursByStaff[r.staffId] += absenceDeductHours(r);
+  });
+
+  lastReportData = { startDate, endDate, byStaff, hoursByStaff, bySite, overtimeRecords, overtimeHoursByStaff, absenceRecords, absentHoursByStaff };
   renderReportByStaff(byStaff);
   renderReportHours(hoursByStaff);
   renderReportOvertime(overtimeRecords);
-  renderReportCombined(hoursByStaff, overtimeHoursByStaff);
+  renderReportCombined(hoursByStaff, overtimeHoursByStaff, absentHoursByStaff);
+  renderReportAbsence(absenceRecords);
   renderReportBySite(bySite);
 }
 
@@ -6622,9 +6730,25 @@ function renderReportOvertime(overtimeRecords){
   container.innerHTML = html;
 }
 
-function renderReportCombined(hoursByStaff, overtimeHoursByStaff){
+function renderReportAbsence(absenceRecords){
+  const container = document.getElementById('reportAbsenceTable');
+  if(!container) return;
+  if(absenceRecords.length===0){ container.innerHTML = '<div class="report-empty">此區間沒有當班未到班紀錄</div>'; return; }
+  let html = `<table class="report-table attendance-table"><thead><tr>
+    <th>姓名</th><th>日期</th><th>時間區間</th><th>地點</th><th>事由</th><th class="num-head">登記時數</th><th class="num-head">扣除</th>
+  </tr></thead><tbody>`;
+  absenceRecords.forEach(r=>{
+    const bad = !absenceIsValid(r), entered = attendanceHours(r), deduct = absenceDeductHours(r);
+    html += `<tr${bad?' style="opacity:.6;"':''}><td>${getStaffName(r.staffId)}</td><td>${r.date}</td><td>${r.start}–${r.end}</td><td>${attendanceSiteLabel(r)}</td>
+      <td>${r.note || ''}${bad?'<div style="font-size:11px;color:var(--danger);font-weight:600;">⚠ 沒有對應班表，不扣工時</div>':''}</td>
+      <td class="num">${entered.toFixed(1)}</td><td class="num" style="font-weight:700;">${bad?'0.0':'−'+deduct.toFixed(1)}</td></tr>`;
+  });
+  container.innerHTML = html + '</tbody></table>';
+}
+function renderReportCombined(hoursByStaff, overtimeHoursByStaff, absentHoursByStaff){
+  absentHoursByStaff = absentHoursByStaff || {};
   const container = document.getElementById('reportCombinedTable');
-  const staffIds = Array.from(new Set([...Object.keys(hoursByStaff), ...Object.keys(overtimeHoursByStaff)]));
+  const staffIds = Array.from(new Set([...Object.keys(hoursByStaff), ...Object.keys(overtimeHoursByStaff), ...Object.keys(absentHoursByStaff)]));
   if(staffIds.length===0){
     container.innerHTML = '<div class="report-empty">此區間尚無排班或支援紀錄</div>';
     return;
@@ -6632,15 +6756,16 @@ function renderReportCombined(hoursByStaff, overtimeHoursByStaff){
   const combined = staffIds.map(id=>({
     id,
     schedHours: hoursByStaff[id] || 0,
+    absentHours: absentHoursByStaff[id] || 0,
     otHours: overtimeHoursByStaff[id] || 0,
   }));
-  combined.sort((a,b)=> (b.schedHours+b.otHours) - (a.schedHours+a.otHours));
+  combined.sort((a,b)=> (b.schedHours-b.absentHours+b.otHours) - (a.schedHours-a.absentHours+a.otHours));
   let html = `<table class="report-table"><thead><tr>
-    <th>姓名</th><th class="num-head">排班工時</th><th class="num-head">加班工時</th><th class="num-head">合計工時</th>
+    <th>姓名</th><th class="num-head">排班工時</th><th class="num-head">未到班扣除</th><th class="num-head">加班工時</th><th class="num-head">合計工時</th>
   </tr></thead><tbody>`;
   combined.forEach(c=>{
-    const total = c.schedHours + c.otHours;
-    html += `<tr><td>${getStaffName(c.id)}</td><td class="num">${c.schedHours.toFixed(1)}</td><td class="num">${c.otHours.toFixed(1)}</td><td class="num" style="color:var(--brown-dark);font-weight:700;">${total.toFixed(1)}</td></tr>`;
+    const total = c.schedHours - c.absentHours + c.otHours;
+    html += `<tr><td>${getStaffName(c.id)}</td><td class="num">${c.schedHours.toFixed(1)}</td><td class="num">${c.absentHours?'−'+c.absentHours.toFixed(1):'0.0'}</td><td class="num">${c.otHours.toFixed(1)}</td><td class="num" style="color:var(--brown-dark);font-weight:700;">${total.toFixed(1)}</td></tr>`;
   });
   html += '</tbody></table>';
   container.innerHTML = lunchNoteHtml() + html;
@@ -6664,7 +6789,7 @@ function renderReportBySite(bySite){
 // M8：匯出 Excel（多工作表），跟既有的 CSV 匯出資料來源相同（lastReportData），純粹多一種檔案格式可選
 function exportM8XLSX(){
   if(!lastReportData){ alert('請先產生報表'); return; }
-  const { startDate, endDate, byStaff, hoursByStaff, bySite, overtimeRecords, overtimeHoursByStaff } = lastReportData;
+  const { startDate, endDate, byStaff, hoursByStaff, bySite, overtimeRecords, overtimeHoursByStaff, absenceRecords, absentHoursByStaff } = lastReportData;
   const byStaffRows = Object.keys(byStaff).map(id=>{
     const d = byStaff[id];
     return { 姓名: getStaffName(id), 診所班數: d.clinicCount, 據點班數: d.stationCount, 總班數: d.clinicCount+d.stationCount };
@@ -6675,23 +6800,28 @@ function exportM8XLSX(){
     地點: attendanceSiteLabelPlain(r), 事由: r.note || '（支援）', 支援時數: Number(attendanceHours(r).toFixed(1)),
     計入加班時數: Number(attendanceOvertimeHours(r).toFixed(1)), 備註: attendanceIsOvertime(r) ? '' : '與班表重疊（'+attendanceOverlapText(r)+'），不計入'
   }));
-  const combinedIds = Array.from(new Set([...Object.keys(hoursByStaff), ...Object.keys(overtimeHoursByStaff)]));
+  const combinedIds = Array.from(new Set([...Object.keys(hoursByStaff), ...Object.keys(overtimeHoursByStaff), ...Object.keys(absentHoursByStaff||{})]));
   const combinedRows = combinedIds.map(id=>{
-    const sched = hoursByStaff[id] || 0, ot = overtimeHoursByStaff[id] || 0;
-    return { 姓名: getStaffName(id), 排班工時: Number(sched.toFixed(1)), 加班工時: Number(ot.toFixed(1)), 合計工時: Number((sched+ot).toFixed(1)) };
+    const sched = hoursByStaff[id] || 0, ot = overtimeHoursByStaff[id] || 0, ab = (absentHoursByStaff||{})[id] || 0;
+    return { 姓名: getStaffName(id), 排班工時: Number(sched.toFixed(1)), 未到班扣除: Number(ab.toFixed(1)), 加班工時: Number(ot.toFixed(1)), 合計工時: Number((sched-ab+ot).toFixed(1)) };
   });
+  const absenceRows = (absenceRecords||[]).map(r=>({
+    姓名: getStaffName(r.staffId), 日期: r.date, 時間區間: `${r.start}-${r.end}`, 地點: attendanceSiteLabelPlain(r), 事由: r.note || '',
+    登記時數: Number(attendanceHours(r).toFixed(1)), 扣除時數: Number(absenceDeductHours(r).toFixed(1)), 備註: absenceIsValid(r) ? '' : '沒有對應班表，不扣'
+  }));
   const bySiteRows = Object.keys(bySite).map(key=>({ 地點: siteLabelPlain(key), 班次數: bySite[key] }));
   exportXLSX(`排班報表_${startDate}_至_${endDate}.xlsx`, [
     { name:'每人總班數', rows: byStaffRows },
     { name:'每人總工時', rows: hoursRows },
     { name:'加班明細', rows: overtimeRows },
+    { name:'未到班明細', rows: absenceRows },
     { name:'彙整總工時', rows: combinedRows },
     { name:'每據點人力分布', rows: bySiteRows }
   ]);
 }
 function exportReportCSV(){
   if(!lastReportData){ alert('請先產生報表'); return; }
-  const { startDate, endDate, byStaff, hoursByStaff, bySite, overtimeRecords, overtimeHoursByStaff } = lastReportData;
+  const { startDate, endDate, byStaff, hoursByStaff, bySite, overtimeRecords, overtimeHoursByStaff, absenceRecords, absentHoursByStaff } = lastReportData;
   let csv = `報表區間,${startDate} ~ ${endDate}\n\n`;
   csv += '每人總班數\n姓名,診所班數,據點班數,總班數\n';
   Object.keys(byStaff).forEach(id=>{
@@ -6707,11 +6837,15 @@ function exportReportCSV(){
     const hours = attendanceHours(r).toFixed(1);
     csv += `${getStaffName(r.staffId)},${r.date},${r.start}-${r.end},${attendanceSiteLabelPlain(r)},${r.note || '（支援）'},${hours},${attendanceOvertimeHours(r).toFixed(1)}${attendanceIsOvertime(r)?'':'（與班表重疊，不計入）'}\n`;
   });
-  csv += '\n彙整總工時(排班＋加班)\n姓名,排班工時,加班工時,合計工時\n';
-  const combinedIds = Array.from(new Set([...Object.keys(hoursByStaff), ...Object.keys(overtimeHoursByStaff)]));
+  csv += '\n未到班明細(M9當班未到班)\n姓名,日期,時間區間,地點,事由,登記時數,扣除時數\n';
+  (absenceRecords||[]).forEach(r=>{
+    csv += `${getStaffName(r.staffId)},${r.date},${r.start}-${r.end},${attendanceSiteLabelPlain(r)},${r.note || ''},${attendanceHours(r).toFixed(1)},${absenceDeductHours(r).toFixed(1)}${absenceIsValid(r)?'':'（沒有對應班表，不扣）'}\n`;
+  });
+  csv += '\n彙整總工時(排班－未到班＋加班)\n姓名,排班工時,未到班扣除,加班工時,合計工時\n';
+  const combinedIds = Array.from(new Set([...Object.keys(hoursByStaff), ...Object.keys(overtimeHoursByStaff), ...Object.keys(absentHoursByStaff||{})]));
   combinedIds.forEach(id=>{
-    const sched = hoursByStaff[id] || 0, ot = overtimeHoursByStaff[id] || 0;
-    csv += `${getStaffName(id)},${sched.toFixed(1)},${ot.toFixed(1)},${(sched+ot).toFixed(1)}\n`;
+    const sched = hoursByStaff[id] || 0, ot = overtimeHoursByStaff[id] || 0, ab = (absentHoursByStaff||{})[id] || 0;
+    csv += `${getStaffName(id)},${sched.toFixed(1)},${ab.toFixed(1)},${ot.toFixed(1)},${(sched-ab+ot).toFixed(1)}\n`;
   });
   csv += '\n每據點人力分布\n地點,班次數\n';
   Object.keys(bySite).forEach(key=>{
@@ -6743,6 +6877,16 @@ function populateM9Selects(){
   siteSel.innerHTML = sites.map(s=>`<option value="${s.id}">${s.isClinic?'🏥':'📍'} ${s.name}</option>`).join('') +
     '<option value="other">🚗 其他／公務出差</option>';
   populateM9FilterStaffSelect();
+  populateAbsenceSelects();
+}
+function populateAbsenceSelects(){
+  const st = document.getElementById('m9AbStaffSel');
+  if(!st) return;
+  const prev = st.value;
+  st.innerHTML = staff.filter(s=>s.active).map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+  if(prev && staff.some(s=>s.id===prev && s.active)) st.value = prev;
+  document.getElementById('m9AbSiteSel').innerHTML = sites.map(s=>`<option value="${s.id}">${s.isClinic?'🏥':'📍'} ${s.name}</option>`).join('');
+  updateAbsenceShiftChips();
 }
 function populateM9FilterStaffSelect(){
   const sel = document.getElementById('m9FilterStaff');
@@ -6782,28 +6926,62 @@ function attendanceScheduleOverlap(r){
 }
 // 員工端：登記前先向雲端重新取得最新班表（員工的手機不會自己定時更新，可能是舊的或還沒載入完）。
 // 管理員端不做，避免覆蓋尚未存檔的排班修改。回傳 true 表示已取得最新班表。
+let lastScheduleRefreshError = '';
+function describeCloudError(e){
+  const msg = String(e && e.message || e || '');
+  if(msg==='timeout') return '雲端回應逾時（超過 15 秒）';
+  if(e instanceof SyntaxError || /JSON|Unexpected token/i.test(msg)) return '雲端回傳的不是資料（可能是 Apps Script 的部署權限或程式有問題）';
+  if(/Failed to fetch|NetworkError|Load failed/i.test(msg)) return '連不上雲端（網路不通，或 Apps Script 沒有部署成「任何人都能存取」）';
+  return msg || '未知錯誤';
+}
 async function refreshScheduleForCheck(){
   if(IS_ADMIN || !SYNC_ENABLED) return true;
-  try{
-    const r = await Promise.race([
-      gasGet({ action:'getSchedSchedule' }),
-      new Promise((_,rej)=> setTimeout(()=>rej(new Error('timeout')), 8000))
-    ]);
-    if(r && r.ok && r.entries){
-      const rebuilt = {};
-      r.entries.forEach(e=>{
-        if(!rebuilt[e.date]) rebuilt[e.date]=[];
-        rebuilt[e.date].push({ staffId:e.staffId, site:e.site, start:e.start, end:e.end, status:e.status||'draft' });
-      });
-      schedule = rebuilt;
-      saveLocalOnly(STORE_KEYS.schedule, schedule);
-      return true;
+  // 最多嘗試 2 次、每次等 15 秒（Apps Script 久未使用時第一次呼叫可能要好幾秒才醒來）
+  for(let attempt=1; attempt<=2; attempt++){
+    try{
+      const r = await Promise.race([
+        gasGet({ action:'getSchedSchedule' }),
+        new Promise((_,rej)=> setTimeout(()=>rej(new Error('timeout')), 15000))
+      ]);
+      if(r && r.ok && r.entries){
+        const rebuilt = {};
+        r.entries.forEach(e=>{
+          if(!rebuilt[e.date]) rebuilt[e.date]=[];
+          rebuilt[e.date].push({ staffId:e.staffId, site:e.site, start:e.start, end:e.end, status:e.status||'draft' });
+        });
+        schedule = rebuilt;
+        saveLocalOnly(STORE_KEYS.schedule, schedule);
+        lastScheduleRefreshError = '';
+        return true;
+      }
+      lastScheduleRefreshError = '雲端回應異常：' + ((r && (r.error || r.message)) || '沒有班表資料');
+    }catch(e){
+      console.warn('登記前更新班表失敗（第'+attempt+'次）', e);
+      lastScheduleRefreshError = describeCloudError(e);
     }
-  }catch(e){ console.warn('登記前更新班表失敗', e); }
+    if(attempt<2) await new Promise(res=>setTimeout(res,1000));
+  }
   return false;
 }
 function attendanceIsOvertime(r){ return !attendanceScheduleOverlap(r); }
 function attendanceOvertimeHours(r){ return attendanceIsOvertime(r) ? attendanceHours(r) : 0; }
+// ===== 當班未到班（kind:'absence'）：有排班但臨時不能上班，總工時要扣除 =====
+// 與「加班」存在同一個 attendance 集合，用 kind 欄位區分（Firestore 規則不用改）。
+function isAbsenceRec(r){ return r.kind==='absence'; }
+function overtimeRecordsOnly(){ return attendanceRecords.filter(r=>!isAbsenceRec(r)); }
+function absenceRecordsOnly(){ return attendanceRecords.filter(isAbsenceRec); }
+function overlapMinutes(s1, e1, s2, e2){ return Math.max(0, Math.min(hmToMin(e1), hmToMin(e2)) - Math.max(hmToMin(s1), hmToMin(s2))); }
+// 這筆未到班對應到的班表：該員工當天與未到班時段重疊的排班；可扣的時數 ＝ min(該班實際工時（已扣午休）, 重疊的時數)
+function absenceMatches(r){
+  return (schedule[r.date]||[]).filter(e=>e.staffId===r.staffId).map(e=>{
+    const om = overlapMinutes(e.start, e.end, r.start, r.end);
+    return om>0 ? { entry:e, h: Math.min(entryHours(e), om/60) } : null;
+  }).filter(Boolean);
+}
+function absenceCapHours(r){ return absenceMatches(r).reduce((a,m)=>a+m.h, 0); }
+function absenceIsValid(r){ return absenceMatches(r).length>0; }
+// 實際扣除的工時：沒有對應班表的不扣；登記時數超過班表工時時，最多扣到班表工時
+function absenceDeductHours(r){ return absenceIsValid(r) ? Math.min(attendanceHours(r), absenceCapHours(r)) : 0; }
 function attendanceOverlapText(r){
   const e = attendanceScheduleOverlap(r);
   return e ? `${getSiteName(e.site)} ${e.start}–${e.end}` : '';
@@ -6849,7 +7027,7 @@ function exportAllM1M3M4M9XLSX(){
       });
     });
     // M9（全部紀錄，不受畫面篩選影響）
-    const m9Rows = attendanceRecords.slice().sort((a,b)=> a.date===b.date ? (a.start||'').localeCompare(b.start||'') : a.date.localeCompare(b.date)).map(r=>({
+    const m9Rows = overtimeRecordsOnly().slice().sort((a,b)=> a.date===b.date ? (a.start||'').localeCompare(b.start||'') : a.date.localeCompare(b.date)).map(r=>({
       日期: r.date, 員工: getStaffName(r.staffId), 地點: attendanceSiteLabelPlain(r),
       開始: r.start, 結束: r.end, 事由: r.note||'', 支援時數: Number(attendanceHours(r).toFixed(1)),
       計入加班: attendanceIsOvertime(r) ? '是' : '否（與班表重疊）'
@@ -6861,7 +7039,11 @@ function exportAllM1M3M4M9XLSX(){
       { name:'M1據點', rows: siteRows, header:['id','名稱','類型','主要人員','代班人員','主責人員','營運星期'] },
       { name:'M3排班', rows: m3Rows, header:['日期','星期','員工','地點','開始','結束','狀態'] },
       { name:'M4請假排休', rows: m4Rows, header:['日期','星期','員工','類型','備註'] },
-      { name:'M9支援填報', rows: m9Rows, header:['日期','員工','地點','開始','結束','事由','支援時數','計入加班'] }
+      { name:'M9支援填報', rows: m9Rows, header:['日期','員工','地點','開始','結束','事由','支援時數','計入加班'] },
+      { name:'M9當班未到班', rows: absenceRecordsOnly().slice().sort((a,b)=>a.date.localeCompare(b.date)).map(r=>({
+          日期: r.date, 員工: getStaffName(r.staffId), 地點: attendanceSiteLabelPlain(r), 開始: r.start, 結束: r.end, 事由: r.note||'',
+          扣除時數: Number(attendanceHours(r).toFixed(1)), 實際扣除: Number(absenceDeductHours(r).toFixed(1))
+        })), header:['日期','員工','地點','開始','結束','事由','扣除時數','實際扣除'] }
     ]);
     alert(`已匯出 ${fname}\nM1：員工 ${staffRows.length}、據點 ${siteRows.length}\nM3：排班 ${m3Rows.length} 筆\nM4：請假排休 ${m4Rows.length} 筆\nM9：支援填報 ${m9Rows.length} 筆`);
   }catch(err){
@@ -6900,12 +7082,17 @@ function updateM9ScheduleHint(){
 // ===== M9 匯出／匯入（支援填報，Firestore 一筆一份文件） =====
 // 匯出的範圍跟目前畫面上「支援總覽」看得到的一樣：管理員是全部人，員工端只有這台裝置自己填過的。
 function exportM9XLSX(){
-  const rows = attendanceRecords.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(r=>({
+  const rows = overtimeRecordsOnly().slice().sort((a,b)=>a.date.localeCompare(b.date)).map(r=>({
     日期: r.date, 員工: getStaffName(r.staffId), 地點: attendanceSiteLabelPlain(r),
     開始: r.start, 結束: r.end, 事由: r.note||'', 支援時數: attendanceHours(r).toFixed(1),
     計入加班: attendanceIsOvertime(r) ? '是' : '否（與班表重疊）'
   }));
-  exportXLSX('支援填報.xlsx', [ { name:'支援填報', rows } ]);
+  const absRows = absenceRecordsOnly().slice().sort((a,b)=>a.date.localeCompare(b.date)).map(r=>({
+    日期: r.date, 員工: getStaffName(r.staffId), 地點: attendanceSiteLabelPlain(r),
+    開始: r.start, 結束: r.end, 事由: r.note||'', 扣除時數: attendanceHours(r).toFixed(1),
+    實際扣除: absenceDeductHours(r).toFixed(1)
+  }));
+  exportXLSX('支援填報.xlsx', [ { name:'支援填報', rows }, { name:'當班未到班', rows: absRows } ]);
 }
 function importM9XLSX(){
   if(!fbAuth.currentUser){ alert('⚠️ 裝置正在跟伺服器建立連線，請稍等幾秒後再試一次。'); return; }
@@ -6913,10 +7100,24 @@ function importM9XLSX(){
     let data;
     try{ data = await readXLSXFile(file); }catch(e){ alert('讀取檔案失敗：'+e.message); return; }
     const sheet = data['支援填報'] || [];
-    if(!sheet.length){ alert('這個檔案裡找不到「支援填報」工作表，請確認是用「匯出 Excel」產生的檔案。'); return; }
+    if(!sheet.length && !(data['當班未到班']||[]).length){ alert('這個檔案裡找不到「支援填報」或「當班未到班」工作表，請確認是用「匯出 Excel」產生的檔案。'); return; }
     const nameToStaffId = {}; staff.forEach(s=>{ nameToStaffId[s.name]=s.id; });
     const nameToSiteId = {}; sites.forEach(s=>{ nameToSiteId[s.name]=s.id; });
     const todo = []; let skipped = 0, skippedOverlap = 0;
+    // 「當班未到班」工作表：時段必須落在該員工當天班表內才匯入（沒有對應班表的略過）
+    const absSheet = data['當班未到班'] || [];
+    absSheet.forEach(row=>{
+      const date = String(row['日期']||'').trim();
+      const staffId = nameToStaffId[String(row['員工']||'').trim()];
+      const start = String(row['開始']||'').trim(), end = String(row['結束']||'').trim();
+      const hours = parseFloat(row['扣除時數']);
+      if(!date || !staffId || !start || !end || start>=end || isNaN(hours) || hours<=0){ skipped++; return; }
+      if(!absenceIsValid({ staffId, date, start, end })){ skipped++; return; }
+      const siteName = String(row['地點']||'').trim();
+      const siteId = nameToSiteId[siteName];
+      if(!siteId){ skipped++; return; }
+      todo.push({ staffId, date, site: siteId, otherLabel:'', start, end, hours, note:String(row['事由']||'').trim(), photos:[], kind:'absence' });
+    });
     sheet.forEach(row=>{
       const date = String(row['日期']||'').trim();
       const staffId = nameToStaffId[String(row['員工']||'').trim()];
@@ -6953,7 +7154,13 @@ function importM9XLSX(){
 // M9 照片上傳：選擇後在瀏覽器端壓縮(最長邊1200px)，暫存於記憶體，
 // 按「登記支援紀錄」時才實際上傳到Drive(透過GAS)，成功後才連同紀錄一起存檔。
 // ===========================================================
-let m9PendingPhotos = []; // [{dataUrl, blob, fileName}] 已選取且壓縮完成、尚未上傳的照片
+let m9PendingPhotos = []; // [{dataUrl, blob, fileName}] 已選取且壓縮完成、尚未上傳的照片（支援填報）
+let m9AbPendingPhotos = []; // 同上（當班未到班）
+function m9Bucket(key){
+  return key==='ab'
+    ? { get list(){ return m9AbPendingPhotos; }, clear(){ m9AbPendingPhotos = []; }, preview:'m9AbPhotoPreview', status:'m9AbPhotoUploadStatus' }
+    : { get list(){ return m9PendingPhotos; }, clear(){ m9PendingPhotos = []; }, preview:'m9PhotoPreview', status:'m9PhotoUploadStatus' };
+}
 
 // 每張照片自動壓縮到 150KB 以內（先縮小尺寸、再逐步降低品質），一筆紀錄最多 4 張；
 // 手機相機原檔常有 5～10MB，不壓縮直接上傳在行動網路下很容易逾時或失敗。
@@ -6961,12 +7168,13 @@ const M9_PHOTO_MAX_COUNT = 4;
 const M9_PHOTO_TARGET_BYTES = 150 * 1024;
 const M9_PHOTO_RAW_LIMIT = 30 * 1024 * 1024;   // 原始檔超過 30MB 不處理（避免手機記憶體不足當機）
 
-async function handleM9PhotoSelect(event){
+async function handleM9PhotoSelect(event, key){
+  const bk = m9Bucket(key);
   const files = Array.from(event.target.files || []);
   event.target.value = '';   // 清空，允許重複選擇同一檔案
-  const statusEl = document.getElementById('m9PhotoUploadStatus');
+  const statusEl = document.getElementById(bk.status);
   for(const file of files){
-    if(m9PendingPhotos.length >= M9_PHOTO_MAX_COUNT){
+    if(bk.list.length >= M9_PHOTO_MAX_COUNT){
       alert(`一筆紀錄最多 ${M9_PHOTO_MAX_COUNT} 張照片，多選的已略過。`);
       break;
     }
@@ -6975,14 +7183,14 @@ async function handleM9PhotoSelect(event){
     if(statusEl) statusEl.textContent = `照片壓縮中…（${file.name}）`;
     try{
       const { dataUrl, blob } = await compressImageToTarget(file, M9_PHOTO_TARGET_BYTES);
-      m9PendingPhotos.push({ dataUrl, blob, fileName: file.name, size: blob.size });
-      renderM9PhotoPreview();
+      bk.list.push({ dataUrl, blob, fileName: file.name, size: blob.size });
+      renderM9PhotoPreview(key);
     }catch(err){
       console.warn('圖片壓縮失敗:', err);
       alert(`「${file.name}」處理失敗：${err && err.message || '無法讀取這張圖片'}\n若是 iPhone 的 HEIC 格式，請改在相機設定選「最相容」，或截圖後再上傳。`);
     }
   }
-  renderM9PhotoPreview();
+  renderM9PhotoPreview(key);
 }
 
 function loadImageFromFile(file){
@@ -7036,23 +7244,25 @@ function compressImageFile(file, maxSize, quality){
   return compressImageToTarget(file, M9_PHOTO_TARGET_BYTES);
 }
 
-function renderM9PhotoPreview(){
-  const container = document.getElementById('m9PhotoPreview');
+function renderM9PhotoPreview(key){
+  const bk = m9Bucket(key);
+  const container = document.getElementById(bk.preview);
   if(!container) return;
-  container.innerHTML = m9PendingPhotos.map((p, idx)=>
-    `<div class="m9-photo-thumb"><img src="${p.dataUrl}"><span style="position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);color:#fff;font-size:9px;text-align:center;line-height:14px;">${Math.round(p.size/1024)}KB</span><button class="m9-photo-remove" onclick="removeM9PendingPhoto(${idx})">✕</button></div>`
+  const k = key==='ab' ? 'ab' : 'ot';
+  container.innerHTML = bk.list.map((p, idx)=>
+    `<div class="m9-photo-thumb"><img src="${p.dataUrl}"><span style="position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);color:#fff;font-size:9px;text-align:center;line-height:14px;">${Math.round(p.size/1024)}KB</span><button class="m9-photo-remove" onclick="removeM9PendingPhoto(${idx},'${k}')">✕</button></div>`
   ).join('');
-  const statusEl = document.getElementById('m9PhotoUploadStatus');
+  const statusEl = document.getElementById(bk.status);
   if(statusEl && !statusEl.dataset.uploading){
-    const total = m9PendingPhotos.reduce((a,p)=>a+p.size,0);
-    statusEl.textContent = m9PendingPhotos.length
-      ? `已選 ${m9PendingPhotos.length}／${M9_PHOTO_MAX_COUNT} 張，共約 ${Math.round(total/1024)} KB（每張自動壓縮到約 150KB 以內）`
+    const total = bk.list.reduce((a,p)=>a+p.size,0);
+    statusEl.textContent = bk.list.length
+      ? `已選 ${bk.list.length}／${M9_PHOTO_MAX_COUNT} 張，共約 ${Math.round(total/1024)} KB（每張自動壓縮到約 150KB 以內）`
       : `最多 ${M9_PHOTO_MAX_COUNT} 張，每張會自動壓縮到約 150KB 以內，不用自己縮小`;
   }
 }
-function removeM9PendingPhoto(idx){
-  m9PendingPhotos.splice(idx,1);
-  renderM9PhotoPreview();
+function removeM9PendingPhoto(idx, key){
+  m9Bucket(key).list.splice(idx,1);
+  renderM9PhotoPreview(key);
 }
 
 // 把單張壓縮後的照片上傳到GAS，取得Drive網址（複用gasPost的同步機制）
@@ -7064,6 +7274,164 @@ async function uploadOnePhoto(photo){
   ]);
   if(result && result.ok) return result.url;
   throw new Error(result && result.error || '上傳失敗');
+}
+
+// ===== M9 當班未到班 =====
+let m9AbShiftList = [];
+let absLastRefreshAt = 0;
+function updateAbsenceShiftChips(){
+  const box = document.getElementById('m9AbShiftChips');
+  if(!box) return;
+  const staffId = document.getElementById('m9AbStaffSel').value, date = document.getElementById('m9AbDate').value;
+  if(!staffId || !date){ box.innerHTML = ''; m9AbShiftList = []; updateAbsenceHint(); return; }
+  m9AbShiftList = (schedule[date]||[]).filter(e=>e.staffId===staffId).sort((a,b)=>String(a.start).localeCompare(String(b.start)));
+  box.innerHTML = m9AbShiftList.length
+    ? `<div style="color:var(--text-soft);margin-bottom:4px;">🗓️ 當天班表（點一下帶入地點、時段與時數）：</div><div class="quick-btn-row">` +
+      m9AbShiftList.map((e,i)=>`<span class="qbtn" onclick="fillAbsenceFromShift(${i})">${getSiteName(e.site)} ${normHM(e.start)}–${normHM(e.end)}（${entryHours(e).toFixed(1)} 小時）</span>`).join('') + '</div>'
+    : '<span style="color:var(--text-soft);">ℹ️ 當天沒有這位員工的班表，無法登記未到班</span>';
+  updateAbsenceHint();
+}
+function fillAbsenceFromShift(i){
+  const e = m9AbShiftList[i]; if(!e) return;
+  document.getElementById('m9AbSiteSel').value = e.site;
+  document.getElementById('m9AbStart').value = normHM(e.start);
+  document.getElementById('m9AbEnd').value = normHM(e.end);
+  document.getElementById('m9AbHours').value = entryHours(e).toFixed(1);
+  updateAbsenceHint();
+}
+function updateAbsenceHint(){
+  const box = document.getElementById('m9AbHint'); if(!box) return;
+  const staffId = document.getElementById('m9AbStaffSel').value, date = document.getElementById('m9AbDate').value;
+  const start = document.getElementById('m9AbStart').value, end = document.getElementById('m9AbEnd').value;
+  if(!staffId || !date || !start || !end || start>=end){ box.style.display='none'; return; }
+  const ms = absenceMatches({ staffId, date, start, end });
+  if(!ms.length){ box.innerHTML = '<span style="color:var(--danger);font-weight:700;">⚠ 這個時段沒有對應的班表，無法登記未到班。</span>'; }
+  else{
+    const cap = ms.reduce((a,m)=>a+m.h,0);
+    box.innerHTML = `ℹ️ 對應班表：${ms.map(m=>`${getSiteName(m.entry.site)} ${normHM(m.entry.start)}–${normHM(m.entry.end)}`).join('、')}　最多可扣 <b>${cap.toFixed(1)}</b> 小時`;
+  }
+  box.style.color = 'var(--text-soft)';
+  box.style.display = '';
+}
+async function onAbsenceKeyChange(){
+  updateAbsenceShiftChips();
+  // 員工手機的班表可能是舊的：選好人員與日期後，向雲端更新一次（60 秒內不重複）
+  const staffId = document.getElementById('m9AbStaffSel').value, date = document.getElementById('m9AbDate').value;
+  if(!IS_ADMIN && staffId && date && Date.now()-absLastRefreshAt > 60000){
+    absLastRefreshAt = Date.now();
+    if(await refreshScheduleForCheck()) updateAbsenceShiftChips();
+  }
+}
+(function(){
+  const attach = ()=>{
+    ['m9AbStaffSel','m9AbDate'].forEach(id=>{ const el=document.getElementById(id); if(el){ el.addEventListener('change', onAbsenceKeyChange); el.addEventListener('input', onAbsenceKeyChange); } });
+    ['m9AbStart','m9AbEnd','m9AbSiteSel'].forEach(id=>{ const el=document.getElementById(id); if(el){ el.addEventListener('input', updateAbsenceHint); el.addEventListener('change', updateAbsenceHint); } });
+  };
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', attach); else attach();
+})();
+
+async function addAbsenceRecord(){
+  const staffId = document.getElementById('m9AbStaffSel').value;
+  const dateStr = document.getElementById('m9AbDate').value;
+  const site = document.getElementById('m9AbSiteSel').value;
+  const start = document.getElementById('m9AbStart').value;
+  const end = document.getElementById('m9AbEnd').value;
+  const hoursRaw = document.getElementById('m9AbHours').value;
+  const hours = parseFloat(hoursRaw);
+  const note = document.getElementById('m9AbNote').value.trim();
+  if(!staffId){ alert('請選擇人員'); return; }
+  if(!dateStr){ alert('請選擇日期'); return; }
+  if(!start || !end || start>=end){ alert('結束時間需晚於開始時間'); return; }
+  if(!hoursRaw || isNaN(hours) || hours<=0){ alert('請輸入扣除時數（需大於0）'); return; }
+  if(!note){ alert('請填寫未到班的事由'); return; }
+  if(!IS_ADMIN){
+    const fresh = await refreshScheduleForCheck();
+    if(!fresh){ alert('⚠️ 目前無法取得雲端最新班表，沒辦法確認這個時段有排班，暫時無法登記。\n原因：' + lastScheduleRefreshError + '\n請確認網路後再按一次登記。'); return; }
+    updateAbsenceShiftChips();
+  }
+  const ms = absenceMatches({ staffId, date: dateStr, start, end });
+  if(!ms.length){
+    alert(`⚠️ ${getStaffName(staffId)} 在 ${dateStr} 的 ${start}–${end} 沒有排班，不是「當班未到班」。\n請確認日期與時段（可點上方的班表快速帶入）。`);
+    return;
+  }
+  const cap = ms.reduce((a,m)=>a+m.h,0);
+  if(hours > cap + 0.01){ alert(`扣除時數不能超過這個時段的班表工時（${cap.toFixed(1)} 小時）。`); return; }
+
+  const statusEl = document.getElementById('m9AbPhotoUploadStatus');
+  if(!fbAuth.currentUser){ alert('⚠️ 裝置正在跟伺服器建立連線，請稍等幾秒後再按一次登記。'); return; }
+  const recordId = uid9();
+  const photoRefs = [];
+  if(m9AbPendingPhotos.length>0){
+    const btn = document.querySelector('button[onclick="addAbsenceRecord()"]');
+    if(btn) btn.disabled = true;
+    if(statusEl) statusEl.dataset.uploading = '1';
+    try{
+      for(let i=0; i<m9AbPendingPhotos.length; i++){
+        if(statusEl) statusEl.textContent = `儲存照片中...（${i+1}/${m9AbPendingPhotos.length}，約 ${Math.round(m9AbPendingPhotos[i].size/1024)} KB）`;
+        const pid = await savePhotoToFirestore(m9AbPendingPhotos[i], recordId);
+        photoRefs.push('fs:' + pid);
+      }
+    }catch(err){
+      if(statusEl){ delete statusEl.dataset.uploading; statusEl.textContent = ''; }
+      if(btn) btn.disabled = false;
+      const code = err && err.code || '';
+      alert('照片儲存失敗：' + (code || err && err.message || '未知錯誤') + (code==='permission-denied' ? '\n（伺服器拒絕：請管理者到 Firebase 規則新增 attendancePhotos 集合的權限）' : '\n請確認網路後再按一次登記。'));
+      return;
+    }
+    if(statusEl){ delete statusEl.dataset.uploading; statusEl.textContent = ''; }
+    if(btn) btn.disabled = false;
+  }
+  const rec = { id: recordId, staffId, date: dateStr, site, otherLabel:'', start, end, hours, note, photos: photoRefs, kind:'absence' };
+  let settled = false;
+  const tid = setTimeout(()=>{ if(!settled) alert('⚠️ ' + dateStr + ' 的未到班紀錄已送出一段時間，但尚未收到伺服器確認送達，可能是網路不穩。請稍等一下看紀錄會不會自動出現；若一直沒出現，請重新整理頁面後再登記一次。'); }, 12000);
+  fbDb.collection('attendance').doc(rec.id).set(Object.assign({}, rec, {
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    ownerUid: fbAuth.currentUser.uid
+  })).then(()=>{ settled = true; clearTimeout(tid); }).catch(err=>{
+    settled = true; clearTimeout(tid);
+    alert('⚠️ ' + dateStr + ' 的未到班紀錄被伺服器拒絕，未成功登記：' + (err && err.code || err && err.message || '未知錯誤') + '\n請洽管理者。');
+  });
+  document.getElementById('m9AbHours').value = '';
+  document.getElementById('m9AbNote').value = '';
+  m9AbPendingPhotos = [];
+  renderM9PhotoPreview('ab');
+  alert(`已為 ${getStaffName(staffId)} 登記 ${dateStr} 的當班未到班（扣 ${hours} 小時）${photoRefs.length>0?`，含${photoRefs.length}張照片`:''}` +
+    (isAdminAuthed() ? '' : '\n若目前網路不穩，紀錄會先保存在這台裝置，恢復連線後會自動上傳。'));
+}
+function renderAbsenceOverview(){
+  const container = document.getElementById('absenceOverviewList');
+  const totalBox = document.getElementById('m9AbTotalBox');
+  if(!container || !totalBox) return;
+  const filterStaff = document.getElementById('m9FilterStaff').value;
+  const filterStart = document.getElementById('m9FilterStart').value;
+  const filterEnd = document.getElementById('m9FilterEnd').value;
+  const rows = absenceRecordsOnly().filter(r=>{
+    if(filterStaff && r.staffId!==filterStaff) return false;
+    if(filterStart && r.date < filterStart) return false;
+    if(filterEnd && r.date > filterEnd) return false;
+    return true;
+  }).sort((a,b)=> a.date===b.date ? a.start.localeCompare(b.start) : a.date.localeCompare(b.date));
+  const total = rows.reduce((a,r)=>a+absenceDeductHours(r), 0);
+  const invalid = rows.filter(r=>!absenceIsValid(r)).length;
+  totalBox.textContent = `🚫 符合篩選條件的未到班扣除總工時：${total.toFixed(1)} 小時（共 ${rows.length} 筆紀錄${invalid?`，其中 ${invalid} 筆沒有對應班表不扣`:''}）`;
+  if(rows.length===0){ container.innerHTML = '<div class="report-empty">查無當班未到班紀錄</div>'; return; }
+  let html = `<table class="report-table attendance-table"><thead><tr>
+    <th>姓名</th><th>日期</th><th>時間區間</th><th>地點</th><th>事由</th><th class="num-head">扣除時數</th><th>照片</th><th></th>
+  </tr></thead><tbody>`;
+  rows.forEach(r=>{
+    const bad = !absenceIsValid(r);
+    const deduct = absenceDeductHours(r), entered = attendanceHours(r);
+    const fsCount = (r.photos||[]).filter(isFsPhoto).length;
+    const photosHtml = fsCount>0 ? `<button class="btn outline" style="padding:3px 9px;font-size:11px;" onclick="openM9Photos('${r.id}')">📷 ${fsCount} 張</button>` : '<span style="color:var(--text-soft);font-size:11px;">無</span>';
+    const delCell = isAdminAuthed()
+      ? `<button class="row-del" onclick="deleteAttendanceRecord('${r.id}')">✕ 刪除</button>`
+      : `<span style="font-size:11px;color:var(--warn);font-weight:600;">🔒 僅管理者可刪除</span>`;
+    html += `<tr${bad?' style="opacity:.65;"':''}>
+      <td>${getStaffName(r.staffId)}</td><td>${r.date}</td><td>${r.start}–${r.end}</td><td>${attendanceSiteLabel(r)}</td>
+      <td>${r.note || ''}${bad?'<div style="font-size:11px;color:var(--danger);font-weight:600;">⚠ 沒有對應班表，不扣工時</div>':(entered>deduct+0.01?`<div style="font-size:11px;color:var(--warn);font-weight:600;">登記 ${entered.toFixed(1)} 小時，超過班表工時，只扣 ${deduct.toFixed(1)}</div>`:'')}</td>
+      <td class="num">${bad?`<s>${entered.toFixed(1)}</s>`:deduct.toFixed(1)}</td><td>${photosHtml}</td><td>${delCell}</td></tr>`;
+  });
+  container.innerHTML = html + '</tbody></table>';
 }
 
 // ===== M9 照片存在 Firestore =====
@@ -7145,7 +7513,7 @@ async function addAttendanceRecord(){
   if(!IS_ADMIN){
     // 加班一定發生在班表已發布的月份，員工端必須先取得雲端最新班表才能比對；取不到就不讓登記，避免漏擋
     const fresh = await refreshScheduleForCheck();
-    if(!fresh){ alert('⚠️ 目前無法取得雲端最新班表，沒辦法確認這個時段是否與班表重疊，暫時無法登記。\n請確認網路後再按一次登記。'); return; }
+    if(!fresh){ alert('⚠️ 目前無法取得雲端最新班表，沒辦法確認這個時段是否與班表重疊，暫時無法登記。\n原因：' + lastScheduleRefreshError + '\n請確認網路後再按一次登記；若一直失敗，請通知管理者檢查班表後端（Apps Script）。'); return; }
   }
   {
     const ov = attendanceScheduleOverlap({ staffId, date: dateStr, start, end });
@@ -7211,7 +7579,7 @@ async function addAttendanceRecord(){
   document.getElementById('m9Hours').value = '';
   document.getElementById('m9Note').value = '';
   m9PendingPhotos = [];
-  renderM9PhotoPreview();
+  renderM9PhotoPreview('ot');
   alert(`已為 ${getStaffName(staffId)} 登記 ${dateStr} 的支援紀錄${photoUrls.length>0?`（含${photoUrls.length}張照片）`:''}` +
     (isAdminNow ? '' : '\n若目前網路不穩，紀錄會先保存在這台裝置，恢復連線後會自動上傳。'));
 }
@@ -7246,7 +7614,7 @@ function startAttendanceListener(){
     attendanceRecords = snap.docs.map(d=>{
       const x = d.data();
       return { id:d.id, staffId:x.staffId, date:x.date, site:x.site, otherLabel:x.otherLabel||'',
-               start:x.start, end:x.end, hours:(typeof x.hours==='number' && !isNaN(x.hours)) ? x.hours : undefined, note:x.note||'', photos:x.photos||[] };
+               start:x.start, end:x.end, hours:(typeof x.hours==='number' && !isNaN(x.hours)) ? x.hours : undefined, note:x.note||'', photos:x.photos||[], kind: x.kind==='absence' ? 'absence' : undefined };
     });
     saveLocalOnly(STORE_KEYS.attendance, attendanceRecords);
     renderAttendanceOverview();
@@ -7277,7 +7645,7 @@ function startOwnAttendanceListener(uid){
     attendanceRecords = snap.docs.map(d=>{
       const x = d.data();
       return { id:d.id, staffId:x.staffId, date:x.date, site:x.site, otherLabel:x.otherLabel||'',
-               start:x.start, end:x.end, hours:(typeof x.hours==='number' && !isNaN(x.hours)) ? x.hours : undefined, note:x.note||'', photos:x.photos||[] };
+               start:x.start, end:x.end, hours:(typeof x.hours==='number' && !isNaN(x.hours)) ? x.hours : undefined, note:x.note||'', photos:x.photos||[], kind: x.kind==='absence' ? 'absence' : undefined };
     });
     saveLocalOnly(STORE_KEYS.attendance, attendanceRecords);
     renderAttendanceOverview();
@@ -7332,7 +7700,8 @@ function renderAttendanceOverview(){
   const filterStart = document.getElementById('m9FilterStart').value;
   const filterEnd = document.getElementById('m9FilterEnd').value;
 
-  let rows = attendanceRecords.filter(r=>{
+  renderAbsenceOverview();   // 篩選條件相同，一併更新下方「當班未到班紀錄」
+  let rows = overtimeRecordsOnly().filter(r=>{
     if(filterStaff && r.staffId!==filterStaff) return false;
     if(filterStart && r.date < filterStart) return false;
     if(filterEnd && r.date > filterEnd) return false;
