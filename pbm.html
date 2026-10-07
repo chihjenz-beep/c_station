@@ -1304,6 +1304,21 @@
     </div>
 
     <div class="card">
+      <h2>🎌 國定假日設定 <span class="badge gold">週間假日</span></h2>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:8px;">
+        設定當年度「週一～週五」的國定假日（含補假、連假）。這些日子 M5 不會檢查據點漏排、也不會當成人力不足。政府通常於每年 6 月底公布隔年行事曆，到時請在這裡新增隔年的假日。
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+        <select id="holidayYearSel" onchange="renderHolidaySettings()" style="width:auto;"></select>
+        <input type="date" id="holidayNewDate">
+        <input type="text" id="holidayNewName" placeholder="假日名稱（如：國慶日補假）" style="flex:1;min-width:150px;">
+        <button class="btn" onclick="addHoliday()">＋ 新增假日</button>
+        <button class="btn outline" onclick="resetHolidaysToDefault()" title="只還原 2026 年內建名單">還原 2026 內建名單</button>
+      </div>
+      <div id="holidayList"></div>
+    </div>
+
+    <div class="card">
       <h2>🧪 套用測試 <span class="badge">預覽</span></h2>
       <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">點按鈕測試套用效果，正式排班介面在 M3 會用同樣的邏輯</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;" id="tplPreviewBtns"></div>
@@ -1970,7 +1985,7 @@
       </div>
       <div id="m9AbHint" style="font-size:12px;margin:-4px 0 8px;display:none;"></div>
       <div class="form-line">
-        <label>扣除時數</label>
+        <label>扣時數</label>
         <input type="number" id="m9AbHours" step="0.5" min="0" placeholder="請輸入未到班要扣除的時數，如：8" style="flex:1;">
       </div>
       <div class="form-line">
@@ -2194,7 +2209,8 @@ const STORE_KEYS = {
   clinicClosures: 'sched_clinicClosures',
   deletedClinicIds: 'sched_deletedClinicIds',
   courseItems: 'sched_courseItems',
-  courseSchedule: 'sched_courseSchedule'
+  courseSchedule: 'sched_courseSchedule',
+  holidays: 'sched_holidays'          // 週間國定假日設定（本機副本；雲端跟快速時段按鈕一起存，見 buildTemplatesPayload）
 };
 
 function loadStore(key, fallback){
@@ -2370,7 +2386,15 @@ async function pullAllFromGAS(){
         const isLunch = t => String(t.id).startsWith(LUNCH_ID_PREFIX);
         const lunchMap = {};
         r.templates.filter(isLunch).forEach(t=>{ lunchMap[String(t.id).slice(LUNCH_ID_PREFIX.length)] = hmToMin(t.end)/60; });
-        const real = r.templates.filter(t=>!isLunch(t));
+        // 國定假日以 id「holiday:日期」的特殊列存（名稱＝假日名稱）；「holiday:none」代表已設定且一天都沒有
+        const isHolidayRow = t => String(t.id).startsWith('holiday:');
+        const hrows = r.templates.filter(isHolidayRow);
+        if(hrows.length){
+          holidayList = hrows.filter(t=>t.id!=='holiday:none').map(t=>({ date: String(t.id).slice(8), name: String(t.name||'國定假日') })).sort((a,b)=>a.date.localeCompare(b.date));
+          saveLocalOnly(STORE_KEYS.holidays, holidayList);
+          rebuildHolidaySet();
+        }
+        const real = r.templates.filter(t=>!isLunch(t) && !isHolidayRow(t));
         if(real.length){
           real.forEach(t=>{ if(lunchMap[t.id] > 0) t.lunchHours = lunchMap[t.id]; else delete t.lunchHours; });
           shiftTemplates = real; saveLocalOnly(STORE_KEYS.shiftTemplates, shiftTemplates);
@@ -3401,6 +3425,70 @@ function renderShiftTemplates(){
     </div>
   `).join('');
   renderTplPreviewBtns();
+  renderHolidaySettings();
+}
+// ===== M2 國定假日設定 =====
+function saveHolidays(){
+  holidayList.sort((a,b)=>a.date.localeCompare(b.date));
+  rebuildHolidaySet();
+  saveLocalOnly(STORE_KEYS.holidays, holidayList);
+  schedulePush(STORE_KEYS.shiftTemplates);          // 跟時段按鈕一起同步到雲端
+  renderHolidaySettings();
+  if(typeof renderConflictOverview==='function') renderConflictOverview();   // 假日變動會影響 M5 的漏排檢查
+}
+function renderHolidaySettings(){
+  const box = document.getElementById('holidayList');
+  const yearSel = document.getElementById('holidayYearSel');
+  if(!box || !yearSel) return;
+  const entries = currentHolidayEntries();
+  const nowY = new Date().getFullYear();
+  const years = Array.from(new Set([nowY-1, nowY, nowY+1, ...entries.map(h=>Number(h.date.slice(0,4)))])).sort();
+  const prev = yearSel.value || String(nowY);
+  yearSel.innerHTML = years.map(y=>`<option value="${y}">${y} 年（民國 ${y-1911} 年）</option>`).join('');
+  yearSel.value = years.includes(Number(prev)) ? prev : String(nowY);
+  const y = yearSel.value;
+  const WD = ['日','一','二','三','四','五','六'];
+  const list = entries.filter(h=>h.date.startsWith(y+'-')).sort((a,b)=>a.date.localeCompare(b.date));
+  const weekdayCount = list.filter(h=>{ const d=new Date(h.date+'T00:00:00').getDay(); return d>=1 && d<=5; }).length;
+  const note = `<div style="font-size:12px;color:var(--text-soft);margin-bottom:6px;">${y} 年共 ${list.length} 天，其中週一～週五 <b>${weekdayCount}</b> 天${holidayList===null?'（目前是系統內建名單，編輯後會改存成你的設定）':''}</div>`;
+  if(!list.length){ box.innerHTML = note + '<div class="report-empty">這一年還沒有設定任何國定假日</div>'; return; }
+  box.innerHTML = note + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px 10px;">' + list.map(h=>{
+    const dow = new Date(h.date+'T00:00:00').getDay(), weekend = dow===0 || dow===6;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 10px;border:1px solid var(--border);border-radius:10px;background:${weekend?'#f7f3ee':'var(--paper)'};${weekend?'opacity:.75;':''}">
+      <span style="font-weight:700;white-space:nowrap;">${h.date.slice(5).replace('-','/')}（${WD[dow]}）</span>
+      <span style="flex:1;font-size:12px;color:var(--text-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${h.name}${weekend?'（週末）':''}</span>
+      <button class="row-del" onclick="removeHoliday('${h.date}')">✕</button>
+    </div>`;
+  }).join('') + '</div>';
+}
+function ensureHolidayListMaterialized(){
+  if(holidayList === null) holidayList = DEFAULT_HOLIDAYS_2026.map(([date,name])=>({ date, name }));
+}
+function addHoliday(){
+  const date = document.getElementById('holidayNewDate').value;
+  const name = document.getElementById('holidayNewName').value.trim() || '國定假日';
+  if(!date){ alert('請選擇假日的日期'); return; }
+  ensureHolidayListMaterialized();
+  if(holidayList.some(h=>h.date===date)){ alert('這一天已經在名單裡了'); return; }
+  const dow = new Date(date+'T00:00:00').getDay();
+  if((dow===0 || dow===6) && !confirm('這一天是週末，通常不用特別設定（除非診所／據點週末有營運）。仍要新增嗎？')) return;
+  holidayList.push({ date, name });
+  document.getElementById('holidayNewName').value = '';
+  document.getElementById('holidayYearSel').value = date.slice(0,4);
+  saveHolidays();
+}
+function removeHoliday(date){
+  const h = currentHolidayEntries().find(x=>x.date===date);
+  if(!confirm(`確定移除 ${date}${h?`（${h.name}）`:''} 這個假日？移除後該天會被當成一般上班日。`)) return;
+  ensureHolidayListMaterialized();
+  holidayList = holidayList.filter(x=>x.date!==date);
+  saveHolidays();
+}
+function resetHolidaysToDefault(){
+  if(!confirm('要把 2026 年的假日還原成系統內建名單嗎？（2026 年目前的設定會被取代；其他年度不受影響）')) return;
+  ensureHolidayListMaterialized();
+  holidayList = holidayList.filter(h=>!h.date.startsWith('2026-')).concat(DEFAULT_HOLIDAYS_2026.map(([date,name])=>({ date, name })));
+  saveHolidays();
 }
 function updateTplLunch(id, val){
   const t = shiftTemplates.find(x=>x.id===id);
@@ -5688,26 +5776,33 @@ const DEFAULT_SITE_OPERATING_WEEKDAYS = [1,2,3,4,5]; // 保底預設：週一至
 function getSiteOperatingWeekdays(site){
   return (site.operatingWeekdays && site.operatingWeekdays.length) ? site.operatingWeekdays : DEFAULT_SITE_OPERATING_WEEKDAYS;
 }
-// 中華民國115年（2026年）國定假日／連假名單（依行政院人事行政總處公布之办公日曆表）
-// ⚠️ 此名單需每年手動更新：政府通常於當年6月底前公布次年度行事曆，屆時請更新此陣列
-const NATIONAL_HOLIDAYS_2026 = [
-  '2026-01-01', // 元旦
-  '2026-02-14','2026-02-15','2026-02-16','2026-02-17','2026-02-18','2026-02-19','2026-02-20','2026-02-21','2026-02-22', // 春節連假（含小年夜補假、除夕、初一~初三）
-  '2026-02-28', // 和平紀念日
-  '2026-04-04', // 兒童節
-  '2026-04-05', // 清明節
-  '2026-05-01', // 勞動節
-  '2026-06-19', // 端午節
-  '2026-09-25', // 中秋節
-  '2026-09-28', // 教師節
-  '2026-10-09', // 國慶日補假（10/10適逢週六）
-  '2026-10-10', // 國慶日
-  '2026-10-25', // 台灣光復節
-  '2026-10-26', // 台灣光復節補假（10/25適逢週日）
-  '2026-12-25', // 行憲紀念日
+// 中華民國115年（2026年）國定假日／連假名單（依行政院人事行政總處公布之辦公日曆表）——內建預設值。
+// 實際使用的名單改在 M2「國定假日設定」維護（每年可自行增減、改名稱）；M2 沒編輯過時才沿用這份內建名單。
+const DEFAULT_HOLIDAYS_2026 = [
+  ['2026-01-01','元旦'],
+  ['2026-02-14','春節連假'],['2026-02-15','春節連假'],['2026-02-16','春節連假'],['2026-02-17','春節連假'],['2026-02-18','春節連假'],
+  ['2026-02-19','春節連假'],['2026-02-20','春節連假'],['2026-02-21','春節連假'],['2026-02-22','春節連假'],
+  ['2026-02-28','和平紀念日'],
+  ['2026-04-04','兒童節'],
+  ['2026-04-05','清明節'],
+  ['2026-05-01','勞動節'],
+  ['2026-06-19','端午節'],
+  ['2026-09-25','中秋節'],
+  ['2026-09-28','教師節'],
+  ['2026-10-09','國慶日補假'],
+  ['2026-10-10','國慶日'],
+  ['2026-10-25','台灣光復節'],
+  ['2026-10-26','台灣光復節補假'],
+  ['2026-12-25','行憲紀念日'],
 ];
+// null ＝ 還沒在 M2 編輯過，沿用內建名單；陣列（含空陣列）＝使用者設定的名單
+let holidayList = loadStore(STORE_KEYS.holidays, null);
+let holidayDateSet = new Set();
+function currentHolidayEntries(){ return holidayList === null ? DEFAULT_HOLIDAYS_2026.map(([date,name])=>({ date, name })) : holidayList; }
+function rebuildHolidaySet(){ holidayDateSet = new Set(currentHolidayEntries().map(h=>h.date)); }
+rebuildHolidaySet();
 function isNationalHoliday(dateStr){
-  return NATIONAL_HOLIDAYS_2026.includes(dateStr);
+  return holidayDateSet.has(dateStr);
 }
 // 取得某天某地點的「人力涵蓋」紀錄：合併①一般員工排班(schedule) ②外師課程排定(courseSchedule)，
 // 因為課程排定是獨立於員工排班的另一份資料，之前M5沒有把它算進去，導致「協會上午有排課程、
@@ -6571,7 +6666,13 @@ function minToHM(min){ return String(Math.floor(min/60)).padStart(2,'0') + ':' +
 function buildTemplatesPayload(){
   const lunchRows = shiftTemplates.filter(t=>t.lunchHours>0)
     .map(t=>({ id: LUNCH_ID_PREFIX + t.id, name:'午休', start:'00:00', end: minToHM(Math.round(t.lunchHours*60)) }));
-  return shiftTemplates.concat(lunchRows);
+  let holidayRows = [];
+  if(holidayList !== null){
+    holidayRows = holidayList.length
+      ? holidayList.map(h=>({ id:'holiday:'+h.date, name: h.name || '國定假日', start:'00:00', end:'00:01' }))
+      : [{ id:'holiday:none', name:'無', start:'00:00', end:'00:01' }];
+  }
+  return shiftTemplates.concat(lunchRows, holidayRows);
 }
 // 這筆排班對應哪個有午休的時段按鈕：時間要完全相同，而且按鈕要「適用」這個地點：
 //   名稱含某個地點名稱（如「平安整天」「清禾整天」）→ 只適用該地點；名稱含「據點」→ 適用所有據點；其他（如「整天」）→ 適用所有地點。
