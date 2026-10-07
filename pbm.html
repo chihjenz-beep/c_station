@@ -903,8 +903,8 @@
   .staff-card .pill-select{flex-wrap:wrap;}
   .staff-card .sc-foot{display:flex;align-items:center;justify-content:flex-end;}
   /* ===== 據點指派：卡片由左而右、由上而下排列（多欄格線，窄螢幕自動變單欄） ===== */
-  #siteList{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr));gap:10px;grid-auto-flow:row;}
-  #siteList .site-card{margin-bottom:0;min-width:0;}
+  #siteList,#clinicWeekdayList{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr));gap:10px;grid-auto-flow:row;}
+  #siteList .site-card,#clinicWeekdayList .site-card{margin-bottom:0;min-width:0;}
   /* ===== 診所臨時休診 ===== */
   .closure-block{margin-top:16px;padding-top:14px;border-top:1px dashed var(--border);}
   .closure-block .closure-title{font-size:13px;font-weight:700;color:var(--brown-dark);margin-bottom:4px;}
@@ -1188,7 +1188,7 @@
 <header>
   <div>
     <h1>📅 平安長照醫療體系排班系統</h1>
-    <div class="sub">平安家園多元關懷協會 ｜ 診所｜ C據點</div>
+    <div class="sub">平安家園多元關懷協會 ｜ 醫療院所｜ C據點</div>
   </div>
   <div class="actions">
     <button class="icon-btn" id="syncBtn">同步</button>
@@ -1226,12 +1226,18 @@
     </div>
 
     <div class="card">
-      <h2>🏥 診所上班日設定 <span class="badge clinic">平安／清禾</span></h2>
-      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">平安、清禾兩間診所各自設定固定的每週上班日，供M5衝突偵測模組稽核「當天完全沒有安排人力」使用（與下方「據點指派」中的診所上班日為同一份資料，改一邊兩邊同步）</div>
+      <h2>🏥 醫療院所 <span class="badge clinic" id="clinicCountBadge">0間院所</span></h2>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
+        系統分成「<b>醫療院所</b>」與「<b>據點</b>」兩大類，各自管理、互不影響。院所原有平安、清禾，可自行新增更多間。每間院所各自設定固定的每週上班日（供 M5 稽核「當天完全沒有安排人力」）與值班員工，並可臨時設定單日上午／下午休診。
+      </div>
       <div id="clinicWeekdayList"></div>
+      <div style="margin-top:10px;display:flex;gap:8px;">
+        <input type="text" id="newClinicName" placeholder="新增醫療院所名稱" style="flex:1;">
+        <button class="btn" onclick="addClinic()">＋ 新增醫療院所</button>
+      </div>
       <div class="closure-block">
         <div class="closure-title">🚫 臨時休診（單日上午／下午）</div>
-        <div class="closure-desc">因應營運彈性，可隨時將某間診所某一天的上午或下午（或全天）設為休診。M5 衝突偵測會據此略過該時段的「未安排人力／只排半天」提醒，並在休診時段仍有排班時另行提醒。</div>
+        <div class="closure-desc">因應營運彈性，可隨時將某間醫療院所某一天的上午或下午（或全天）設為休診。M5 衝突偵測會據此略過該時段的「未安排人力／只排半天」提醒，並在休診時段仍有排班時另行提醒。</div>
         <div class="closure-form">
           <select id="closureClinic"></select>
           <input type="date" id="closureDate">
@@ -1247,8 +1253,8 @@
     </div>
 
     <div class="card">
-      <h2>🏘️ 據點指派 <span class="badge station">16個據點</span></h2>
-      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">每個據點可指派多位主責人員與多位延緩老師（皆從22位員工中選取）。<br>🗓️ 「上班日」每按一次星期會循環切換：<b>灰＝不營運 → 整天 → 上午 → 下午</b>；新增的據點預設全部不營運，請自行設定。</div>
+      <h2>🏘️ 據點指派 <span class="badge station" id="siteCountBadge">0個據點</span></h2>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">每個據點可指派多位主責人員與多位延緩老師（皆從22位員工中選取）。醫療院所（平安、清禾等）改在上方「醫療院所」卡片管理，不在這裡。<br>🗓️ 「上班日」每按一次星期會循環切換：<b>灰＝不營運 → 整天 → 上午 → 下午</b>；新增的據點預設全部不營運，請自行設定。</div>
       <div id="siteList"></div>
       <div style="margin-top:10px;display:flex;gap:8px;">
         <input type="text" id="newSiteName" placeholder="新增據點名稱" style="flex:1;">
@@ -1285,8 +1291,8 @@
     <div class="card">
       <h2>🕐 快速時段按鈕 <span class="badge gold">彈性排班</span></h2>
       <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
-        時段不綁地點 —— 排班時（M3）再選人員與地點（診所或任一據點）。<br>
-        同一人同一天可分別建立上午診所＋下午據點等跨地點組合。按鈕只是快速套用起點，套用後仍可手動調整時間。<br>
+        時段不綁地點 —— 排班時（M3）再選人員與地點（醫療院所或任一據點）。<br>
+        同一人同一天可分別建立上午院所＋下午據點等跨地點組合。按鈕只是快速套用起點，套用後仍可手動調整時間。<br>
         🍱 全天班別可填「午休（小時）」，M8 報表的排班工時會自動扣除；排班的開始／結束時間與該按鈕完全相同才會扣，沒填就不扣。
       </div>
       <div style="display:flex;gap:8px;margin-bottom:10px;">
@@ -1406,7 +1412,7 @@
           <button class="btn outline" onclick="navCal(1)">下一個 ›</button>
         </div>
         <div id="calLegendNormal" class="cal-legend">
-          <span><i style="background:var(--clinic);"></i>診所</span>
+          <span><i style="background:var(--clinic);"></i>醫療院所</span>
           <span><i style="background:var(--station);"></i>據點</span>
           <span><i style="background:var(--danger);"></i>衝突</span>
           <span class="lg-half">地點後標示：上＝上午　下＝下午　全＝全天</span>
@@ -1548,6 +1554,10 @@
               <input type="checkbox" id="bulkExcludeWeekend" checked style="width:auto;">
               排除週六、週日
             </label>
+            <label id="bulkExcludeHolidayRow" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);margin-top:4px;">
+              <input type="checkbox" id="bulkExcludeHoliday" checked style="width:auto;">
+              排除國定假日（依 M2 設定）
+            </label>
           </div>
           <div class="bulk-form-col" id="bulkApplyTimeCol">
             <span class="bfc-label">時段</span>
@@ -1626,9 +1636,9 @@
           <div class="desc" style="font-size:11px;color:var(--text-soft);margin:-2px 0 8px;">
             會依「星期幾＋第幾次出現」對齊複製（例如來源月的第2個星期一→目標月的第2個星期一），避免因兩個月1號星期幾不同，
             造成平日班表錯位到週末的問題。完整保留每天每個人的地點/時段/自訂時間。若來源某天在目標月份中沒有對應的星期次數
-            （例如來源有第5個星期一，目標月只有4個），該天會自動略過。<strong>不含診所（平安、清禾）的班</strong>，診所班請另外排；也不含請假紀錄，只複製據點排班。
+            （例如來源有第5個星期一，目標月只有4個），該天會自動略過。<strong>不含醫療院所的班</strong>，院所班請另外排；也不含請假紀錄，只複製據點排班。
           </div>
-          <button class="btn gold" style="width:100%;margin-top:6px;" onclick="runCopyFullMonth()">📆 整月複製給全員（不含診所）</button>
+          <button class="btn gold" style="width:100%;margin-top:6px;" onclick="runCopyFullMonth()">📆 整月複製給全員（不含醫療院所）</button>
         </div>
 
         <div id="copyPersonSection" style="display:none;">
@@ -1747,7 +1757,7 @@
         <span class="badge danger">衝突②</span> 已登記請假/排休卻被排班　
         <span class="badge" style="background:var(--warn);color:#fff;">提醒③</span> 據點當天完全沒有安排人力　
         <span class="badge" style="background:var(--warn);color:#fff;">提醒④</span> 據點當天只排了上午或下午（另一半空著）<br>
-        （提醒③④已排除國定假日，以及各據點/診所在「M1 員工管理」設定的營運星期，例如北華村僅設定週二、平安與清禾各自的固定休診日；可到M1調整。提醒④以中午12:00為上午/下午分界）<br>
+        （提醒③④已排除國定假日，以及各據點／醫療院所在「M1 員工管理」設定的營運星期，例如北華村僅設定週二、各院所各自的固定休診日；可到M1調整。提醒④以中午12:00為上午/下午分界）<br>
         點擊任一筆可直接跳轉到當日排班彈窗處理。
       </div>
       <div id="conflictSummary" style="margin-bottom:10px;"></div>
@@ -1847,7 +1857,7 @@
     </div>
 
     <div class="card">
-      <h2>👤 每人總班數（診所／據點細分）</h2>
+      <h2>👤 每人總班數（醫療院所／據點細分）</h2>
       <div id="reportByStaffTable"></div>
     </div>
 
@@ -2704,7 +2714,17 @@ const CLINIC_SITE_DEFS = [
 ];
 // 使用者主動刪除過的診所 id：之後載入或雲端拉回都不再自動補回（可在M1「診所上班日設定」卡片還原）。僅存本機。
 let deletedClinicIds = loadStore(STORE_KEYS.deletedClinicIds, []);
+// 院所以 id 前綴「clinic_」辨識（雲端同步的據點資料不含 isClinic 欄位）：平安、清禾是固定 id，
+// 使用者新增的院所也用「clinic_」開頭的 id，所以拉回雲端後都能補回旗標。
 function ensureClinicSites(){
+  sites.forEach(x=>{
+    if(String(x.id).startsWith('clinic_')){
+      x.isClinic = true;
+      if(!x.dutyStaffIds) x.dutyStaffIds = Array.from(new Set([...(x.mainStaffIds||[]), ...(x.reliefStaffIds||[])]));
+      if(!x.mainStaffIds) x.mainStaffIds = [];
+      if(!x.reliefStaffIds) x.reliefStaffIds = [];
+    }
+  });
   const missing = [];
   CLINIC_SITE_DEFS.forEach(def=>{
     if(deletedClinicIds.includes(def.id)){
@@ -2770,7 +2790,7 @@ function isClinicSite(id){
   const s = sites.find(x=>x.id===id);
   return !!(s && s.isClinic);
 }
-const SITE_PREF_LABEL = { clinic:'診所', station:'據點', both:'兩者皆可' };
+const SITE_PREF_LABEL = { clinic:'醫療院所', station:'據點', both:'兩者皆可' };
 // 依員工「上班類型」（診所／據點／兩者皆可）判斷是否可被排進某個地點；未設定或「兩者皆可」一律放行
 function staffAllowedAtSite(s, site){
   if(!s || !site) return true;
@@ -2812,7 +2832,7 @@ function renderStaffTable(){
         <span class="toggle-active ${s.active?'on':'off'}" onclick="toggleStaffActive('${s.id}')">${s.active?'啟用':'停用'}</span>
       </div>
       <div class="pill-select">
-        <span class="pill ${s.sites==='clinic'?'active clinic':''}" onclick="setStaffSite('${s.id}','clinic')">診所</span>
+        <span class="pill ${s.sites==='clinic'?'active clinic':''}" onclick="setStaffSite('${s.id}','clinic')">醫療院所</span>
         <span class="pill ${s.sites==='station'?'active station':''}" onclick="setStaffSite('${s.id}','station')">據點</span>
         <span class="pill ${s.sites==='both'?'active both':''}" onclick="setStaffSite('${s.id}','both')">兩者皆可</span>
       </div>
@@ -2865,13 +2885,13 @@ function addStaff(){
 }
 
 // ===== M1 匯出／匯入（員工清單＋據點指派） =====
-const SITES_LABEL = { clinic:'診所', station:'據點', both:'皆可' };
+const SITES_LABEL = { clinic:'醫療院所', station:'據點', both:'皆可' };
 function exportM1XLSX(){
   const staffRows = staff.map(s=>({
     id: s.id, 姓名: s.name, 可排地點: SITES_LABEL[s.sites] || s.sites, 在職: s.active ? '是' : '否'
   }));
   const siteRows = sites.map(s=>({
-    id: s.id, 名稱: s.name, 類型: s.isClinic ? '診所' : '據點',
+    id: s.id, 名稱: s.name, 類型: s.isClinic ? '醫療院所' : '據點',
     主要人員: (s.mainStaffIds||[]).map(getStaffName).join('、'),
     代班人員: (s.reliefStaffIds||[]).map(getStaffName).join('、'),
     主責人員: (s.dutyStaffIds||[]).map(getStaffName).join('、'),
@@ -2893,7 +2913,7 @@ function importM1XLSX(){
       const name = String(row['姓名']||'').trim();
       if(!name) return;
       const typeLabel = String(row['可排地點']||'皆可').trim();
-      const sitesVal = typeLabel==='診所' ? 'clinic' : typeLabel==='據點' ? 'station' : 'both';
+      const sitesVal = (typeLabel==='診所' || typeLabel==='醫療院所') ? 'clinic' : typeLabel==='據點' ? 'station' : 'both';
       const activeVal = !(String(row['在職']||'是').trim()==='否');
       const id = String(row['id']||'').trim();
       if(id && byId[id]){
@@ -2953,7 +2973,10 @@ function importM1XLSX(){
 function renderSites(){
   const container = document.getElementById('siteList');
   const WEEKDAY_LABELS = ['日','一','二','三','四','五','六'];
-  container.innerHTML = sites.map(site=>`
+  const stationList = sites.filter(x=>!x.isClinic);   // 據點指派只列據點；醫療院所在「醫療院所」卡片管理
+  const badge = document.getElementById('siteCountBadge');
+  if(badge) badge.textContent = stationList.length + '個據點';
+  container.innerHTML = stationList.map(site=>`
     <div class="site-card">
       <div class="site-head">
         <span class="site-name">${site.isClinic?'🏥':'📍'} ${site.name}</span>
@@ -3026,27 +3049,40 @@ function toggleSiteOperatingDay(siteId, dow){
   renderClinicWeekdays(); // 診所卡片與據點指派共用同一份資料，兩邊一起刷新
   if(typeof renderConflictOverview==='function') renderConflictOverview();
 }
-// 診所上班日卡片：平安、清禾各一列，直接讀寫各自 site.operatingWeekdays（與M5檢核、據點指派同一份資料）
+// 醫療院所卡片：每間院所一張卡（上班日、值班員工），可新增、可刪除；與「據點指派」是兩份獨立的清單
 function renderClinicWeekdays(){
   const container = document.getElementById('clinicWeekdayList');
   if(!container) return;
   const WEEKDAY_LABELS = ['日','一','二','三','四','五','六'];
-  container.innerHTML = CLINIC_SITE_DEFS.map((def, i)=>{
-    const site = sites.find(s=>s.id===def.id);
-    if(!site) return `
-      <div class="site-role-row" style="${i===0?'margin-top:0;':''}">
-        <span class="role-label">${def.name}</span>
-        <span style="font-size:12px;color:var(--text-soft);">已刪除</span>
-        <button class="btn outline" style="padding:4px 10px;font-size:11px;" onclick="restoreClinicSite('${def.id}')">＋ 還原「${def.name}」診所</button>
-      </div>`;
-    return `
-      <div class="site-role-row" style="${i===0?'margin-top:0;':''}">
-        <span class="role-label">${site.name}</span>
+  const clinicList = sites.filter(x=>x.isClinic);
+  const badge = document.getElementById('clinicCountBadge');
+  if(badge) badge.textContent = clinicList.length + '間院所';
+  const restoreBtns = CLINIC_SITE_DEFS.filter(d=>!sites.some(x=>x.id===d.id)).map(d=>
+    `<button class="btn outline" style="padding:4px 10px;font-size:11px;" onclick="restoreClinicSite('${d.id}')">＋ 還原「${d.name}」</button>`).join(' ');
+  container.innerHTML = clinicList.map(site=>`
+    <div class="site-card">
+      <div class="site-head">
+        <span class="site-name">🏥 ${site.name}</span>
+        <button class="row-del" onclick="deleteSite('${site.id}')">✕ 刪除院所</button>
+      </div>
+      <div class="site-role-row">
+        <span class="role-label">上班日</span>
         <div class="tag-list">
           ${WEEKDAY_LABELS.map((label, dow)=>weekdayChipHtml(site, dow, label)).join('')}
+          ${realOperatingDays(site).length===0 ? '<span style="font-size:11px;color:var(--warn);font-weight:600;align-self:center;">尚未設定上班日（目前視為不營運）</span>' : ''}
         </div>
-      </div>`;
-  }).join('');
+      </div>
+      <div class="site-role-row">
+        <span class="role-label">值班員工</span>
+        <div class="tag-list">
+          ${(site.dutyStaffIds||[]).map(sid=>`<span class="tag-chip">${getStaffName(sid)}<span class="x" onclick="removeSiteRole('${site.id}','duty','${sid}')">✕</span></span>`).join('')}
+          <select class="add-tag-select" onchange="addSiteRole('${site.id}','duty',this.value);this.value='';">
+            <option value="">＋新增值班員工</option>
+            ${staff.filter(x=>x.active && !(site.dutyStaffIds||[]).includes(x.id)).map(x=>`<option value="${x.id}">${x.name}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+    </div>`).join('') + (restoreBtns ? `<div style="grid-column:1/-1;">${restoreBtns}</div>` : '');
 }
 let showPastClosures = false;
 function renderClinicClosures(){
@@ -3054,9 +3090,11 @@ function renderClinicClosures(){
   const dateInp = document.getElementById('closureDate');
   const listEl = document.getElementById('closureList');
   if(!sel || !listEl) return;
-  const liveClinics = CLINIC_SITE_DEFS.filter(d=>sites.some(s=>s.id===d.id));
+  const liveClinics = sites.filter(x=>x.isClinic);
   if([...sel.options].map(o=>o.value).join(',') !== liveClinics.map(d=>d.id).join(',')){
+    const prevSel = sel.value;
     sel.innerHTML = liveClinics.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');
+    if(prevSel && liveClinics.some(d=>d.id===prevSel)) sel.value = prevSel;
   }
   if(dateInp && !dateInp.value) dateInp.value = todayStr();
   // 同一診所同一天上午+下午都休診 → 合併顯示為「全天休診」
@@ -3092,7 +3130,7 @@ function addClinicClosure(){
   const siteId = document.getElementById('closureClinic').value;
   const date = document.getElementById('closureDate').value;
   const mode = document.getElementById('closureHalf').value; // am | pm | all
-  if(!siteId || !date){ alert('請選擇診所與日期'); return; }
+  if(!siteId || !date){ alert('請選擇醫療院所與日期'); return; }
   const halves = mode==='all' ? ['am','pm'] : [mode];
   halves.forEach(h=>{
     if(!isClinicHalfClosed(siteId, date, h)) clinicClosures.push({ id: uid('cls'), siteId, date, half:h });
@@ -3116,7 +3154,7 @@ function addSiteRole(siteId, role, staffId){
   if(!site[key]) site[key] = [];
   if(!site[key].includes(staffId)) site[key].push(staffId);
   saveStore(STORE_KEYS.sites, sites);
-  renderSites();
+  renderSites(); renderClinicWeekdays();
 }
 function removeSiteRole(siteId, role, staffId){
   const site = sites.find(x=>x.id===siteId);
@@ -3124,12 +3162,14 @@ function removeSiteRole(siteId, role, staffId){
   const key = role==='main' ? 'mainStaffIds' : role==='relief' ? 'reliefStaffIds' : 'dutyStaffIds';
   site[key] = (site[key]||[]).filter(x=>x!==staffId);
   saveStore(STORE_KEYS.sites, sites);
-  renderSites();
+  renderSites(); renderClinicWeekdays();
 }
 function deleteSite(siteId){
+  const site = sites.find(x=>x.id===siteId);
+  const isClinic = !!(site && site.isClinic);
   const isClinicDef = CLINIC_SITE_DEFS.some(d=>d.id===siteId);
-  const msg = isClinicDef
-    ? '確定刪除此診所？相關外師指派將一併移除。\n刪除後不會再自動補回，之後可到「診所上班日設定」卡片還原。'
+  const msg = isClinic
+    ? `確定刪除醫療院所「${site.name}」？相關外師指派將一併移除。` + (isClinicDef ? '\n刪除後不會再自動補回，之後可在「醫療院所」卡片按「還原」。' : '')
     : '確定刪除此據點？相關外師指派將一併移除。';
   if(!confirm(msg)) return;
   if(isClinicDef && !deletedClinicIds.includes(siteId)){
@@ -3143,7 +3183,7 @@ function deleteSite(siteId){
   saveStore(STORE_KEYS.sites, sites);
   saveStore(STORE_KEYS.externalTeachers, externalTeachers);
   renderSites(); renderTeachers();
-  if(isClinicDef){
+  if(isClinic){
     renderClinicWeekdays(); renderClinicClosures(); renderSchedPalette();
     if(typeof renderConflictOverview==='function') renderConflictOverview();
   }
@@ -3156,10 +3196,25 @@ function restoreClinicSite(siteId){
   renderSites(); renderClinicWeekdays(); renderClinicClosures(); renderSchedPalette();
   if(typeof renderConflictOverview==='function') renderConflictOverview();
 }
+function addClinic(){
+  const inp = document.getElementById('newClinicName');
+  const name = inp.value.trim();
+  if(!name){ alert('請輸入醫療院所名稱'); return; }
+  if(sites.some(x=>x.name===name)){ alert('已經有同名的醫療院所或據點了，請換一個名稱'); return; }
+  // id 用「clinic_」開頭，雲端同步後才認得它是醫療院所；新增的院所預設不營運，需自行點選上班日
+  const clinic = { id: uid('clinic'), name, isClinic:true, mainStaffIds:[], reliefStaffIds:[], dutyStaffIds:[], operatingWeekdays:[NO_OPERATING_DAY] };
+  const lastClinicIdx = sites.reduce((acc, x, i)=> x.isClinic ? i : acc, -1);
+  sites.splice(lastClinicIdx + 1, 0, clinic);   // 排在其他院所後面、據點前面
+  saveStore(STORE_KEYS.sites, sites);
+  inp.value = '';
+  renderClinicWeekdays(); renderClinicClosures(); renderSchedPalette();
+  if(typeof populateM9Selects==='function') populateM9Selects();
+}
 function addSite(){
   const inp = document.getElementById('newSiteName');
   const name = inp.value.trim();
   if(!name){ alert('請輸入據點名稱'); return; }
+  if(sites.some(x=>x.name===name)){ alert('已經有同名的醫療院所或據點了，請換一個名稱'); return; }
   sites.push({ id: uid('site'), name, mainStaffIds:[], reliefStaffIds:[], operatingWeekdays:[NO_OPERATING_DAY] });   // 新增據點不預設營運日，需到「上班日」自行點選
   saveStore(STORE_KEYS.sites, sites);
   inp.value='';
@@ -3471,7 +3526,7 @@ function addHoliday(){
   ensureHolidayListMaterialized();
   if(holidayList.some(h=>h.date===date)){ alert('這一天已經在名單裡了'); return; }
   const dow = new Date(date+'T00:00:00').getDay();
-  if((dow===0 || dow===6) && !confirm('這一天是週末，通常不用特別設定（除非診所／據點週末有營運）。仍要新增嗎？')) return;
+  if((dow===0 || dow===6) && !confirm('這一天是週末，通常不用特別設定（除非醫療院所／據點週末有營運）。仍要新增嗎？')) return;
   holidayList.push({ date, name });
   document.getElementById('holidayNewName').value = '';
   document.getElementById('holidayYearSel').value = date.slice(0,4);
@@ -3649,6 +3704,8 @@ function detectConflicts(dateStr){
     }
     // 排在據點非營運日
     if(isEntryOffDay(a, dateStr)) conflictIdx.add(a._idx);
+    // 排在國定假日
+    if(isNationalHoliday(dateStr)) conflictIdx.add(a._idx);
     for(let j=i+1;j<entries.length;j++){
       const b = entries[j];
       if(a.staffId===b.staffId){
@@ -4205,6 +4262,7 @@ function renderModalEntries(){
 }
 function addScheduleEntry(){
   if(isDateLocked(modalDate)){ alert(LOCK_MSG); return; }
+  if(isNationalHoliday(modalDate) && !confirm(`⚠️ ${modalDate} 是國定假日（${holidayNameOf(modalDate)}），確定要排班嗎？`)) return;
   const staffId = document.getElementById('formStaffSel').value;
   const site = document.getElementById('formSiteSel').value;
   const start = document.getElementById('formStart').value;
@@ -4270,7 +4328,7 @@ function renderSchedPalette(){
     || '<span style="font-size:12px;color:var(--text-soft);">尚無啟用中的員工</span>';
   const clinics = sites.filter(s=>s.isClinic), stations = sites.filter(s=>!s.isClinic);
   document.getElementById('palSites').innerHTML =
-    (clinics.length ? `<div class="pal-group-label">診所</div>` + clinics.map(s=>`<span class="pal-pill clinic" data-kind="site" data-id="${s.id}">🏥 ${s.name}</span>`).join('') : '') +
+    (clinics.length ? `<div class="pal-group-label">醫療院所</div>` + clinics.map(s=>`<span class="pal-pill clinic" data-kind="site" data-id="${s.id}">🏥 ${s.name}</span>`).join('') : '') +
     (stations.length ? `<div class="pal-group-label">據點</div>` + stations.map(s=>`<span class="pal-pill station" data-kind="site" data-id="${s.id}">📍 ${s.name}</span>`).join('') : '');
   document.getElementById('palTimes').innerHTML = shiftTemplates.map(t=>
     `<span class="pal-pill time" data-kind="tpl" data-id="${t.id}">${t.name}<small>${t.start}–${t.end}</small></span>`
@@ -4354,7 +4412,7 @@ function onPalTimeInput(){
         showSchedToast(`⚠ ${s?s.name:''} 上班類型設定為「${s?SITE_PREF_LABEL[s.sites]||'兩者皆可':''}」，不能排進目前選的地點，如需調整請到 M1 員工管理修改`);
       } else if(kind==='site'){
         const site = sites.find(x=>x.id===id);
-        showSchedToast(`⚠ 目前選取的員工中，有人上班類型不符「${site&&site.isClinic?'診所':'據點'}」，請先調整員工或地點的選擇`);
+        showSchedToast(`⚠ 目前選取的員工中，有人上班類型不符「${site&&site.isClinic?'醫療院所':'據點'}」，請先調整員工或地點的選擇`);
       }
       return;
     }
@@ -4396,6 +4454,7 @@ function closedHalfNoticeFor(siteId, dateStr, start, end){
 }
 function placeSchedCombo(dateStr){
   if(isDateLocked(dateStr)){ showSchedToast(LOCK_MSG); return; }
+  if(isNationalHoliday(dateStr) && !confirm(`⚠️ ${dateStr} 是國定假日（${holidayNameOf(dateStr)}），確定要排班嗎？`)) return;
   if(!isSchedComboReady()){ showSchedToast('請先在左側選好員工、地點與時段'); return; }
   const { staffIds, siteId, start, end } = schedPick;
   const site = sites.find(x=>x.id===siteId);
@@ -4625,7 +4684,7 @@ function buildScheduleBackupSheets(){
     (schedule[ds]||[]).slice().sort((a,b)=>{ const [as]=times(a),[bs]=times(b); return (as||'').localeCompare(bs||'') || getStaffName(a.staffId).localeCompare(getStaffName(b.staffId),'zh-Hant'); })
     .forEach(e=>{
       const [st,en] = times(e);
-      shiftRows.push([ds, wd(ds), getStaffName(e.staffId), getSiteName(e.site), isClinicSite(e.site)?'診所':'據點', st, en, getShiftHalfLabel(st,en), pubText(ds)]);
+      shiftRows.push([ds, wd(ds), getStaffName(e.staffId), getSiteName(e.site), isClinicSite(e.site)?'醫療院所':'據點', st, en, getShiftHalfLabel(st,en), pubText(ds)]);
     });
   });
   // 請假排休
@@ -4642,17 +4701,17 @@ function buildScheduleBackupSheets(){
     });
   });
   // 臨時休診
-  const closureRows = [['日期','星期','診所','時段']];
+  const closureRows = [['日期','星期','醫療院所','時段']];
   clinicClosures.slice().sort((a,b)=>a.date.localeCompare(b.date) || a.siteId.localeCompare(b.siteId) || a.half.localeCompare(b.half))
     .forEach(c=> closureRows.push([c.date, wd(c.date), getSiteName(c.siteId), c.half==='am'?'上午休診':'下午休診']));
   // 員工
-  const SITE_PREF = { clinic:'診所', station:'據點', both:'兩者皆可' };
+  const SITE_PREF = { clinic:'醫療院所', station:'據點', both:'兩者皆可' };
   const staffRows = [['姓名','可排地點','狀態']];
   staff.forEach(s=> staffRows.push([s.name, SITE_PREF[s.sites]||s.sites||'', s.active?'啟用':'停用']));
   // 據點（含診所）
   const siteRows = [['名稱','類型','營運星期','主要人員','支援人員']];
   sites.forEach(st=>{
-    siteRows.push([st.name, st.isClinic?'診所':'據點',
+    siteRows.push([st.name, st.isClinic?'醫療院所':'據點',
       operatingDaysText(st),
       st.isClinic ? (st.dutyStaffIds||[]).map(getStaffName).join('、') : (st.mainStaffIds||[]).map(getStaffName).join('、'),
       st.isClinic ? '' : (st.reliefStaffIds||[]).map(getStaffName).join('、')]);
@@ -4671,12 +4730,12 @@ function buildScheduleBackupSheets(){
     ['已發布月份', publishedMonths.slice().sort().join('、') || '（無）'],
     ['排班明細筆數', shiftRows.length-1], ['請假排休筆數', leaveRows.length-1],
     ['外師課程筆數', courseRows.length-1], ['臨時休診筆數', closureRows.length-1],
-    ['員工人數', staffRows.length-1], ['據點與診所數', siteRows.length-1],
+    ['員工人數', staffRows.length-1], ['據點與醫療院所數', siteRows.length-1],
     ['備註','外師課程只分上午／下午；上午＝中午12:00前開始，下午＝之後。']];
   return { sheets:[
     { name:'備份說明', rows:infoRows }, { name:'排班明細', rows:shiftRows }, { name:'請假排休', rows:leaveRows },
     { name:'外師課程', rows:courseRows }, { name:'臨時休診', rows:closureRows },
-    { name:'員工', rows:staffRows }, { name:'據點與診所', rows:siteRows }, { name:'班別模板', rows:tplRows }
+    { name:'員工', rows:staffRows }, { name:'據點與醫療院所', rows:siteRows }, { name:'班別模板', rows:tplRows }
   ], counts:{ shifts:shiftRows.length-1, leaves:leaveRows.length-1, courses:courseRows.length-1, closures:closureRows.length-1 } };
 }
 function exportScheduleBackupXlsx(){
@@ -4774,6 +4833,7 @@ function setBulkMode(mode){
   document.getElementById('bulkApplyBottom').style.display = mode==='apply' ? '' : 'none';
   document.getElementById('bulkCancelSection').style.display = mode==='cancel' ? '' : 'none';
   document.getElementById('bulkExcludeWeekendRow').style.display = mode==='apply' ? '' : 'none';
+  document.getElementById('bulkExcludeHolidayRow').style.display = mode==='apply' ? '' : 'none';
   document.getElementById('bulkModeDesc').textContent = mode==='apply'
     ? '選人員＋地點＋日期範圍 → 選時段後點「設定」（可重複設定多個時段，例如上午、下午各設一次）→ 全部設定完後點「套用」一次性排入月曆。'
     : '選人員＋地點＋日期範圍 → 點「批量取消」，刪除這些人員在這個地點、這段期間內的所有排班（不影響他們在其他地點的班）。';
@@ -4934,6 +4994,11 @@ function runBulkSchedule(){
     allDates = allDates.filter(d=>!isWeekend(d));
     excludedWeekendCount = before - allDates.length;
   }
+  let excludedHolidays = [];
+  if(document.getElementById('bulkExcludeHoliday').checked){
+    excludedHolidays = allDates.filter(isNationalHoliday);
+    allDates = allDates.filter(d=>!isNationalHoliday(d));
+  }
   const bulkLockedCount = allDates.filter(isDateLocked).length;
   allDates = allDates.filter(d=>!isDateLocked(d));
   if(allDates.length===0){ alert(LOCK_MSG + '\n所選日期範圍內沒有可排班的日期。'); return; }
@@ -4961,6 +5026,7 @@ function runBulkSchedule(){
   if(typeof renderConflictOverview==='function') renderConflictOverview();
 
   renderBulkReport(addedCount, skipped, allDates.length, bulkStaffIds.length, rulesToApply.length, excludedWeekendCount);
+  if(excludedHolidays.length>0) document.getElementById('bulkResultReport').insertAdjacentHTML('beforeend', `<div class="bulk-report-box" style="margin-top:6px;">🎌 已自動排除 ${excludedHolidays.length} 天國定假日：${excludedHolidays.map(d=>d.slice(5).replace('-','/')+'（'+holidayNameOf(d)+'）').join('、')}。</div>`);
   if(bulkBlockedNames.length>0) document.getElementById('bulkResultReport').insertAdjacentHTML('beforeend', `<div class="bulk-report-box" style="margin-top:6px;background:var(--danger-bg);border-color:var(--danger);color:var(--danger);">⚠ ${bulkBlockedNames.join('、')} 的上班類型不能排進「${siteLabelPlain(site)}」，未排入。</div>`);
   if(bulkLockedCount>0) document.getElementById('bulkResultReport').insertAdjacentHTML('beforeend', `<div class="bulk-report-box" style="margin-top:6px;">🔒 已略過 ${bulkLockedCount} 天過去月份的日期（已鎖定）。</div>`);
   // 套用完成後清空規則，避免重複按套用時誤加
@@ -5073,7 +5139,7 @@ function setCopyMode(mode){
   if(mode==='month'){
     document.getElementById('copyModeDesc').textContent = '選一位人員，把他某個月份的班表完整複製到另一個月份（適合固定排班的據點人員）。若目標月份已有班表，會拒絕複製。';
   } else if(mode==='full'){
-    document.getElementById('copyModeDesc').textContent = '把整個月份「所有人員」在各據點的排班，逐日複製到另一個月份（不含診所的班，適合據點班表要原封不動搬到下個月的情況）。若目標月份已有據點排班（診所班不計），會拒絕複製。';
+    document.getElementById('copyModeDesc').textContent = '把整個月份「所有人員」在各據點的排班，逐日複製到另一個月份（不含醫療院所的班，適合據點班表要原封不動搬到下個月的情況）。若目標月份已有據點排班（院所班不計），會拒絕複製。';
   } else if(mode==='person'){
     document.getElementById('copyModeDesc').textContent = '選一位來源人員與月份（可複選多個月份），複製給多位目標人員（複製後每個人都可以自己再微調地點/時間）。若任一目標人員在所選月份已有班表，會拒絕複製。';
   } else {
@@ -5273,10 +5339,12 @@ function runCopyMonth(){
   // 套用固定模式到目標月份的所有工作日（排除週六、週日）
   let copiedCount = 0;
   let skippedWeekendCount = 0;
+  const skippedHolidayDays = [];
   const targetDaysInMonth = new Date(Number(targetMonth.slice(0,4)), Number(targetMonth.slice(5,7)), 0).getDate();
   for(let day=1; day<=targetDaysInMonth; day++){
     const dateStr = targetMonth + '-' + String(day).padStart(2,'0');
     if(isWeekend(dateStr)){ skippedWeekendCount++; continue; }
+    if(isNationalHoliday(dateStr)){ skippedHolidayDays.push(dateStr); continue; }   // 國定假日不排班
     if(!schedule[dateStr]) schedule[dateStr] = [];
     schedule[dateStr].push({ staffId, site: pattern.site, start: pattern.start, end: pattern.end, status: 'draft' });
     copiedCount++;
@@ -5290,6 +5358,9 @@ function runCopyMonth(){
   let reportHtml = `<div class="bulk-report-box success">✅ 已將 ${staffName} 在 ${sourceMonth} 的固定模式（${patternLabel}）套用到 ${targetMonth} 所有工作日，共 <strong>${copiedCount}</strong> 筆。`;
   if(skippedWeekendCount>0){
     reportHtml += `<br>已自動排除 ${skippedWeekendCount} 天週六／週日。`;
+  }
+  if(skippedHolidayDays.length>0){
+    reportHtml += `<br>已自動排除 ${skippedHolidayDays.length} 天國定假日：${skippedHolidayDays.map(d=>d.slice(5).replace('-','/')).join('、')}。`;
   }
   reportHtml += '可至M3微調地點或時間。</div>';
   document.getElementById('copyResultReport').innerHTML = reportHtml;
@@ -5336,7 +5407,7 @@ function runCopyFullMonth(){
     .reduce((n,d)=> n + (schedule[d]||[]).filter(e=>isClinicSite(e.site)).length, 0);
   if(sourceDates.length===0){
     document.getElementById('copyResultReport').innerHTML =
-      `<div class="bulk-report-box">ℹ️ ${sourceMonth} 沒有任何據點排班紀錄（診所班不在複製範圍），無法複製。</div>`;
+      `<div class="bulk-report-box">ℹ️ ${sourceMonth} 沒有任何據點排班紀錄（醫療院所的班不在複製範圍），無法複製。</div>`;
     return;
   }
   // 目標月份若已有任何據點排班，拒絕複製（避免覆蓋掉既有安排；需要重排請先用「清空整月」）
@@ -5344,17 +5415,19 @@ function runCopyFullMonth(){
   if(targetHasAny){
     document.getElementById('copyResultReport').innerHTML =
       `<div class="bulk-report-box" style="background:var(--danger-bg);border-color:var(--danger);color:var(--danger);">
-        ❌ 複製失敗：目標月份 ${targetMonth} 已有據點排班資料（診所班不計），請先用「🗑️ 清空整月」清空後再複製，避免覆蓋既有安排。
+        ❌ 複製失敗：目標月份 ${targetMonth} 已有據點排班資料（院所班不計），請先用「🗑️ 清空整月」清空後再複製，避免覆蓋既有安排。
       </div>`;
     return;
   }
 
   let copiedCount = 0;
   let skippedOutOfRangeDays = 0;
+  const skippedHolidayTargets = [];
   sourceDates.forEach(sourceDateStr=>{
     const { dow, occurrence } = getWeekdayOccurrence(sourceDateStr);
     const targetDateStr = findDateByWeekdayOccurrence(targetMonth, dow, occurrence);
     if(!targetDateStr){ skippedOutOfRangeDays++; return; } // 目標月份沒有「第occurrence次的星期dow」（例如來源有第5個星期一，目標月只有4個）
+    if(isNationalHoliday(targetDateStr)){ skippedHolidayTargets.push(targetDateStr); return; }   // 對到國定假日的不複製
     if(!schedule[targetDateStr]) schedule[targetDateStr] = [];
     stationEntries(sourceDateStr).forEach(entry=>{
       // 完整複製每筆據點排班內容（人員/地點/時段/自訂時間），狀態一律設為草稿，方便複製後再統一確認發布
@@ -5369,10 +5442,13 @@ function runCopyFullMonth(){
 
   let reportHtml = `<div class="bulk-report-box success">✅ 已將 ${sourceMonth} 整月據點排班（全員）依星期對齊複製到 ${targetMonth}，共 <strong>${copiedCount}</strong> 筆。`;
   if(skippedClinicEntries>0){
-    reportHtml += `<br>診所（平安、清禾）的班 ${skippedClinicEntries} 筆不在複製範圍，未複製。`;
+    reportHtml += `<br>醫療院所的班 ${skippedClinicEntries} 筆不在複製範圍，未複製。`;
   }
   if(skippedOutOfRangeDays>0){
     reportHtml += `<br>來源月份有 ${skippedOutOfRangeDays} 天在目標月份中沒有對應的星期次數，已自動略過。`;
+  }
+  if(skippedHolidayTargets.length>0){
+    reportHtml += `<br>${skippedHolidayTargets.length} 天對到國定假日，已略過不複製：${skippedHolidayTargets.map(d=>d.slice(5).replace('-','/')).join('、')}。`;
   }
   reportHtml += '<br>複製後狀態皆為草稿，請至M3或M7確認後再發布。</div>';
   document.getElementById('copyResultReport').innerHTML = reportHtml;
@@ -5739,7 +5815,7 @@ async function deleteLeaveFromOverview(dateStr, idx, force=false){
 // M5 衝突偵測總覽
 // ===========================================================
 // 掃描所有已有排班資料的日期，回傳衝突清單
-// 每筆: { dateStr, staffId, site, start, end, reasons:['overlap'|'leave'|'offday'] }
+// 每筆: { dateStr, staffId, site, start, end, reasons:['overlap'|'leave'|'offday'|'holiday'] }
 function scanAllConflicts(){
   const results = [];
   const allDates = Object.keys(schedule).sort();
@@ -5760,6 +5836,7 @@ function scanAllConflicts(){
       });
       if(hasOverlap) reasons.push('overlap');
       if(isEntryOffDay(e, dateStr)) reasons.push('offday');
+      if(isNationalHoliday(dateStr)) reasons.push('holiday');
       results.push({ dateStr, staffId:e.staffId, site:e.site, start:e.start, end:e.end, reasons });
     });
   });
@@ -5804,6 +5881,7 @@ rebuildHolidaySet();
 function isNationalHoliday(dateStr){
   return holidayDateSet.has(dateStr);
 }
+function holidayNameOf(dateStr){ const h = currentHolidayEntries().find(x=>x.date===dateStr); return h ? h.name : '國定假日'; }
 // 取得某天某地點的「人力涵蓋」紀錄：合併①一般員工排班(schedule) ②外師課程排定(courseSchedule)，
 // 因為課程排定是獨立於員工排班的另一份資料，之前M5沒有把它算進去，導致「協會上午有排課程、
 // 下午沒排班」這種情況被誤判成「當天完全沒有安排人力」，這裡統一合併兩種來源再判斷涵蓋範圍
@@ -5896,6 +5974,17 @@ function scanPartialDayCoverage(){
   });
   return results;
 }
+// 一鍵移除排在國定假日的班（過去月份已鎖定的不動）
+function removeHolidayScheduleEntries(){
+  const dates = Object.keys(schedule).filter(d=>isNationalHoliday(d) && !isDateLocked(d) && (schedule[d]||[]).length>0).sort();
+  const count = dates.reduce((n,d)=>n+schedule[d].length, 0);
+  if(!dates.length){ alert('目前沒有排在國定假日的班'); return; }
+  if(!confirm(`將移除 ${dates.length} 個國定假日共 ${count} 筆排班：\n${dates.map(d=>d.slice(5).replace('-','/')+'（'+holidayNameOf(d)+'）').join('、')}\n\n確定要移除嗎？`)) return;
+  dates.forEach(d=>{ delete schedule[d]; });
+  saveStore(STORE_KEYS.schedule, schedule);
+  renderCalendar();
+  if(typeof renderConflictOverview==='function') renderConflictOverview();
+}
 // 外師課程衝突：同一個據點、同一天、同一個時段（上午／下午）不能安排超過一堂外師課程
 function courseConflictKey(siteId, half){ return siteId + '|' + half; }
 function scanCourseConflicts(){
@@ -5972,7 +6061,7 @@ function buildConflictDayGroups(){
     addDaySite(group, c.site);
     group.rows.push({
       kind:'conflict', staffId:c.staffId, siteId:c.site, start:c.start, end:c.end,
-      reason:c.reasons.map(r=> r==='overlap' ? '跨地點重疊' : r==='offday' ? offDayReasonText(c) : '與請假衝突').join('、')
+      reason:c.reasons.map(r=> r==='overlap' ? '跨地點重疊' : r==='offday' ? offDayReasonText(c) : r==='holiday' ? `國定假日（${holidayNameOf(c.dateStr)}）仍排班` : '與請假衝突').join('、')
     });
   });
   gaps.forEach(g=>{
@@ -6067,6 +6156,7 @@ function renderConflictOverview(){
   const overlapCount = conflicts.filter(c=>c.reasons.includes('overlap')).length;
   const leaveCount = conflicts.filter(c=>c.reasons.includes('leave')).length;
   const offDayCount = conflicts.filter(c=>c.reasons.includes('offday')).length;
+  const holidayCount = conflicts.filter(c=>c.reasons.includes('holiday')).length;
   const dateCount = new Set([...conflicts.map(c=>c.dateStr), ...gaps.map(g=>g.dateStr), ...halfDayGaps.map(g=>g.dateStr), ...closedScheduled.map(g=>g.dateStr), ...courseConflicts.map(g=>g.dateStr)]).size;
 
   summaryEl.innerHTML = `
@@ -6075,11 +6165,13 @@ function renderConflictOverview(){
       <div class="conflict-stat-card"><div class="num">${overlapCount}</div><div class="lbl">跨地點重疊</div></div>
       <div class="conflict-stat-card"><div class="num">${leaveCount}</div><div class="lbl">與請假衝突</div></div>
       <div class="conflict-stat-card"><div class="num">${offDayCount}</div><div class="lbl">非營運日排班</div></div>
+      <div class="conflict-stat-card"><div class="num">${holidayCount}</div><div class="lbl">國定假日排班</div></div>
       <div class="conflict-stat-card"><div class="num">${gaps.length}</div><div class="lbl">據點未安排人力</div></div>
       <div class="conflict-stat-card"><div class="num">${halfDayGaps.length}</div><div class="lbl">只排半天</div></div>
       <div class="conflict-stat-card"><div class="num">${courseConflicts.length}</div><div class="lbl">外師課程衝突</div></div>
       <div class="conflict-stat-card"><div class="num">${dateCount}</div><div class="lbl">受影響日期</div></div>
     </div>
+    ${holidayCount>0 ? `<div style="margin:8px 0;"><button class="btn outline" onclick="removeHolidayScheduleEntries()">🧹 移除國定假日的排班（${holidayCount} 筆）</button></div>` : ''}
   `;
 
   if(conflicts.length===0 && gaps.length===0 && halfDayGaps.length===0 && closedScheduled.length===0 && courseConflicts.length===0){
@@ -6778,7 +6870,7 @@ function renderReportByStaff(byStaff){
     return;
   }
   staffIds.sort((a,b)=> (byStaff[b].clinicCount+byStaff[b].stationCount) - (byStaff[a].clinicCount+byStaff[a].stationCount));
-  let html = `<table class="report-table"><thead><tr><th>姓名</th><th class="num-head">診所班數</th><th class="num-head">據點班數</th><th class="num-head">總班數</th></tr></thead><tbody>`;
+  let html = `<table class="report-table"><thead><tr><th>姓名</th><th class="num-head">院所班數</th><th class="num-head">據點班數</th><th class="num-head">總班數</th></tr></thead><tbody>`;
   staffIds.forEach(id=>{
     const d = byStaff[id];
     const total = d.clinicCount + d.stationCount;
@@ -6893,7 +6985,7 @@ function exportM8XLSX(){
   const { startDate, endDate, byStaff, hoursByStaff, bySite, overtimeRecords, overtimeHoursByStaff, absenceRecords, absentHoursByStaff } = lastReportData;
   const byStaffRows = Object.keys(byStaff).map(id=>{
     const d = byStaff[id];
-    return { 姓名: getStaffName(id), 診所班數: d.clinicCount, 據點班數: d.stationCount, 總班數: d.clinicCount+d.stationCount };
+    return { 姓名: getStaffName(id), 院所班數: d.clinicCount, 據點班數: d.stationCount, 總班數: d.clinicCount+d.stationCount };
   });
   const hoursRows = Object.keys(hoursByStaff).map(id=>({ 姓名: getStaffName(id), 總工時: Number(hoursByStaff[id].toFixed(1)) }));
   const overtimeRows = overtimeRecords.map(r=>({
@@ -6924,7 +7016,7 @@ function exportReportCSV(){
   if(!lastReportData){ alert('請先產生報表'); return; }
   const { startDate, endDate, byStaff, hoursByStaff, bySite, overtimeRecords, overtimeHoursByStaff, absenceRecords, absentHoursByStaff } = lastReportData;
   let csv = `報表區間,${startDate} ~ ${endDate}\n\n`;
-  csv += '每人總班數\n姓名,診所班數,據點班數,總班數\n';
+  csv += '每人總班數\n姓名,院所班數,據點班數,總班數\n';
   Object.keys(byStaff).forEach(id=>{
     const d = byStaff[id];
     csv += `${getStaffName(id)},${d.clinicCount},${d.stationCount},${d.clinicCount+d.stationCount}\n`;
@@ -7107,7 +7199,7 @@ function exportAllM1M3M4M9XLSX(){
       id: s.id, 姓名: s.name, 可排地點: SITES_LABEL[s.sites] || s.sites, 在職: s.active ? '是' : '否'
     }));
     const siteRows = sites.map(s=>({
-      id: s.id, 名稱: s.name, 類型: s.isClinic ? '診所' : '據點',
+      id: s.id, 名稱: s.name, 類型: s.isClinic ? '醫療院所' : '據點',
       主要人員: (s.mainStaffIds||[]).map(getStaffName).join('、'),
       代班人員: (s.reliefStaffIds||[]).map(getStaffName).join('、'),
       主責人員: (s.dutyStaffIds||[]).map(getStaffName).join('、'),
