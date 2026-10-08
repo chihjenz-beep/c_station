@@ -1131,6 +1131,20 @@
   .gate-card input{border-color:#f0c9a8;border-radius:12px;}
   .gate-card button{border-color:var(--brown);border-radius:12px;}
   .gate-card button.ghost{color:var(--brown);}
+
+  /* M3 外師課程排定：緊湊版面 */
+  #courseCard .cs-itemrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
+  #courseCard .cs-form{display:grid;grid-template-columns:150px minmax(120px,1.2fr) minmax(110px,1fr) minmax(110px,1fr) 84px minmax(120px,1.2fr) auto;gap:8px;align-items:center;padding:10px 0;border-top:1px dashed var(--border);border-bottom:1px dashed var(--border);}
+  #courseCard .cs-form input,#courseCard .cs-form select{min-width:0;width:100%;}
+  #courseCard .cs-listhead{display:flex;align-items:center;gap:10px;margin:10px 0 8px;}
+  #courseCard .cs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:6px 8px;}
+  #courseCard .cs-card{display:flex;flex-wrap:wrap;align-items:center;gap:3px 8px;padding:6px 10px;border:1px solid var(--border);border-radius:10px;background:var(--paper);font-size:12px;}
+  #courseCard .cs-card.clash{border-color:var(--danger);background:var(--danger-bg);}
+  #courseCard .cs-card .cs-date{font-weight:700;white-space:nowrap;}
+  #courseCard .cs-card .cs-half{font-size:11px;padding:1px 7px;border-radius:999px;background:#ffe9d3;color:#b5683f;font-weight:700;}
+  #courseCard .cs-card .cs-line2{flex-basis:100%;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  #courseCard .cs-card .row-del{margin-left:auto;padding:2px 8px;font-size:11px;}
+  @media(max-width:1100px){ #courseCard .cs-form{grid-template-columns:repeat(auto-fit,minmax(130px,1fr));} }
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
@@ -1430,39 +1444,28 @@
       </div>
     </div>
 
-    <div class="card">
-      <h2>🎓 外師課程排定</h2>
-      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
-        管理課程項目（例如口腔保健講座、佛學生命教育），並將課程安插到指定據點與日期
+    <div class="card" id="courseCard">
+      <h2>🎓 外師課程排定 <span style="font-size:12px;font-weight:400;color:var(--text-soft);">管理課程項目，並將課程安插到指定據點與日期</span></h2>
+      <div class="cs-itemrow">
+        <input type="text" id="newCourseItemName" placeholder="新增課程項目名稱" style="width:200px;">
+        <button class="btn" onclick="addCourseItem()">＋ 新增項目</button>
+        <div id="courseItemList" class="tag-list" style="flex:1;min-width:160px;"></div>
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
-        <input type="text" id="newCourseItemName" placeholder="新增課程項目名稱" style="flex:1;min-width:160px;">
-        <button class="btn" onclick="addCourseItem()">＋ 新增課程項目</button>
+      <div class="cs-form">
+        <input type="date" id="courseSessionDate">
+        <select id="courseSessionSite"></select>
+        <select id="courseSessionItem"></select>
+        <select id="courseSessionTeacher"></select>
+        <select id="courseSessionHalf">
+          <option value="am">上午</option>
+          <option value="pm">下午</option>
+        </select>
+        <input type="text" id="courseSessionNote" placeholder="備註（選填）">
+        <button class="btn gold" onclick="addCourseSession()">＋ 安插課程</button>
       </div>
-      <div id="courseItemList" class="tag-list" style="margin-bottom:14px;"></div>
-
-      <div style="border-top:1px solid var(--border);padding-top:12px;">
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
-          <input type="date" id="courseSessionDate" style="flex:1;min-width:140px;">
-          <select id="courseSessionSite" style="flex:1;min-width:120px;"></select>
-          <select id="courseSessionItem" style="flex:1;min-width:120px;"></select>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
-          <select id="courseSessionTeacher" style="flex:1;min-width:120px;"></select>
-          <select id="courseSessionHalf" style="flex:1;min-width:100px;">
-            <option value="am">上午</option>
-            <option value="pm">下午</option>
-          </select>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
-          <input type="text" id="courseSessionNote" placeholder="備註（選填）" style="flex:1;min-width:120px;">
-          <button class="btn gold" onclick="addCourseSession()">＋ 安插課程</button>
-        </div>
-      </div>
-
-      <div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 8px;border-top:1px solid var(--border);padding-top:12px;">
-        <span style="font-size:12px;color:var(--text-soft);">課程排定清單</span>
-        <input type="month" id="courseListMonthPicker" onchange="renderCourseSessionList()">
+      <div class="cs-listhead">
+        <b>課程排定清單</b><span id="courseListCount" style="font-size:12px;color:var(--text-soft);"></span>
+        <input type="month" id="courseListMonthPicker" onchange="renderCourseSessionList()" style="margin-left:auto;">
       </div>
       <div id="courseSessionList"></div>
     </div>
@@ -3487,22 +3490,28 @@ function renderCourseSessionList(){
     container.innerHTML = '<div style="text-align:center;color:var(--text-soft);font-size:12px;padding:10px;">本月尚無課程排定</div>';
     return;
   }
-  container.innerHTML = rows.map(r=>{
+  const WD = ['日','一','二','三','四','五','六'];
+  const countEl = document.getElementById('courseListCount');
+  if(countEl) countEl.textContent = `本月共 ${rows.length} 堂`;
+  container.innerHTML = '<div class="cs-grid">' + rows.map(r=>{
     const courseName = (courseItems.find(c=>c.id===r.courseItemId)||{}).name || '（已刪除的課程項目）';
     const teacherName = r.teacherId ? (externalTeachers.find(t=>t.id===r.teacherId)||{}).name : '';
     const clash = (courseSchedule[r.dateStr]||[]).filter(c=>c.siteId===r.siteId && c.half===r.half).length > 1;
+    const dow = new Date(r.dateStr+'T00:00:00').getDay();
     return `
-      <div class="leave-overview-row"${clash?' style="border-color:var(--danger);background:var(--danger-bg);"':''}>
-        <span class="lo-date">${r.dateStr}</span>
-        <span><span class="site-badge ${siteColorClass(r.siteId)}">${siteLabel(r.siteId)}</span></span>
-        <span><strong>${courseName}</strong>${teacherName?`　🎓${teacherName}`:''}</span>
-        <span><strong>${COURSE_HALF_LABELS[r.half]||''}</strong></span>
-        ${clash ? '<span style="color:var(--danger);font-size:11px;font-weight:700;">⚠ 同據點同時段重複</span>' : ''}
-        ${r.note ? `<span style="color:var(--text-soft);font-size:11px;">${r.note}</span>` : ''}
-        <button class="row-del" onclick="deleteCourseSession('${r.dateStr}','${r.id}')">✕ 刪除</button>
+      <div class="cs-card${clash?' clash':''}">
+        <span class="cs-date"${(dow===0||dow===6)?' style="color:var(--danger);"':''}>${r.dateStr.slice(5).replace('-','/')}（${WD[dow]}）</span>
+        <span class="cs-half">${COURSE_HALF_LABELS[r.half]||''}</span>
+        <span class="site-badge ${siteColorClass(r.siteId)}">${siteLabel(r.siteId)}</span>
+        <button class="row-del" onclick="deleteCourseSession('${r.dateStr}','${r.id}')">✕</button>
+        <div class="cs-line2">
+          <strong>${courseName}</strong>${teacherName?`<span>🎓${teacherName}</span>`:''}
+          ${clash ? '<span style="color:var(--danger);font-weight:700;">⚠ 同據點同時段重複</span>' : ''}
+          ${r.note ? `<span style="color:var(--text-soft);">${r.note}</span>` : ''}
+        </div>
       </div>
     `;
-  }).join('');
+  }).join('') + '</div>';
 }
 
 
