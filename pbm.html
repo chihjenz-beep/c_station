@@ -1312,7 +1312,7 @@
     <div class="card">
       <h2>🎌 國定假日設定 <span class="badge gold">週間假日</span></h2>
       <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:8px;">
-        設定當年度「週一～週五」的國定假日（含補假、連假）。這些日子 M5 不會檢查據點漏排、也不會當成人力不足。政府通常於每年 6 月底公布隔年行事曆，到時請在這裡新增隔年的假日。
+        設定當年度「週一～週五」的國定假日（含補假、連假）。這些日子 M5 不會檢查據點漏排、也不會當成人力不足。<b>醫療院所不適用</b>：院所有自己彈性的排班與臨時休診機制，不受國定假日與例假日稽核。政府通常於每年 6 月底公布隔年行事曆，到時請在這裡新增隔年的假日。
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
         <select id="holidayYearSel" onchange="renderHolidaySettings()" style="width:auto;"></select>
@@ -1320,6 +1320,13 @@
         <input type="text" id="holidayNewName" placeholder="假日名稱（如：國慶日補假）" style="flex:1;min-width:150px;">
         <button class="btn" onclick="addHoliday()">＋ 新增假日</button>
         <button class="btn outline" onclick="resetHolidaysToDefault()" title="只還原 2026 年內建名單">還原 2026 內建名單</button>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+        <label class="btn gold" style="cursor:pointer;margin:0;">📷 上傳行事曆圖檔，自動辨識
+          <input type="file" id="holidayImgInput" accept="image/*" style="display:none;" onchange="onHolidayImagePicked(event)">
+        </label>
+        <button class="btn outline" onclick="openHolidayReview('', null)">📝 貼上文字解析</button>
+        <span id="holidayOcrStatus" style="font-size:12px;color:var(--text-soft);"></span>
       </div>
       <div id="holidayList"></div>
     </div>
@@ -1556,7 +1563,7 @@
             </label>
             <label id="bulkExcludeHolidayRow" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);margin-top:4px;">
               <input type="checkbox" id="bulkExcludeHoliday" checked style="width:auto;">
-              排除國定假日（依 M2 設定）
+              排除國定假日（依 M2 設定；醫療院所不適用）
             </label>
           </div>
           <div class="bulk-form-col" id="bulkApplyTimeCol">
@@ -2556,6 +2563,8 @@ function normalizeWeekdays(v){
 }
 // 該據點在某個星期的營運時段：'full'整天／'am'上午／'pm'下午／null 不營運
 function siteDaySlot(site, dow){
+  const lk = linkedClinicOf(site);
+  if(lk) return siteDaySlot(lk, dow);   // 營運綁定：跟隨綁定的院所
   const arr = (site.operatingWeekdays && site.operatingWeekdays.length) ? site.operatingWeekdays : DEFAULT_SITE_OPERATING_WEEKDAYS;
   if(arr.includes(dow)) return 'full';
   if(arr.includes(SLOT_AM + dow)) return 'am';
@@ -2563,6 +2572,8 @@ function siteDaySlot(site, dow){
   return null;
 }
 function realOperatingDays(site){
+  const lk = linkedClinicOf(site);
+  if(lk) return realOperatingDays(lk);
   const set = new Set((site.operatingWeekdays||[]).filter(d=>d>=0).map(d=>d%10).filter(d=>d<=6));
   return [...set].sort((a,b)=>a-b);
 }
@@ -2710,8 +2721,22 @@ let clinicOperatingWeekdays = loadStore(STORE_KEYS.clinicOperatingWeekdays, null
 // 否則診所會被當成一般據點，且下次載入時又會重複補上兩筆。
 const CLINIC_SITE_DEFS = [
   { id:'clinic_pingan', name:'平安' },
-  { id:'clinic_qinghe', name:'清禾' }
+  { id:'clinic_qinghe', name:'清禾' },
+  { id:'clinic_pingan_rx', name:'平安藥局', linkTo:'clinic_pingan' }   // 平安藥局的營運（上班日＋臨時休診）綁定平安診所
 ];
+// 「營運綁定」：被綁定的院所（如平安藥局）營運日與臨時休診一律跟隨它綁定的院所。
+// 雲端只會保存 sites 的固定欄位，所以把綁定記錄成 reliefStaffIds 裡的一筆 'link:院所id'（院所不使用延緩老師欄位）。
+const LINK_PREFIX = 'link:';
+function linkedClinicId(site){
+  const m = (site && site.reliefStaffIds || []).find(x=>String(x).startsWith(LINK_PREFIX));
+  return m ? String(m).slice(LINK_PREFIX.length) : null;
+}
+function linkedClinicOf(site){
+  const id = linkedClinicId(site);
+  const t = id ? sites.find(x=>x.id===id) : null;
+  return (t && t.id!==site.id && !linkedClinicId(t)) ? t : null;   // 不允許連環綁定
+}
+function realStaffIdsOnly(arr){ return (arr||[]).filter(x=>!String(x).startsWith(LINK_PREFIX)); }
 // 使用者主動刪除過的診所 id：之後載入或雲端拉回都不再自動補回（可在M1「診所上班日設定」卡片還原）。僅存本機。
 let deletedClinicIds = loadStore(STORE_KEYS.deletedClinicIds, []);
 // 院所以 id 前綴「clinic_」辨識（雲端同步的據點資料不含 isClinic 欄位）：平安、清禾是固定 id，
@@ -2720,7 +2745,7 @@ function ensureClinicSites(){
   sites.forEach(x=>{
     if(String(x.id).startsWith('clinic_')){
       x.isClinic = true;
-      if(!x.dutyStaffIds) x.dutyStaffIds = Array.from(new Set([...(x.mainStaffIds||[]), ...(x.reliefStaffIds||[])]));
+      if(!x.dutyStaffIds) x.dutyStaffIds = Array.from(new Set([...(x.mainStaffIds||[]), ...realStaffIdsOnly(x.reliefStaffIds)]));
       if(!x.mainStaffIds) x.mainStaffIds = [];
       if(!x.reliefStaffIds) x.reliefStaffIds = [];
     }
@@ -2738,10 +2763,10 @@ function ensureClinicSites(){
       // 診所改用「值班員工」單一欄位（人數不限）取代主責人員／延緩老師；
       // 舊資料若尚無 dutyStaffIds，合併既有的主責人員＋延緩老師作為起始值，避免資料遺失
       if(!found.dutyStaffIds){
-        found.dutyStaffIds = Array.from(new Set([...(found.mainStaffIds||[]), ...(found.reliefStaffIds||[])]));
+        found.dutyStaffIds = Array.from(new Set([...(found.mainStaffIds||[]), ...realStaffIdsOnly(found.reliefStaffIds)]));
       }
     } else {
-      missing.push({ id:def.id, name:def.name, isClinic:true, mainStaffIds:[], reliefStaffIds:[], dutyStaffIds:[], operatingWeekdays:[...clinicOperatingWeekdays] });
+      missing.push({ id:def.id, name:def.name, isClinic:true, mainStaffIds:[], reliefStaffIds: def.linkTo ? [LINK_PREFIX + def.linkTo] : [], dutyStaffIds:[], operatingWeekdays:[...clinicOperatingWeekdays] });
     }
   });
   if(missing.length) sites.unshift(...missing.reverse()); // 補在清單最前面，沿用原本診所的營運星期作為起始值
@@ -2751,7 +2776,9 @@ ensureClinicSites();
 // 目前僅存本機（尚未在 SYNC_MAP 註冊對應的 GAS action），換裝置不會帶著走。
 let clinicClosures = loadStore(STORE_KEYS.clinicClosures, []);
 function isClinicHalfClosed(siteId, dateStr, half){
-  return clinicClosures.some(c=>c.siteId===siteId && c.date===dateStr && c.half===half);
+  const me = sites.find(x=>x.id===siteId);
+  const lk = me ? linkedClinicOf(me) : null;   // 綁定的院所（平安藥局→平安）休診，藥局也跟著休診
+  return clinicClosures.some(c=>(c.siteId===siteId || (lk && c.siteId===lk.id)) && c.date===dateStr && c.half===half);
 }
 let externalTeachers = loadStore(STORE_KEYS.externalTeachers, []); // [{id, name, type:'internal'|'external', staffId|null, contact, assignments:[{siteId, categories:[]}]}]
 // M3次模組：外師課程排定。課程項目預設沿用外師管理既有的6大類別作為起始清單，之後可在M3自行增刪
@@ -2893,7 +2920,7 @@ function exportM1XLSX(){
   const siteRows = sites.map(s=>({
     id: s.id, 名稱: s.name, 類型: s.isClinic ? '醫療院所' : '據點',
     主要人員: (s.mainStaffIds||[]).map(getStaffName).join('、'),
-    代班人員: (s.reliefStaffIds||[]).map(getStaffName).join('、'),
+    代班人員: realStaffIdsOnly(s.reliefStaffIds).map(getStaffName).join('、'),
     主責人員: (s.dutyStaffIds||[]).map(getStaffName).join('、'),
     營運星期: operatingDaysCode(s)
   }));
@@ -2939,7 +2966,7 @@ function importM1XLSX(){
       const patch = {
         name,
         mainStaffIds: namesToIds(row['主要人員']),
-        reliefStaffIds: namesToIds(row['代班人員']),
+        reliefStaffIds: namesToIds(row['代班人員']).concat(((sites.find(x=>x.id===String(row['id']||'').trim())||{}).reliefStaffIds||[]).filter(x=>String(x).startsWith(LINK_PREFIX))),
         dutyStaffIds: namesToIds(row['主責人員'])
       };
       {
@@ -3066,12 +3093,26 @@ function renderClinicWeekdays(){
         <button class="row-del" onclick="deleteSite('${site.id}')">✕ 刪除院所</button>
       </div>
       <div class="site-role-row">
+        <span class="role-label">營運綁定</span>
+        <div class="tag-list">
+          <select class="add-tag-select" onchange="setClinicLink('${site.id}',this.value)">
+            <option value="">不綁定（自行設定）</option>
+            ${clinicList.filter(x=>x.id!==site.id && !linkedClinicId(x)).map(x=>`<option value="${x.id}" ${linkedClinicId(site)===x.id?'selected':''}>跟隨「${x.name}」</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      ${linkedClinicOf(site) ? `
+      <div class="site-role-row">
+        <span class="role-label">上班日</span>
+        <div class="tag-list"><span style="font-size:12px;color:var(--text-soft);">營運日與臨時休診跟隨「${linkedClinicOf(site).name}」：${operatingDaysText(site) || '（尚未設定）'}</span></div>
+      </div>` : `
+      <div class="site-role-row">
         <span class="role-label">上班日</span>
         <div class="tag-list">
           ${WEEKDAY_LABELS.map((label, dow)=>weekdayChipHtml(site, dow, label)).join('')}
           ${realOperatingDays(site).length===0 ? '<span style="font-size:11px;color:var(--warn);font-weight:600;align-self:center;">尚未設定上班日（目前視為不營運）</span>' : ''}
         </div>
-      </div>
+      </div>`}
       <div class="site-role-row">
         <span class="role-label">值班員工</span>
         <div class="tag-list">
@@ -3194,6 +3235,15 @@ function restoreClinicSite(siteId){
   ensureClinicSites();
   saveStore(STORE_KEYS.sites, sites);
   renderSites(); renderClinicWeekdays(); renderClinicClosures(); renderSchedPalette();
+  if(typeof renderConflictOverview==='function') renderConflictOverview();
+}
+function setClinicLink(siteId, targetId){
+  const site = sites.find(x=>x.id===siteId);
+  if(!site) return;
+  site.reliefStaffIds = realStaffIdsOnly(site.reliefStaffIds);
+  if(targetId) site.reliefStaffIds.push(LINK_PREFIX + targetId);
+  saveStore(STORE_KEYS.sites, sites);
+  renderClinicWeekdays(); renderClinicClosures();
   if(typeof renderConflictOverview==='function') renderConflictOverview();
 }
 function addClinic(){
@@ -3482,6 +3532,225 @@ function renderShiftTemplates(){
   renderTplPreviewBtns();
   renderHolidaySettings();
 }
+// ===== M2 國定假日：圖檔／文字辨識 =====
+// 圖檔用瀏覽器內建的 OCR（Tesseract.js，繁體中文），第一次使用要下載辨識引擎與語言檔（約十多 MB），之後瀏覽器會快取。
+// 辨識結果一定會先列出來讓你勾選、修改，確認後才會真的加入，不會自動覆蓋。
+function loadScriptOnce(url){
+  return new Promise((resolve, reject)=>{
+    if(document.querySelector(`script[data-src="${url}"]`)){ resolve(); return; }
+    const sc = document.createElement('script');
+    sc.src = url; sc.dataset.src = url;
+    sc.onload = ()=>resolve();
+    sc.onerror = ()=>reject(new Error('無法載入辨識引擎，請確認網路'));
+    document.head.appendChild(sc);
+  });
+}
+// 放大並轉灰階，行事曆的小字比較容易被辨識
+async function prepareImageForOcr(file){
+  const url = URL.createObjectURL(file);
+  try{
+    const img = await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=()=>rej(new Error('無法讀取這張圖片')); i.src=url; });
+    const scale = Math.min(3, Math.max(1, 2400 / Math.max(1, img.naturalWidth)));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.naturalWidth*scale); c.height = Math.round(img.naturalHeight*scale);
+    const x = c.getContext('2d');
+    x.fillStyle = '#fff'; x.fillRect(0,0,c.width,c.height);
+    x.filter = 'grayscale(1) contrast(1.25)';
+    x.drawImage(img, 0, 0, c.width, c.height);
+    return await new Promise(res=>c.toBlob(res,'image/png'));
+  } finally { URL.revokeObjectURL(url); }
+}
+async function onHolidayImagePicked(event){
+  const file = (event.target.files||[])[0];
+  event.target.value = '';
+  if(!file) return;
+  const st = document.getElementById('holidayOcrStatus');
+  try{
+    st.textContent = '載入辨識引擎中…（第一次較久）';
+    if(!window.Tesseract) await loadScriptOnce('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
+    st.textContent = '圖片處理中…';
+    const blob = await prepareImageForOcr(file);
+    const res = await window.Tesseract.recognize(blob, 'chi_tra+eng', { logger: m=>{
+      if(m && m.status) st.textContent = `辨識中：${m.status}${m.progress!=null?'（'+Math.round(m.progress*100)+'%）':''}`;
+    }});
+    st.textContent = '';
+    const yearHint = Number(document.getElementById('holidayYearSel').value) || new Date().getFullYear();
+    openHolidayReview(String(res && res.data && res.data.text || ''), yearHint);
+  }catch(err){
+    st.textContent = '';
+    alert('圖檔辨識失敗：' + (err && err.message || err) + '\n可改用「貼上文字解析」：把行事曆網頁上的文字複製貼上。');
+  }
+}
+const HOLIDAY_KNOWN_NAMES = ['開國紀念日','元旦','春節','除夕','和平紀念日','兒童節','清明節','民族掃墓節','勞動節','端午節','中秋節','教師節','國慶日','光復節','行憲紀念日','補假','調整放假','連假','彈性放假'];
+function normalizeHolidayText(t){
+  return String(t||'')
+    .replace(/[０-９]/g, c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0))
+    .replace(/[／]/g,'/').replace(/[（]/g,'(').replace(/[）]/g,')')
+    .replace(/[～〜~－—–﹣至到]/g,'-').replace(/[　]/g,' ');
+}
+// 從文字找出「月/日 + 名稱」。支援：1月1日(四)、1/1(四)、2/14~2/22、2月14日至22日、
+// 以及「1月」標題下只寫 14(六) 的月曆文字；有標註星期的會核對星期是否正確，擋掉 OCR 認錯的數字。
+function parseHolidayText(text, hintYear){
+  const norm = normalizeHolidayText(text);
+  let year = hintYear || new Date().getFullYear();
+  let m;
+  if((m = norm.match(/(?:民國)?\s*(1[0-4]\d)\s*年/))) year = Number(m[1]) + 1911;
+  else if((m = norm.match(/(20\d{2})\s*年/))) year = Number(m[1]);
+  const WDN = '日一二三四五六';
+  const valid = (mo,d)=>{ const dt=new Date(year, mo-1, d); return dt.getMonth()===mo-1 && dt.getDate()===d; };
+  const iso = (mo,d)=>`${year}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  const out = new Map();
+  const add = (mo,d,name,wd)=>{
+    if(mo<1||mo>12||d<1||d>31||!valid(mo,d)) return;
+    if(wd && WDN[new Date(year,mo-1,d).getDay()]!==wd) return;   // 星期對不上 → 多半是 OCR 認錯
+    const key = iso(mo,d);
+    if(!out.has(key)) out.set(key, cleanHolidayName(name));
+  };
+  let curMonth = null;
+  norm.split(/\r?\n/).forEach(rawLine=>{
+    const line = rawLine.trim();
+    if(!line) return;
+    const head = line.match(/^(\d{1,2})\s*月\s*[^\d]{0,6}$/);
+    if(head){ curMonth = Number(head[1]); return; }
+    const toks = [];
+    // 範圍：2/14(六)-2/22(日)、2月14日-22日
+    const rangeRe = /(\d{1,2})\s*[月\/.]\s*(\d{1,2})\s*日?\s*(?:\(([一二三四五六日])\))?\s*-\s*(?:(\d{1,2})\s*[月\/.]\s*)?(\d{1,2})\s*日?\s*(?:\(([一二三四五六日])\))?/g;
+    let r; const used = [];
+    while((r = rangeRe.exec(line))){
+      const m1 = Number(r[1]), d1 = Number(r[2]), m2 = r[4] ? Number(r[4]) : m1, d2 = Number(r[5]);
+      used.push([r.index, rangeRe.lastIndex]);
+      toks.push({ kind:'range', m1, d1, m2, d2, wd1:r[3], wd2:r[6], start:r.index, end:rangeRe.lastIndex });
+    }
+    const inUsed = i=>used.some(([a,b])=>i>=a && i<b);
+    const singleRe = /(\d{1,2})\s*[月\/.]\s*(\d{1,2})\s*日?\s*(?:\(([一二三四五六日])\))?/g;
+    let sm;
+    while((sm = singleRe.exec(line))){
+      if(inUsed(sm.index)) continue;
+      toks.push({ kind:'one', m1:Number(sm[1]), d1:Number(sm[2]), wd1:sm[3], start:sm.index, end:singleRe.lastIndex });
+    }
+    if(curMonth){   // 月曆格式：「14(六) 春節連假」只有日沒有月
+      const bareRe = /(?:^|\s)(\d{1,2})\s*日?\s*\(([一二三四五六日])\)/g;
+      let bm;
+      while((bm = bareRe.exec(line))){
+        if(toks.some(t=>bm.index>=t.start-1 && bm.index<t.end)) continue;
+        toks.push({ kind:'one', m1:curMonth, d1:Number(bm[1]), wd1:bm[2], start:bm.index, end:bareRe.lastIndex });
+      }
+    }
+    toks.sort((a,b)=>a.start-b.start);
+    toks.forEach((t,i)=>{
+      const after = line.slice(t.end, i+1<toks.length ? toks[i+1].start : line.length);
+      const before = i===0 ? line.slice(0, t.start) : '';
+      const name = holidayNameFrom(after) || holidayNameFrom(before) || '';
+      if(t.kind==='range'){
+        let cur = new Date(year, t.m1-1, t.d1); const endD = new Date(year, t.m2-1, t.d2);
+        let n = 0;
+        while(cur <= endD && n < 16){
+          add(cur.getMonth()+1, cur.getDate(), name, null);
+          cur.setDate(cur.getDate()+1); n++;
+        }
+        // 首尾若有標星期，順便核對（不符就整段不採用）
+        if(t.wd1 && WDN[new Date(year,t.m1-1,t.d1).getDay()]!==t.wd1) cur = null;
+      }else{
+        add(t.m1, t.d1, name, t.wd1);
+      }
+    });
+  });
+  return { year, items: [...out.entries()].map(([date,name])=>({ date, name: name || '國定假日' })).sort((a,b)=>a.date.localeCompare(b.date)) };
+}
+function holidayNameFrom(str){
+  const s2 = String(str||'').replace(/\([^)]*\)/g,' ');
+  for(const k of HOLIDAY_KNOWN_NAMES){
+    const idx = s2.indexOf(k);
+    if(idx>=0){
+      const cjk = s2.match(/[\u4e00-\u9fff]{2,12}/g) || [];
+      const hit = cjk.find(w=>w.includes(k));
+      if(hit) return hit;
+    }
+  }
+  const m = s2.match(/[\u4e00-\u9fff]{2,10}/);
+  return m ? m[0] : '';
+}
+function cleanHolidayName(n){ return String(n||'').replace(/^中華民國/,'').replace(/放假一天|放假$/,'').trim(); }
+
+// 辨識結果確認視窗：左邊是辨識出的文字（可直接修改後重新解析），右邊是解析出的假日清單，勾選後才加入
+function openHolidayReview(text, yearHint){
+  document.getElementById('holidayReviewModal')?.remove();
+  const box = document.createElement('div');
+  box.id = 'holidayReviewModal';
+  box.style.cssText = 'position:fixed;inset:0;z-index:9998;background:rgba(60,35,20,.62);display:flex;align-items:center;justify-content:center;padding:14px;';
+  box.innerHTML = `<div style="background:var(--paper);border-radius:18px;max-width:960px;width:100%;max-height:92vh;overflow:auto;padding:16px 18px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <b style="font-size:16px;">🎌 國定假日辨識結果</b>
+      <button class="btn outline" onclick="document.getElementById('holidayReviewModal').remove()">✕ 關閉</button>
+    </div>
+    <div style="font-size:12px;color:var(--text-soft);margin-bottom:8px;">請核對右邊清單：取消勾選不正確的、修改名稱，確認後再加入。左邊文字有錯字可以直接改，按「重新解析」。</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:260px;">
+        <textarea id="holidayOcrText" rows="16" style="width:100%;font-size:12px;" placeholder="辨識出的文字，或直接貼上行事曆文字（例如：1月1日(四) 開國紀念日）"></textarea>
+        <button class="btn outline" style="margin-top:6px;" onclick="reparseHolidayText()">🔄 重新解析</button>
+      </div>
+      <div style="flex:1;min-width:300px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span style="font-size:12px;">年度</span><input type="number" id="holidayReviewYear" style="width:90px;" min="2000" max="2100"><span id="holidayReviewCount" style="font-size:12px;color:var(--text-soft);"></span></div>
+        <div id="holidayCandidates" style="max-height:52vh;overflow:auto;"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:12px;">
+      <button class="btn" onclick="applyHolidayCandidates('merge')">✅ 加入勾選的假日（保留原有）</button>
+      <button class="btn outline" onclick="applyHolidayCandidates('replace')" title="先清掉該年度原有假日，再加入勾選的">取代該年度名單</button>
+    </div>
+  </div>`;
+  box.addEventListener('click', e=>{ if(e.target===box) box.remove(); });
+  document.body.appendChild(box);
+  document.getElementById('holidayOcrText').value = text || '';
+  document.getElementById('holidayReviewYear').value = yearHint || Number(document.getElementById('holidayYearSel').value) || new Date().getFullYear();
+  reparseHolidayText();
+}
+let holidayCandidates = [];
+function reparseHolidayText(){
+  const text = document.getElementById('holidayOcrText').value;
+  const yearInput = Number(document.getElementById('holidayReviewYear').value) || new Date().getFullYear();
+  const res = parseHolidayText(text, yearInput);
+  // 文字裡有寫年份（例如「115年」）就以文字為準，同步到年度欄
+  if(/(?:1[0-4]\d\s*年|20\d{2}\s*年)/.test(normalizeHolidayText(text))) document.getElementById('holidayReviewYear').value = res.year;
+  const WD = ['日','一','二','三','四','五','六'];
+  holidayCandidates = res.items.map(it=>{
+    const dow = new Date(it.date+'T00:00:00').getDay();
+    return { date:it.date, name:it.name, dow, weekend:(dow===0||dow===6), checked:!(dow===0||dow===6) };
+  });
+  const box = document.getElementById('holidayCandidates');
+  const exist = new Set(currentHolidayEntries().map(h=>h.date));
+  box.innerHTML = holidayCandidates.length ? holidayCandidates.map((c,i)=>`
+    <label style="display:flex;align-items:center;gap:8px;padding:4px 6px;border-bottom:1px dashed var(--border);${c.weekend?'opacity:.6;':''}">
+      <input type="checkbox" style="width:auto;" ${c.checked?'checked':''} onchange="holidayCandidates[${i}].checked=this.checked;updateHolidayReviewCount()">
+      <span style="font-weight:700;white-space:nowrap;min-width:104px;">${c.date.slice(5).replace('-','/')}（${WD[c.dow]}）</span>
+      <input type="text" value="${c.name.replace(/"/g,'&quot;')}" oninput="holidayCandidates[${i}].name=this.value" style="flex:1;min-width:90px;padding:3px 8px;font-size:12px;">
+      <span style="font-size:11px;color:${exist.has(c.date)?'var(--sage-dark)':'var(--text-soft)'};white-space:nowrap;">${exist.has(c.date)?'已在名單':(c.weekend?'週末':'新增')}</span>
+    </label>`).join('') : '<div class="report-empty">沒有辨識到日期。請在左邊修正文字（日期格式如「10月9日」或「10/9」）後按「重新解析」。</div>';
+  updateHolidayReviewCount();
+}
+function updateHolidayReviewCount(){
+  const el = document.getElementById('holidayReviewCount');
+  if(el) el.textContent = `共辨識 ${holidayCandidates.length} 天，已勾選 ${holidayCandidates.filter(c=>c.checked).length} 天（週末預設不勾）`;
+}
+function applyHolidayCandidates(mode){
+  const year = Number(document.getElementById('holidayReviewYear').value);
+  const chosen = holidayCandidates.filter(c=>c.checked);
+  if(!chosen.length){ alert('沒有勾選任何假日'); return; }
+  if(mode==='replace' && !confirm(`將先清掉 ${year} 年原有的假日，再加入勾選的 ${chosen.length} 天。確定嗎？`)) return;
+  ensureHolidayListMaterialized();
+  if(mode==='replace') holidayList = holidayList.filter(h=>!h.date.startsWith(year+'-'));
+  let added = 0, renamed = 0;
+  chosen.forEach(c=>{
+    const ex = holidayList.find(h=>h.date===c.date);
+    if(ex){ if(c.name && ex.name!==c.name){ ex.name = c.name; renamed++; } }
+    else { holidayList.push({ date:c.date, name: c.name || '國定假日' }); added++; }
+  });
+  document.getElementById('holidayYearSel').value = String(chosen[0].date.slice(0,4));
+  saveHolidays();
+  document.getElementById('holidayReviewModal')?.remove();
+  alert(`已加入 ${added} 天假日${renamed?`，更新 ${renamed} 個名稱`:''}。M5 的檢查會立即依新名單重算。`);
+}
+
 // ===== M2 國定假日設定 =====
 function saveHolidays(){
   holidayList.sort((a,b)=>a.date.localeCompare(b.date));
@@ -3675,6 +3944,7 @@ function getEntriesForDate(dateStr){
 function isEntryOffDay(e, dateStr){
   const site = sites.find(x=>x.id===e.site);
   if(!site) return false;
+  if(site.isClinic) return false;   // 醫療院所不適用「非營運日／例假日」稽核：院所用自己彈性的排班與臨時休診機制
   const dow = new Date(dateStr+'T00:00:00').getDay();
   const slot = siteDaySlot(site, dow);
   if(!slot) return true;                         // 當天完全不營運
@@ -3704,8 +3974,8 @@ function detectConflicts(dateStr){
     }
     // 排在據點非營運日
     if(isEntryOffDay(a, dateStr)) conflictIdx.add(a._idx);
-    // 排在國定假日
-    if(isNationalHoliday(dateStr)) conflictIdx.add(a._idx);
+    // 排在國定假日（醫療院所不適用：院所有自己彈性的排班與臨時休診機制）
+    if(isNationalHoliday(dateStr) && !isClinicSite(a.site)) conflictIdx.add(a._idx);
     for(let j=i+1;j<entries.length;j++){
       const b = entries[j];
       if(a.staffId===b.staffId){
@@ -4262,7 +4532,7 @@ function renderModalEntries(){
 }
 function addScheduleEntry(){
   if(isDateLocked(modalDate)){ alert(LOCK_MSG); return; }
-  if(isNationalHoliday(modalDate) && !confirm(`⚠️ ${modalDate} 是國定假日（${holidayNameOf(modalDate)}），確定要排班嗎？`)) return;
+  if(isNationalHoliday(modalDate) && !isClinicSite(document.getElementById('formSiteSel').value) && !confirm(`⚠️ ${modalDate} 是國定假日（${holidayNameOf(modalDate)}），確定要排班嗎？`)) return;
   const staffId = document.getElementById('formStaffSel').value;
   const site = document.getElementById('formSiteSel').value;
   const start = document.getElementById('formStart').value;
@@ -4454,7 +4724,7 @@ function closedHalfNoticeFor(siteId, dateStr, start, end){
 }
 function placeSchedCombo(dateStr){
   if(isDateLocked(dateStr)){ showSchedToast(LOCK_MSG); return; }
-  if(isNationalHoliday(dateStr) && !confirm(`⚠️ ${dateStr} 是國定假日（${holidayNameOf(dateStr)}），確定要排班嗎？`)) return;
+  if(isNationalHoliday(dateStr) && !(schedPick && isClinicSite(schedPick.siteId)) && !confirm(`⚠️ ${dateStr} 是國定假日（${holidayNameOf(dateStr)}），確定要排班嗎？`)) return;
   if(!isSchedComboReady()){ showSchedToast('請先在左側選好員工、地點與時段'); return; }
   const { staffIds, siteId, start, end } = schedPick;
   const site = sites.find(x=>x.id===siteId);
@@ -4995,7 +5265,7 @@ function runBulkSchedule(){
     excludedWeekendCount = before - allDates.length;
   }
   let excludedHolidays = [];
-  if(document.getElementById('bulkExcludeHoliday').checked){
+  if(document.getElementById('bulkExcludeHoliday').checked && !isClinicSite(bulkSelectedSite)){   // 醫療院所不套用國定假日排除
     excludedHolidays = allDates.filter(isNationalHoliday);
     allDates = allDates.filter(d=>!isNationalHoliday(d));
   }
@@ -5344,7 +5614,7 @@ function runCopyMonth(){
   for(let day=1; day<=targetDaysInMonth; day++){
     const dateStr = targetMonth + '-' + String(day).padStart(2,'0');
     if(isWeekend(dateStr)){ skippedWeekendCount++; continue; }
-    if(isNationalHoliday(dateStr)){ skippedHolidayDays.push(dateStr); continue; }   // 國定假日不排班
+    if(isNationalHoliday(dateStr) && !isClinicSite(pattern.site)){ skippedHolidayDays.push(dateStr); continue; }   // 國定假日不排班（醫療院所除外）
     if(!schedule[dateStr]) schedule[dateStr] = [];
     schedule[dateStr].push({ staffId, site: pattern.site, start: pattern.start, end: pattern.end, status: 'draft' });
     copiedCount++;
@@ -5836,7 +6106,7 @@ function scanAllConflicts(){
       });
       if(hasOverlap) reasons.push('overlap');
       if(isEntryOffDay(e, dateStr)) reasons.push('offday');
-      if(isNationalHoliday(dateStr)) reasons.push('holiday');
+      if(isNationalHoliday(dateStr) && !isClinicSite(e.site)) reasons.push('holiday');
       results.push({ dateStr, staffId:e.staffId, site:e.site, start:e.start, end:e.end, reasons });
     });
   });
@@ -5919,11 +6189,12 @@ function scanSiteCoverageGaps(){
   const gaps = [];
   const activeDates = getCoverageCheckDates();
   activeDates.forEach(dateStr=>{
-    if(isNationalHoliday(dateStr)) return; // 國定假日一律停課，不檢查
+    const holidayToday = isNationalHoliday(dateStr);   // 國定假日據點一律停課；醫療院所不適用，依自己的上班日與臨時休診
     const dow = new Date(dateStr+'T00:00:00').getDay();
     const assignedSites = new Set(getCoverageEntriesForDate(dateStr).map(e=>e.site));
     // 各社區據點（含平安、清禾兩間診所，已比照一般據點納入sites統一管理）
     sites.forEach(site=>{
+      if(holidayToday && !site.isClinic) return;
       const slot = siteDaySlot(site, dow);
       if(!slot) return; // 該據點今天本來就不上課，不檢查
       if(isClinicHalfClosed(site.id, dateStr, 'am') && isClinicHalfClosed(site.id, dateStr, 'pm')) return; // 臨時全天休診，不檢查
@@ -5950,7 +6221,7 @@ function scanPartialDayCoverage(){
   const results = [];
   const activeDates = getActiveCoverageDates();
   activeDates.forEach(dateStr=>{
-    if(isNationalHoliday(dateStr)) return;
+    const holidayToday = isNationalHoliday(dateStr);
     const dow = new Date(dateStr+'T00:00:00').getDay();
     const entries = getCoverageEntriesForDate(dateStr);
     const bySite = {};
@@ -5960,6 +6231,7 @@ function scanPartialDayCoverage(){
     });
     // 各社區據點（含平安、清禾兩間診所，已比照一般據點納入sites統一管理）
     sites.forEach(site=>{
+      if(holidayToday && !site.isClinic) return;
       const slot = siteDaySlot(site, dow);
       if(!slot) return;
       const siteEntries = bySite[site.id];
@@ -5976,11 +6248,15 @@ function scanPartialDayCoverage(){
 }
 // 一鍵移除排在國定假日的班（過去月份已鎖定的不動）
 function removeHolidayScheduleEntries(){
-  const dates = Object.keys(schedule).filter(d=>isNationalHoliday(d) && !isDateLocked(d) && (schedule[d]||[]).length>0).sort();
-  const count = dates.reduce((n,d)=>n+schedule[d].length, 0);
-  if(!dates.length){ alert('目前沒有排在國定假日的班'); return; }
-  if(!confirm(`將移除 ${dates.length} 個國定假日共 ${count} 筆排班：\n${dates.map(d=>d.slice(5).replace('-','/')+'（'+holidayNameOf(d)+'）').join('、')}\n\n確定要移除嗎？`)) return;
-  dates.forEach(d=>{ delete schedule[d]; });
+  // 只移除據點的班；醫療院所不適用國定假日規則，不動
+  const dates = Object.keys(schedule).filter(d=>isNationalHoliday(d) && !isDateLocked(d) && (schedule[d]||[]).some(e=>!isClinicSite(e.site))).sort();
+  const count = dates.reduce((n,d)=>n+schedule[d].filter(e=>!isClinicSite(e.site)).length, 0);
+  if(!dates.length){ alert('目前沒有排在國定假日的據點班'); return; }
+  if(!confirm(`將移除 ${dates.length} 個國定假日共 ${count} 筆據點排班（醫療院所的班不動）：\n${dates.map(d=>d.slice(5).replace('-','/')+'（'+holidayNameOf(d)+'）').join('、')}\n\n確定要移除嗎？`)) return;
+  dates.forEach(d=>{
+    schedule[d] = schedule[d].filter(e=>isClinicSite(e.site));
+    if(!schedule[d].length) delete schedule[d];
+  });
   saveStore(STORE_KEYS.schedule, schedule);
   renderCalendar();
   if(typeof renderConflictOverview==='function') renderConflictOverview();
@@ -6008,7 +6284,13 @@ function courseSessionLabel(c){
 function scanClosedClinicScheduled(){
   const results = [];
   const MID = '12:00';
-  clinicClosures.forEach(c=>{
+  // 綁定院所的休診也套用到被綁定的院所（例如平安休診 → 平安藥局同樣休診）
+  const effective = clinicClosures.slice();
+  sites.forEach(x=>{
+    const lk = linkedClinicOf(x);
+    if(lk) clinicClosures.filter(c=>c.siteId===lk.id).forEach(c=>effective.push({ siteId:x.id, date:c.date, half:c.half }));
+  });
+  effective.forEach(c=>{
     const hit = getCoverageEntriesForDate(c.date).some(e=>
       e.site===c.siteId && (c.half==='am' ? e.start < MID : e.end > MID)
     );
@@ -7201,7 +7483,7 @@ function exportAllM1M3M4M9XLSX(){
     const siteRows = sites.map(s=>({
       id: s.id, 名稱: s.name, 類型: s.isClinic ? '醫療院所' : '據點',
       主要人員: (s.mainStaffIds||[]).map(getStaffName).join('、'),
-      代班人員: (s.reliefStaffIds||[]).map(getStaffName).join('、'),
+      代班人員: realStaffIdsOnly(s.reliefStaffIds).map(getStaffName).join('、'),
       主責人員: (s.dutyStaffIds||[]).map(getStaffName).join('、'),
       營運星期: operatingDaysCode(s)
     }));
