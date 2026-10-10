@@ -1145,6 +1145,14 @@
   #courseCard .cs-card .cs-line2{flex-basis:100%;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
   #courseCard .cs-card .row-del{margin-left:auto;padding:2px 8px;font-size:11px;}
   @media(max-width:1100px){ #courseCard .cs-form{grid-template-columns:repeat(auto-fit,minmax(130px,1fr));} }
+
+  /* 矩陣：國定假日／例假日標示 */
+  .matrix-table.by-date .day-tag{display:block;font-size:10px;font-weight:600;color:#b5683f;line-height:1.1;margin-top:1px;}
+  .matrix-table.by-date tr.holiday-row th{background:#fbe0d6;color:var(--danger);}
+  .matrix-table.by-date tr.holiday-row .day-tag{color:var(--danger);}
+  .matrix-table.by-date tr.holiday-row td:not(.has){background:#fdeee8;}
+  .matrix-table.by-date td.matrix-offday{text-align:center;font-size:12px;font-weight:600;letter-spacing:.4em;color:#b79a85;background:#fbf3e3;height:auto;cursor:pointer;}
+  .matrix-table.by-date td.matrix-offday.holiday{color:var(--danger);background:#fdeee8;letter-spacing:.2em;}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
@@ -4131,8 +4139,17 @@ function buildMatrixTableHtml(year, month, onCellClick, orientation){
       const dateStr = fmtDate(d);
       const dow = d.getDay();
       const isWeekend = dow===0 || dow===6;
-      const cls = (isWeekend?'weekend-row ':'') + (dateStr===today?'today-row':'');
-      return `<tr class="${cls}"><th>${d.getDate()}（${weekdayNames[dow]}）</th>${activeStaff.map(s=>matrixCellHtml(s, dateStr, onCellClick)).join('')}</tr>`;
+      const holiday = isNationalHoliday(dateStr);
+      const dayTag = holiday ? '國定假日' : (isWeekend ? '例假日' : '');
+      const cls = (isWeekend?'weekend-row ':'') + (holiday?'holiday-row ':'') + (dateStr===today?'today-row':'');
+      const dateTh = `<th>${d.getDate()}（${weekdayNames[dow]}）${dayTag?`<span class="day-tag">${dayTag}</span>`:''}</th>`;
+      // 這天沒有任何人排班或請假 → 整列合併成一格，直接寫上「國定假日｜假日名稱」或「例假日」
+      const hasAny = activeStaff.some(s=> getEntriesForDate(dateStr).some(e=>e.staffId===s.id) || (leaves[dateStr]||[]).some(l=>l.staffId===s.id));
+      if(dayTag && !hasAny){
+        const clickAttr = onCellClick ? `onclick="${onCellClick}('${dateStr}')"` : '';
+        return `<tr class="${cls}">${dateTh}<td class="matrix-offday${holiday?' holiday':''}" colspan="${activeStaff.length}" ${clickAttr}>${holiday?'國定假日｜'+holidayNameOf(dateStr):'例假日'}</td></tr>`;
+      }
+      return `<tr class="${cls}">${dateTh}${activeStaff.map(s=>matrixCellHtml(s, dateStr, onCellClick)).join('')}</tr>`;
     }).join('') + '</tbody>';
     return legendHtml + `<div class="matrix-scroll"><table class="matrix-table by-date">${theadHtml}${tbodyHtml}</table></div>`;
   }
@@ -6183,8 +6200,13 @@ function getActiveCoverageDates(){
 // （常規據點週六日不檢查；北華村除了週二以外都不檢查；平安、清禾依各自設定的上班日檢查）
 // 漏排檢查要看的日期：只要某個月「有任何排班或課程」，該月每一天都納入檢查（過去月份不看）。
 // 之前只檢查「當天已有紀錄」的日期，結果把某天的班全部刪光後，那天反而變成不在檢查範圍而警示消失。
+// 「這個月已經開始排班」＝該月至少有一筆員工排班。只剩外師課程（例如清空整月班表後留下的課）不算，
+// 否則整月班表清空後，每個營運日都會跳「整天無人」，其實只是還沒開始排。
+function monthsWithStaffSchedule(){
+  return new Set(Object.keys(schedule).filter(d=>(schedule[d]||[]).length>0).map(d=>d.slice(0,7)));
+}
 function getCoverageCheckDates(){
-  const months = new Set(getActiveCoverageDates().map(d=>d.slice(0,7)));
+  const months = monthsWithStaffSchedule();
   const dates = [];
   months.forEach(ym=>{
     if(isPastMonth(ym)) return;
@@ -6228,7 +6250,8 @@ function checkHalfDayCoverage(entries, midpoint){
 function scanPartialDayCoverage(){
   const DAY_MIDPOINT = '12:00';
   const results = [];
-  const activeDates = getActiveCoverageDates();
+  const staffMonths = monthsWithStaffSchedule();
+  const activeDates = getActiveCoverageDates().filter(d=>staffMonths.has(d.slice(0,7)));   // 還沒開始排班的月份不檢查「只排半天」
   activeDates.forEach(dateStr=>{
     const holidayToday = isNationalHoliday(dateStr);
     const dow = new Date(dateStr+'T00:00:00').getDay();
@@ -6949,17 +6972,46 @@ function downloadMatrixImage(){
     // 日期欄（週末用淺橘底、紅字）
     ctx.fillStyle = isWeekend ? '#FDF3E1' : '#F0E6CC';
     ctx.fillRect(left, y, dateColW, rowH);
-    ctx.fillStyle = isWeekend ? '#B23A2E' : '#3A2E22';
+    const isHolidayRow = tr.classList.contains('holiday-row');
+    if(isHolidayRow){ ctx.fillStyle = '#FBE0D6'; ctx.fillRect(left, y, dateColW, rowH); }
     ctx.textAlign = 'center';
+    // 第一行日期、第二行「國定假日／例假日」：直接從 DOM 結構取，不依賴 innerText 的換行（面板被隱藏時 innerText 不會換行）
+    const tagEl = cells[0].querySelector('.day-tag');
+    const dateLines = [ (cells[0].firstChild ? cells[0].firstChild.textContent : cells[0].textContent).trim(), ...(tagEl ? [tagEl.textContent.trim()] : []) ].filter(Boolean);
     ctx.font = 'bold 10px "Microsoft JhengHei", sans-serif';
-    ctx.fillText(cells[0].innerText.trim(), left + dateColW/2, y + rowH/2);
+    ctx.fillStyle = (isWeekend || isHolidayRow) ? '#B23A2E' : '#3A2E22';
+    if(dateLines.length>1){
+      ctx.fillText(dateLines[0], left + dateColW/2, y + rowH/2 - 5);
+      ctx.font = 'bold 8px "Microsoft JhengHei", sans-serif';
+      ctx.fillStyle = isHolidayRow ? '#B23A2E' : '#B5683F';
+      ctx.fillText(dateLines[1], left + dateColW/2, y + rowH/2 + 6);
+    }else{
+      ctx.fillText(dateLines[0] || '', left + dateColW/2, y + rowH/2);
+    }
     ctx.strokeStyle = '#DDD0B8';
     ctx.lineWidth = 0.5;
     ctx.strokeRect(left, y, dateColW, rowH);
     // 各員工格
+    let colIdx = 0;
     for(let c=1; c<cells.length; c++){
-      const cellX = left + dateColW + (c-1)*staffColW;
       const td = cells[c];
+      const cellX = left + dateColW + colIdx*staffColW;
+      if(td.classList.contains('matrix-offday')){   // 整列合併的「國定假日｜名稱」「例假日」
+        const span = Number(td.getAttribute('colspan')||1);
+        const w = staffColW*span;
+        const hol = td.classList.contains('holiday');
+        ctx.fillStyle = hol ? '#FDEEE8' : '#FBF3E3';
+        ctx.fillRect(cellX, y, w, rowH);
+        ctx.fillStyle = hol ? '#B23A2E' : '#B79A85';
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 10px "Microsoft JhengHei", sans-serif';
+        ctx.fillText(td.innerText.trim(), cellX + w/2, y + rowH/2);
+        ctx.strokeStyle = '#DDD0B8'; ctx.lineWidth = 0.5;
+        ctx.strokeRect(cellX, y, w, rowH);
+        colIdx += span;
+        continue;
+      }
+      colIdx += 1;
       const segs = Array.from(td.querySelectorAll('.mc-seg'));
       const leaveEl = td.querySelector('.mc-leave');
       if(segs.length > 0){
