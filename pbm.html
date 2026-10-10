@@ -1334,7 +1334,7 @@
     <div class="card">
       <h2>🎌 國定假日設定 <span class="badge gold">週間假日</span></h2>
       <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:8px;">
-        設定當年度「週一～週五」的國定假日（含補假、連假）。這些日子 M5 不會檢查據點漏排、也不會當成人力不足。<b>醫療院所不適用</b>：院所有自己彈性的排班與臨時休診機制，不受國定假日與例假日稽核。政府通常於每年 6 月底公布隔年行事曆，到時請在這裡新增隔年的假日。
+        設定當年度「週一～週五」的國定假日（含補假、連假）。這些日子 M5 不會檢查據點漏排、也不會當成人力不足。<b>醫療院所不適用國定假日規則</b>（照自己的上班日與臨時休診，院所國定假日不開請用「臨時休診」設定）。政府通常於每年 6 月底公布隔年行事曆，到時請在這裡新增隔年的假日。
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
         <select id="holidayYearSel" onchange="renderHolidaySettings()" style="width:auto;"></select>
@@ -1576,6 +1576,7 @@
               <input type="checkbox" id="bulkExcludeHoliday" checked style="width:auto;">
               排除國定假日（依 M2 設定；醫療院所不適用）
             </label>
+            <div id="bulkClinicHint" style="display:none;font-size:11px;color:var(--sage-dark);margin-top:4px;">🏥 已選醫療院所：依 M1 設定的上班日排班，不套用上面兩項（週末、國定假日）排除。</div>
           </div>
           <div class="bulk-form-col" id="bulkApplyTimeCol">
             <span class="bfc-label">時段</span>
@@ -3958,10 +3959,16 @@ function getEntriesForDate(dateStr){
 
 // 偵測某日某筆紀錄是否衝突：①同人同時段跨地點重疊 ②與請假/排休衝突
 // 排在據點「非營運日」（M1 設定的營運星期以外）：例如國姓村一週只營運一天，其他天卻排了人，會造成人力浪費、其他地點人力不足
+// 醫療院所臨時休診（M1 設定的單日上午／下午）的時段仍排班（平安藥局跟隨平安）
+function isEntryDuringClosure(e, dateStr){
+  if(!isClinicSite(e.site)) return false;
+  return (isClinicHalfClosed(e.site, dateStr, 'am') && normHM(e.start) < '12:00')
+      || (isClinicHalfClosed(e.site, dateStr, 'pm') && normHM(e.end) > '12:00');
+}
 function isEntryOffDay(e, dateStr){
   const site = sites.find(x=>x.id===e.site);
   if(!site) return false;
-  if(site.isClinic) return false;   // 醫療院所不適用「非營運日／例假日」稽核：院所用自己彈性的排班與臨時休診機制
+  // 醫療院所也依自己在 M1 設定的上班日檢查（例如平安週日不上班，排了就示警）；只有「國定假日」規則不適用院所
   const dow = new Date(dateStr+'T00:00:00').getDay();
   const slot = siteDaySlot(site, dow);
   if(!slot) return true;                         // 當天完全不營運
@@ -3989,8 +3996,10 @@ function detectConflicts(dateStr){
     if(dayLeaves.some(l=>l.staffId===a.staffId && leaveCoversRange(l, a.start, a.end))){
       conflictIdx.add(a._idx);
     }
-    // 排在據點非營運日
+    // 排在非營運日（據點與醫療院所各依自己設定的營運日）
     if(isEntryOffDay(a, dateStr)) conflictIdx.add(a._idx);
+    // 排在醫療院所臨時休診的時段
+    if(isEntryDuringClosure(a, dateStr)) conflictIdx.add(a._idx);
     // 排在國定假日（醫療院所不適用：院所有自己彈性的排班與臨時休診機制）
     if(isNationalHoliday(dateStr) && !isClinicSite(a.site)) conflictIdx.add(a._idx);
     for(let j=i+1;j<entries.length;j++){
@@ -4145,7 +4154,8 @@ function buildMatrixTableHtml(year, month, onCellClick, orientation){
       const dateTh = `<th>${d.getDate()}（${weekdayNames[dow]}）${dayTag?`<span class="day-tag">${dayTag}</span>`:''}</th>`;
       // 這天沒有任何人排班或請假 → 整列合併成一格，直接寫上「國定假日｜假日名稱」或「例假日」
       const hasAny = activeStaff.some(s=> getEntriesForDate(dateStr).some(e=>e.staffId===s.id) || (leaves[dateStr]||[]).some(l=>l.staffId===s.id));
-      if(dayTag && !hasAny){
+      const anyClinicOpen = sites.some(x=>x.isClinic && siteDaySlot(x, dow) && !(isClinicHalfClosed(x.id, dateStr, 'am') && isClinicHalfClosed(x.id, dateStr, 'pm')));
+      if(dayTag && !hasAny && !anyClinicOpen){   // 有醫療院所照常營運的日子不合併成「例假日」，仍逐格顯示
         const clickAttr = onCellClick ? `onclick="${onCellClick}('${dateStr}')"` : '';
         return `<tr class="${cls}">${dateTh}<td class="matrix-offday${holiday?' holiday':''}" colspan="${activeStaff.length}" ${clickAttr}>${holiday?'國定假日｜'+holidayNameOf(dateStr):'例假日'}</td></tr>`;
       }
@@ -5105,6 +5115,7 @@ let bulkMode = 'apply'; // 'apply' | 'cancel'
 function openBulkScheduleModal(){
   bulkSelectedStaffIds = [];
   bulkSelectedSite = null;   // 每次開啟都不預選地點
+  if(typeof updateBulkClinicHint==='function') updateBulkClinicHint();
   bulkRules = [];
   setBulkMode('apply');
   populateBulkStaffChecklist();
@@ -5173,10 +5184,17 @@ function renderBulkSiteChecklist(){
     `<span class="bulk-staff-chip ${bulkSelectedSite===o.id?'selected':''}" onclick="selectBulkSite('${o.id}')">${o.name}</span>`
   ).join('');
 }
+function updateBulkClinicHint(){
+  const isC = !!bulkSelectedSite && isClinicSite(bulkSelectedSite);
+  const hint = document.getElementById('bulkClinicHint');
+  if(hint) hint.style.display = isC ? '' : 'none';
+  ['bulkExcludeWeekendRow','bulkExcludeHolidayRow'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.opacity = isC ? '.45' : ''; });
+}
 function selectBulkSite(siteId){
   bulkSelectedSite = siteId;
   renderBulkSiteChecklist();
   populateBulkStaffChecklist();
+  updateBulkClinicHint();
 }
 // 時段快捷鈕的「選中」狀態：目前開始／結束時間與某個班別完全相同，該按鈕就亮起來（手動改時間也會跟著更新）
 // 多個班別（據點上午、平安上午、清禾上午…）時間可能完全相同，所以「選中」以實際點的那一顆為準，同一時間只亮一顆；
@@ -5285,7 +5303,8 @@ function runBulkSchedule(){
 
   let allDates = listDatesInRange(startDate, endDate);
   let excludedWeekendCount = 0;
-  if(excludeWeekend){
+  const bulkIsClinic = isClinicSite(bulkSelectedSite);   // 醫療院所不受政府行事曆（週末、國定假日）規範，只依 M1 設定的上班日與臨時休診
+  if(excludeWeekend && !bulkIsClinic){
     const before = allDates.length;
     allDates = allDates.filter(d=>!isWeekend(d));
     excludedWeekendCount = before - allDates.length;
@@ -5294,6 +5313,14 @@ function runBulkSchedule(){
   if(document.getElementById('bulkExcludeHoliday').checked && !isClinicSite(bulkSelectedSite)){   // 醫療院所不套用國定假日排除
     excludedHolidays = allDates.filter(isNationalHoliday);
     allDates = allDates.filter(d=>!isNationalHoliday(d));
+  }
+  let clinicOffDays = [];
+  if(bulkIsClinic){
+    const cs = sites.find(x=>x.id===bulkSelectedSite);
+    const keep = allDates.filter(d=>siteDaySlot(cs, new Date(d+'T00:00:00').getDay()));
+    clinicOffDays = allDates.filter(d=>!keep.includes(d));
+    allDates = keep;
+    if(allDates.length===0){ alert(`所選日期範圍內，「${cs.name}」沒有任何上班日（請到 M1 檢查上班日設定）。`); return; }
   }
   const bulkLockedCount = allDates.filter(isDateLocked).length;
   allDates = allDates.filter(d=>!isDateLocked(d));
@@ -5322,6 +5349,7 @@ function runBulkSchedule(){
   if(typeof renderConflictOverview==='function') renderConflictOverview();
 
   renderBulkReport(addedCount, skipped, allDates.length, bulkStaffIds.length, rulesToApply.length, excludedWeekendCount);
+  if(clinicOffDays.length>0) document.getElementById('bulkResultReport').insertAdjacentHTML('beforeend', `<div class="bulk-report-box" style="margin-top:6px;">🏥 醫療院所依 M1 設定的上班日排班，已略過 ${clinicOffDays.length} 天非上班日（不套用週末／國定假日排除）。</div>`);
   if(excludedHolidays.length>0) document.getElementById('bulkResultReport').insertAdjacentHTML('beforeend', `<div class="bulk-report-box" style="margin-top:6px;">🎌 已自動排除 ${excludedHolidays.length} 天國定假日：${excludedHolidays.map(d=>d.slice(5).replace('-','/')+'（'+holidayNameOf(d)+'）').join('、')}。</div>`);
   if(bulkBlockedNames.length>0) document.getElementById('bulkResultReport').insertAdjacentHTML('beforeend', `<div class="bulk-report-box" style="margin-top:6px;background:var(--danger-bg);border-color:var(--danger);color:var(--danger);">⚠ ${bulkBlockedNames.join('、')} 的上班類型不能排進「${siteLabelPlain(site)}」，未排入。</div>`);
   if(bulkLockedCount>0) document.getElementById('bulkResultReport').insertAdjacentHTML('beforeend', `<div class="bulk-report-box" style="margin-top:6px;">🔒 已略過 ${bulkLockedCount} 天過去月份的日期（已鎖定）。</div>`);
@@ -5636,11 +5664,18 @@ function runCopyMonth(){
   let copiedCount = 0;
   let skippedWeekendCount = 0;
   const skippedHolidayDays = [];
+  const skippedClinicOffDays = [];
   const targetDaysInMonth = new Date(Number(targetMonth.slice(0,4)), Number(targetMonth.slice(5,7)), 0).getDate();
   for(let day=1; day<=targetDaysInMonth; day++){
     const dateStr = targetMonth + '-' + String(day).padStart(2,'0');
-    if(isWeekend(dateStr)){ skippedWeekendCount++; continue; }
-    if(isNationalHoliday(dateStr) && !isClinicSite(pattern.site)){ skippedHolidayDays.push(dateStr); continue; }   // 國定假日不排班（醫療院所除外）
+    if(isClinicSite(pattern.site)){
+      // 醫療院所：只依自己的上班日，不管週末與國定假日
+      const cs = sites.find(x=>x.id===pattern.site);
+      if(!siteDaySlot(cs, new Date(dateStr+'T00:00:00').getDay())){ skippedClinicOffDays.push(dateStr); continue; }
+    }else{
+      if(isWeekend(dateStr)){ skippedWeekendCount++; continue; }
+      if(isNationalHoliday(dateStr)){ skippedHolidayDays.push(dateStr); continue; }   // 國定假日不排班
+    }
     if(!schedule[dateStr]) schedule[dateStr] = [];
     schedule[dateStr].push({ staffId, site: pattern.site, start: pattern.start, end: pattern.end, status: 'draft' });
     copiedCount++;
@@ -5654,6 +5689,9 @@ function runCopyMonth(){
   let reportHtml = `<div class="bulk-report-box success">✅ 已將 ${staffName} 在 ${sourceMonth} 的固定模式（${patternLabel}）套用到 ${targetMonth} 所有工作日，共 <strong>${copiedCount}</strong> 筆。`;
   if(skippedWeekendCount>0){
     reportHtml += `<br>已自動排除 ${skippedWeekendCount} 天週六／週日。`;
+  }
+  if(skippedClinicOffDays.length>0){
+    reportHtml += `<br>醫療院所依 M1 上班日排班，已略過 ${skippedClinicOffDays.length} 天非上班日。`;
   }
   if(skippedHolidayDays.length>0){
     reportHtml += `<br>已自動排除 ${skippedHolidayDays.length} 天國定假日：${skippedHolidayDays.map(d=>d.slice(5).replace('-','/')).join('、')}。`;
@@ -6133,6 +6171,7 @@ function scanAllConflicts(){
       if(hasOverlap) reasons.push('overlap');
       if(isEntryOffDay(e, dateStr)) reasons.push('offday');
       if(isNationalHoliday(dateStr) && !isClinicSite(e.site)) reasons.push('holiday');
+      if(reasons.length===0) return;   // 只因臨時休診被標紅的，M5 由「休診異常」那一類另外列出
       results.push({ dateStr, staffId:e.staffId, site:e.site, start:e.start, end:e.end, reasons });
     });
   });
