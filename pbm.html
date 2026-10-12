@@ -1230,6 +1230,7 @@
   <button class="tab-btn" data-panel="m7">M7 發布查詢</button>
   <button class="tab-btn" data-panel="m8">M8 報表</button>
   <button class="tab-btn" data-panel="m9">M9 支援填報</button>
+  <button class="tab-btn" data-panel="m10" id="m10Tab" style="display:none;">M10 登入紀錄</button>
 </nav>
 
 <main>
@@ -2035,6 +2036,22 @@
       <div id="absenceOverviewList"></div>
     </div>
   </div>
+  <div class="panel" id="panel-m10">
+    <div class="card">
+      <h2>🔐 登入紀錄 <span class="badge gold">僅擁有者可見</span></h2>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
+        記錄每一次以管理員密碼登入（一般管理員與擁有者）的日期時間，時間為台灣時間。紀錄寫入後任何人都不能修改或刪除（包含管理員），也只有擁有者帳號讀得到。
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+        <select id="m10RoleFilter" onchange="renderLoginLogs()" style="width:auto;">
+          <option value="">全部登入</option><option value="admin">一般管理員</option><option value="owner">擁有者</option>
+        </select>
+        <span id="m10Count" style="font-size:12px;color:var(--text-soft);"></span>
+        <button class="btn outline" style="margin-left:auto;" onclick="exportLoginLogsCSV()">⬇ 匯出 CSV</button>
+      </div>
+      <div id="loginLogList"></div>
+    </div>
+  </div>
 </main>
 
 <footer>
@@ -2063,6 +2080,11 @@ const FIREBASE_CONFIG = {
   appId: '1:228833545764:web:e1059928832906a73092b1'
 };
 const ADMIN_EMAIL = 'admin@pbm.local'; // 需與 Firebase 建立的共用主管帳號、firestore.rules 內的信箱一致
+// 擁有者帳號：另一個 Firebase 使用者（密碼固定在 Firebase，不寫在網頁程式裡，避免有人查看網頁原始碼就拿到）。
+// 同樣擁有管理員的全部功能；只有用這個帳號登入才會出現「M10 登入紀錄」，每次登入的日期時間都會記錄。
+const OWNER_EMAIL = 'owner@pbm.local';
+function isAdminEmail(email){ return email === ADMIN_EMAIL || email === OWNER_EMAIL; }
+function isOwnerAuthed(){ return !!(fbAuth && fbAuth.currentUser && fbAuth.currentUser.email === OWNER_EMAIL); }
 let fbAuth = null;
 let fbDb = null; // Firestore（M9 支援填報：每筆紀錄一份獨立文件，集合 attendance）
 try{
@@ -2086,8 +2108,9 @@ localStorage.removeItem('sched_adminPwdHash'); // 清掉舊版存在本機的密
 if(IS_ADMIN) document.body.classList.add('locked'); // 預設鎖住，確認登入身分後才解鎖
 if(fbAuth){
   fbAuth.onAuthStateChanged(user=>{
-    const ok = !!(user && user.email === ADMIN_EMAIL);
+    const ok = !!(user && isAdminEmail(user.email));
     if(IS_ADMIN) document.body.classList.toggle('locked', !ok);
+    updateOwnerUi(user);
     // firestore.rules：attendance、leaves 整個集合都僅管理員可讀，所以登入確認後才拉全部紀錄
     if(ok && IS_ADMIN){
       startAttendanceListener(); startLeavesListener();
@@ -2123,7 +2146,32 @@ async function adminSignIn(pwd){
   if(!fbAuth) throw { code:'app/no-firebase' };
   // 管理員密碼登入維持舊行為：關閉分頁即登出（跟匿名身分的「長期留在裝置上」分開設定，互不影響）
   await fbAuth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(()=>{});
-  await fbAuth.signInWithEmailAndPassword(ADMIN_EMAIL, pwd);
+  let signedEmail = ADMIN_EMAIL;
+  try{
+    await fbAuth.signInWithEmailAndPassword(ADMIN_EMAIL, pwd);
+  }catch(e1){
+    const c = (e1 && e1.code) || '';
+    if(!['auth/wrong-password','auth/invalid-credential','auth/invalid-login-credentials','auth/user-not-found'].includes(c)) throw e1;
+    // 不是一般管理員密碼 → 試試擁有者密碼（帳號與密碼都在 Firebase，這裡不存任何密碼）
+    try{
+      await fbAuth.signInWithEmailAndPassword(OWNER_EMAIL, pwd);
+      signedEmail = OWNER_EMAIL;
+    }catch(e2){ throw e1; }   // 兩個都不對，維持「密碼錯誤」的訊息
+  }
+  await recordLoginEvent(signedEmail);
+}
+// 每次以密碼登入成功，寫一筆登入紀錄（日期時間用伺服器時間）；只有擁有者能在 M10 看到
+async function recordLoginEvent(email){
+  try{
+    if(!fbDb) return;
+    const w = fbDb.collection('loginLogs').add({
+      email, role: email===OWNER_EMAIL ? 'owner' : 'admin',
+      at: firebase.firestore.FieldValue.serverTimestamp(),
+      ua: String(navigator.userAgent||'').slice(0,180),
+      page: String(location.pathname||'').slice(-60)
+    });
+    await Promise.race([w, new Promise(res=>setTimeout(res, 4000))]);   // 登入後網頁會重新載入，先等寫入送出（最多 4 秒，不卡登入）
+  }catch(err){ console.warn('[登入紀錄] 寫入失敗（不影響登入）：', err); }
 }
 async function submitLogin(){
   const inp = document.getElementById('gatePwd');
@@ -2190,6 +2238,68 @@ async function submitChangePwd(){
   }catch(e){
     err.textContent = (e && e.code && e.code.startsWith('auth/') && e.code!=='auth/weak-password' && e.code!=='auth/requires-recent-login') ? '目前密碼不正確' : authErrMsg(e);
   }
+}
+// ===== 擁有者專屬：M10 登入紀錄 =====
+let loginLogs = [];
+let loginLogsUnsub = null;
+function updateOwnerUi(user){
+  const owner = !!(user && user.email === OWNER_EMAIL);
+  const tab = document.getElementById('m10Tab');
+  if(tab) tab.style.display = (IS_ADMIN && owner) ? '' : 'none';
+  const pwdBtn = document.getElementById('pwdBtn');
+  if(pwdBtn) pwdBtn.style.display = owner ? 'none' : '';    // 擁有者密碼是固定的，不提供在畫面上修改
+  if(IS_ADMIN && owner){
+    startLoginLogsListener();
+  }else{
+    if(loginLogsUnsub){ loginLogsUnsub(); loginLogsUnsub = null; }
+    loginLogs = [];
+    // 非擁有者：若停在 M10 就切回 M1
+    const p = document.getElementById('panel-m10');
+    if(p && p.classList.contains('active')){ document.querySelector('.tab-btn[data-panel="m1"]')?.click(); }
+  }
+}
+function startLoginLogsListener(){
+  if(loginLogsUnsub || !fbDb) return;
+  loginLogsUnsub = fbDb.collection('loginLogs').orderBy('at','desc').limit(500).onSnapshot(snap=>{
+    loginLogs = snap.docs.map(d=>{
+      const x = d.data({ serverTimestamps:'estimate' });
+      return { id:d.id, email:x.email, role:x.role, at: x.at && x.at.toDate ? x.at.toDate() : null, ua:x.ua||'' };
+    });
+    renderLoginLogs();
+  }, err=>{
+    loginLogsUnsub = null;
+    console.error('[登入紀錄] 讀取失敗：', err);
+    const box = document.getElementById('loginLogList');
+    if(box) box.innerHTML = `<div class="report-empty">讀取登入紀錄失敗：${(err && err.code) || err}（請確認 Firestore 規則已新增 loginLogs）</div>`;
+  });
+}
+function describeUA(ua){
+  const os = /iPhone|iPad/.test(ua) ? 'iPhone／iPad' : /Android/.test(ua) ? 'Android' : /Windows/.test(ua) ? 'Windows' : /Mac OS X|Macintosh/.test(ua) ? 'Mac' : /Linux/.test(ua) ? 'Linux' : '未知裝置';
+  const br = /Edg\//.test(ua) ? 'Edge' : /OPR\/|Opera/.test(ua) ? 'Opera' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : '瀏覽器';
+  return os + '・' + br;
+}
+function fmtLoginTime(d){
+  if(!d) return '（寫入中…）';
+  return d.toLocaleString('zh-TW', { timeZone:'Asia/Taipei', hour12:false, year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}
+function renderLoginLogs(){
+  const box = document.getElementById('loginLogList'); if(!box) return;
+  const f = document.getElementById('m10RoleFilter').value;
+  const rows = loginLogs.filter(r=>!f || r.role===f);
+  document.getElementById('m10Count').textContent = `共 ${rows.length} 筆（最多顯示最近 500 筆）`;
+  if(!rows.length){ box.innerHTML = '<div class="report-empty">還沒有登入紀錄</div>'; return; }
+  box.innerHTML = `<table class="report-table"><thead><tr><th>登入時間（台灣時間）</th><th>身分</th><th>裝置</th></tr></thead><tbody>` +
+    rows.map(r=>`<tr><td style="white-space:nowrap;">${fmtLoginTime(r.at)}</td><td>${r.role==='owner'?'🔑 擁有者':'👤 一般管理員'}</td><td>${describeUA(r.ua)}</td></tr>`).join('') + '</tbody></table>';
+}
+function exportLoginLogsCSV(){
+  const f = document.getElementById('m10RoleFilter').value;
+  const rows = loginLogs.filter(r=>!f || r.role===f);
+  const esc = v=>'"' + String(v).replace(/"/g,'""') + '"';
+  const csv = '\ufeff登入時間(台灣時間),身分,裝置\n' + rows.map(r=>[fmtLoginTime(r.at), r.role==='owner'?'擁有者':'一般管理員', describeUA(r.ua)].map(esc).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8' }));
+  a.download = '登入紀錄.csv';
+  document.body.appendChild(a); a.click(); a.remove();
 }
 const EMPLOYEE_VISIBLE_PANELS = ['m4', 'm7', 'm9'];
 
@@ -8158,7 +8268,7 @@ async function addAttendanceRecord(){
   alert(`已為 ${getStaffName(staffId)} 登記 ${dateStr} 的支援紀錄${photoUrls.length>0?`（含${photoUrls.length}張照片）`:''}` +
     (isAdminNow ? '' : '\n若目前網路不穩，紀錄會先保存在這台裝置，恢復連線後會自動上傳。'));
 }
-function isAdminAuthed(){ return !!(IS_ADMIN && fbAuth && fbAuth.currentUser && fbAuth.currentUser.email === ADMIN_EMAIL); }
+function isAdminAuthed(){ return !!(IS_ADMIN && fbAuth && fbAuth.currentUser && isAdminEmail(fbAuth.currentUser.email)); }
 async function deleteAttendanceRecord(id){
   if(!isAdminAuthed()){ alert('⚠️ 一般員工僅能新增支援填報紀錄，無法修改或刪除已填報的紀錄。如需更正，請洽管理者協助處理。'); return; }
   if(!confirm('確定刪除此筆支援紀錄？（附的照片也會一併刪除）')) return;
