@@ -1,0 +1,48 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>舌苔指數 TCI</title><style>
+body{font-family:system-ui,"Noto Sans TC",sans-serif;max-width:760px;margin:0 auto;padding:12px;background:#f5f7f6;color:#222}
+h1{font-size:1.2rem}.c{background:#fff;border-radius:10px;padding:12px;margin:10px 0;box-shadow:0 1px 3px #0002}
+.r{display:flex;gap:8px;flex-wrap:wrap}.r>label{flex:1 1 200px;font-size:.85rem}input[type=text],input[type=date],select{width:100%;padding:8px;font-size:1rem;box-sizing:border-box}
+fieldset{border:1px solid #ccd;border-radius:8px;margin:8px 0}legend{font-weight:600;font-size:.95rem}fieldset label{display:block;padding:6px 4px;font-size:.95rem}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:300px}.tt{display:grid;grid-template-columns:repeat(8,1fr);gap:3px;margin:4px 0;font-size:.7rem;text-align:center}.tt select{padding:2px;font-size:.8rem}
+button{padding:10px 14px;margin:4px 4px 4px 0;font-size:1rem;border:0;border-radius:8px;background:#2f7d6d;color:#fff}button.s{background:#667}
+#res{font-size:1.1rem;font-weight:700;color:#a33}table{width:100%;border-collapse:collapse;font-size:.85rem}td,th{border-bottom:1px solid #ddd;padding:4px;text-align:left}small{color:#666}
+@media print{button,#rec{display:none}}</style></head><body>
+<h1>舌苔指數 TCI</h1><div class="c"><div class="r">
+<label>姓名<input type="text" id="name"></label><label>身分證字號（選填）<input type="text" id="pid"></label>
+<label>性別<select id="sex"><option></option><option>男</option><option>女</option></select></label>
+<label>出生日期<input type="date" id="birth"></label><label>評估日期<input type="date" id="date"></label><label>評估人員（選填）<input type="text" id="who"></label></div></div>
+<div class="c" id="q"></div><div class="c"><div id="res"></div><button id="sv">儲存紀錄</button><button class="s" id="nw">清空重填</button><button class="s" onclick="print()">列印</button><br><small>Shimizu 等(2007) J Oral Rehabil 34(6):442-447。九宮格各 0=無舌苔、1=薄舌苔可辨識乳突、2=厚舌苔不可辨識乳突。</small></div>
+<div class="c" id="rec"><b>已存紀錄</b>（僅存在本機瀏覽器）<div style="overflow-x:auto"><table id="tb"></table></div><button class="s" id="ex">匯出 CSV</button></div>
+<script>
+const CFG={key:"tci",max:18,show:0,items:[{"id": "grid", "label": "舌面九宮格（0 無舌苔／1 薄／2 厚）", "t": "tci", "opts": []}],judge:(t,a)=>'TCI = '+t+'/18×100% = <span>'+(t/18*100).toFixed(2)+'%</span>'};
+const $=s=>document.querySelector(s),K='oral_'+CFG.key,INFO=['name','pid','sex','birth','date','who'];
+$('#date').value=new Date().toISOString().slice(0,10);
+const TS=['18','17','16','15','14','13','12','11','21','22','23','24','25','26','27','28','48','47','46','45','44','43','42','41','31','32','33','34','35','36','37','38'];
+$('#q').innerHTML=CFG.items.map(it=>{let h=`<fieldset><legend>${it.label}</legend>`;
+if(it.t=='tci')h+='<div class="g3">'+[...Array(9)].map((_,i)=>`<select data-k="tci"><option value="">格${i+1}</option><option>0</option><option>1</option><option>2</option></select>`).join('')+'</div>';
+else if(it.t=='teeth')h+=[0,16].map(s=>'<div class="tt">'+TS.slice(s,s+16).map(n=>`<div>${n}<select data-k="tooth" data-n="${n}"><option></option><option>D</option><option>M</option><option>RR</option><option>F</option></select></div>`).join('')+'</div>').join('');
+else if(it.t=='note')h+=`<input type="text" data-k="${it.id}">`;
+else h+=it.opts.map(o=>`<label><input type="${it.t=='check'?'checkbox':'radio'}" name="${it.id}" value="${o[0]}"> ${o[0]}${o.length>1&&CFG.show?` <small>(${o[1]}分)</small>`:''}</label>`).join('');
+return h+'</fieldset>'}).join('');
+function calc(){const a={};let tot=0,sc=false;
+for(const it of CFG.items){if(it.t=='tci'){const v=[...document.querySelectorAll('[data-k=tci]')].map(e=>e.value);a[it.id]=v.join('');tot=v.reduce((s,x)=>s+(+x||0),0);sc=1;}
+else if(it.t=='teeth'){document.querySelectorAll('[data-k=tooth]').forEach(e=>{if(e.value)a['牙'+e.dataset.n]=e.value})}
+else if(it.t=='note')a[it.id]=document.querySelector(`[data-k=${it.id}]`).value;
+else if(it.t=='check')a[it.id]=[...document.querySelectorAll(`[name=${it.id}]:checked`)].map(e=>e.value).join(';');
+else{const e=document.querySelector(`[name=${it.id}]:checked`);a[it.id]=e?e.value:'';if(e&&it.opts[0].length>1){tot+=it.opts.find(o=>o[0]==e.value)[1];sc=1}}}
+const done=CFG.items.filter(i=>i.opts&&i.t!='check'&&i.opts[0].length>1).every(i=>a[i.id]!=='');
+return{a,tot:sc?tot:'',ok:done,res:CFG.judge?CFG.judge(tot,a):''}}
+function show(){const r=calc();$('#res').innerHTML=(r.tot!==''?'總分：'+r.tot+(CFG.max?' / '+CFG.max:'')+'<br>':'')+r.res+(r.ok?'':'<br><small>尚有題目未作答</small>')}
+$('#q').oninput=show;
+const L=()=>JSON.parse(localStorage.getItem(K)||'[]');
+function list(){$('#tb').innerHTML='<tr><th>日期</th><th>姓名</th><th>分數</th><th>結果</th><th></th></tr>'+L().map((r,i)=>`<tr><td>${r.date}</td><td>${r.name}</td><td>${r.tot}</td><td>${r.res.replace(/<[^>]+>/g,' ')}</td><td><button class="s" onclick="del(${i})">刪</button></td></tr>`).join('')}
+function del(i){const l=L();l.splice(i,1);localStorage.setItem(K,JSON.stringify(l));list()}
+$('#sv').onclick=()=>{const r=calc(),o={};INFO.forEach(k=>o[k]=$('#'+k).value);if(!o.name)return alert('請填姓名');
+const l=L();l.push({...o,tot:r.tot,res:r.res,a:r.a});localStorage.setItem(K,JSON.stringify(l));list();alert('已儲存')};
+$('#nw').onclick=()=>{if(confirm('清空本表？')){document.querySelectorAll('input[type=radio],input[type=checkbox]').forEach(e=>e.checked=false);document.querySelectorAll('select,input[type=text]').forEach(e=>e.id=='date'||(e.value=''));show()}};
+$('#ex').onclick=()=>{const l=L(),ks=[...new Set(l.flatMap(r=>Object.keys(r.a)))],h=['姓名','身分證字號','性別','出生日期','評估日期','評估人員','總分','結果',...ks];
+const q=v=>'"'+String(v??'').replace(/<[^>]+>/g,' ').replace(/"/g,'""')+'"';
+const csv=[h.map(q).join(',')].concat(l.map(r=>[r.name,r.pid,r.sex,r.birth,r.date,r.who,r.tot,r.res,...ks.map(k=>r.a[k])].map(q).join(','))).join('\n');
+const b=new Blob(['\ufeff'+csv],{type:'text/csv'}),u=document.createElement('a');u.href=URL.createObjectURL(b);u.download=CFG.key+'.csv';u.click()};
+list();show();
+</script></body></html>
