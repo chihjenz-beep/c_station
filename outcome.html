@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>個人收支明細帳</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700&display=swap">
+<style>
+:root{--bg:#f6f1e9;--card:#fffdf9;--ink:#33241d;--mute:#8a7a6e;--line:#e5dccf;--brand:#33241d;--gold:#c49a52;--red:#a8434d;--green:#3f7d5a;--on:#f6efe4;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b1512;--card:#271e19;--ink:#f1e8dc;--mute:#a69888;--line:#3b2f28;--brand:#120e0c;--gold:#d3aa63;--red:#e27a84;--green:#6fc095;color-scheme:dark}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 -apple-system,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;padding-bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+.serif{font-family:"Noto Serif TC",Georgia,serif}
+header{background:var(--brand);color:var(--on);padding:14px 18px 16px}
+.top{display:flex;justify-content:space-between;font-size:12px;letter-spacing:.1em;color:var(--gold)}
+h1{font-size:26px;line-height:1.2;margin:8px 0 2px}
+.sub{font-size:12px;color:#cdbca5}
+.mnav{display:flex;align-items:center;justify-content:center;gap:18px;margin:14px 0 4px}
+.mnav button{background:none;border:1px solid var(--line);color:var(--ink);width:38px;height:38px;border-radius:50%;font-size:18px}
+.mnav b{font-size:18px;min-width:120px;text-align:center}
+main{padding:0 16px;max-width:640px;margin:0 auto}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.stat.wide{grid-column:span 2;border-left:4px solid var(--gold)}
+.stat small{color:var(--mute);font-size:12px}
+.stat div{font-size:22px;font-weight:700}
+.neg{color:var(--red)}.pos{color:var(--green)}
+h2{font-size:15px;margin:20px 2px 8px;color:var(--mute);letter-spacing:.08em}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.row{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.row:last-child{border:0}
+.row .m{flex:1;min-width:0}.row .m span{display:block;font-size:12px;color:var(--mute)}
+.row .a{font-weight:700;white-space:nowrap}
+.bar{height:8px;border-radius:4px;background:var(--line);margin-top:6px;overflow:hidden}.bar i{display:block;height:100%;background:var(--gold)}
+.empty{padding:28px;text-align:center;color:var(--mute)}
+.dh{font-size:13px;color:var(--mute);margin:14px 4px 6px}
+input,select,textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit}
+.btn{padding:12px 16px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-weight:600}
+.btn.p{background:var(--brand);color:var(--on);border-color:var(--brand)}
+.btn.d{color:var(--red)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:8px 14px;border-radius:20px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:14px}
+.chip.on{background:var(--brand);color:var(--on);border-color:var(--brand)}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--brand);padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
+nav button{flex:1;background:none;border:0;color:#bfae98;padding:9px 0 8px;font:inherit;font-size:11px}
+nav button span{display:block;font-size:20px;line-height:1.2}
+nav button.on{color:var(--gold);box-shadow:inset 0 3px 0 var(--gold)}
+.fab{position:fixed;right:18px;bottom:calc(82px + env(safe-area-inset-bottom,0px));width:58px;height:58px;border-radius:50%;border:0;background:var(--gold);color:#2a1d12;font-size:32px;box-shadow:0 4px 14px rgba(0,0,0,.3);z-index:6}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;z-index:10}
+.ov.show{display:flex}
+.sheet{background:var(--bg);width:100%;max-height:92%;overflow:auto;border-radius:20px 20px 0 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom,0px));max-width:640px;margin:0 auto}
+.sheet label{display:block;font-size:12px;color:var(--mute);margin:12px 0 6px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.amt{font-size:30px;font-weight:700;text-align:center}
+textarea{height:140px;font-size:12px}
+.yr{display:grid;grid-template-columns:34px 1fr 70px;gap:8px;align-items:center;padding:7px 14px;font-size:13px}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <div class="top"><span>PWA · V1.0</span><span id="vt"></span></div>
+  <h1 class="serif">個人收支<br>明細帳</h1>
+  <div class="sub">Offline-first ledger · 你的資料只留在你的裝置。</div>
+</header>
+<main id="app"></main>
+<button class="fab" id="fab" aria-label="記一筆">＋</button>
+<nav id="nav"></nav>
+<div class="ov" id="ov"><div class="sheet" id="sheet"></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+var TABS=[["home","📖","帳冊"],["ov","📊","總覽"],["list","🧾","明細"],["cat","🗂️","分類"],["more","⚙️","更多"]];
+var DEF={expense:["餐飲","日常用品","交通","健康","娛樂","居家","其他"],income:["薪資","獎金","投資","其他"]};
+var S={tx:[],cats:JSON.parse(JSON.stringify(DEF))};
+var tab="home",today=ld(new Date()),ym=today.slice(0,7),q="",form=null;
+function ld(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function load(){try{var r=localStorage.getItem("ledger_v1");if(r){var o=JSON.parse(r);if(o&&o.tx&&o.cats)S=o}}catch(e){}}
+function save(){try{localStorage.setItem("ledger_v1",JSON.stringify(S))}catch(e){}}
+function $(s){return document.querySelector(s)}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function money(n){return "$"+Math.abs(n).toLocaleString("en-US")}
+function mt(m){return S.tx.filter(function(t){return t.date.slice(0,7)===m})}
+function sums(list){var i=0,e=0;list.forEach(function(t){t.type==="income"?i+=t.amt:e+=t.amt});return{i:i,e:e,b:i-e}}
+function shift(n){var p=ym.split("-"),d=new Date(+p[0],+p[1]-1+n,1);ym=ld(d).slice(0,7);render()}
+function mnav(){var p=ym.split("-");return '<div class="mnav"><button onclick="shift(-1)">‹</button><b class="serif">'+p[0]+"年"+(+p[1])+'月</b><button onclick="shift(1)">›</button></div>'}
+function stats(s){return '<div class="stats"><div class="stat"><small>本月收入</small><div class="pos">'+money(s.i)+'</div></div><div class="stat"><small>本月支出</small><div class="neg">'+money(s.e)+'</div></div><div class="stat wide"><small>本月結餘</small><div class="'+(s.b<0?"neg":"pos")+'">'+(s.b<0?"−":"")+money(s.b)+"</div></div></div>"}
+function rowH(t,f){var sg=t.type==="income"?"+":"−";var bt=f?'<button class="btn" style="padding:8px 10px" onclick="event.stopPropagation();edit(\''+t.id+'\')">編輯</button><button class="btn d" style="padding:8px 10px" onclick="event.stopPropagation();delTx(\''+t.id+'\')">刪除</button>':"";return '<div class="row" onclick="edit(\''+t.id+'\')"><div class="m"><b>'+esc(t.cat)+"</b>"+(t.note?" · "+esc(t.note):"")+"<span>"+t.date+'</span></div><div class="a '+(t.type==="income"?"pos":"neg")+'">'+sg+money(t.amt)+"</div>"+bt+"</div>"}
+function sorted(l){return l.slice().sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:b.id>a.id?1:-1})}
+function breakdown(list){var m={},tot=0;list.filter(function(t){return t.type==="expense"}).forEach(function(t){m[t.cat]=(m[t.cat]||0)+t.amt;tot+=t.amt});var k=Object.keys(m).sort(function(a,b){return m[b]-m[a]});if(!k.length)return '<div class="card"><div class="empty">本月尚無支出</div></div>';return '<div class="card">'+k.map(function(c){var p=Math.round(m[c]/tot*100);return '<div class="row"><div class="m"><div style="display:flex;justify-content:space-between"><b>'+esc(c)+"</b><span>"+money(m[c])+" · "+p+'%</span></div><div class="bar"><i style="width:'+p+'%"></i></div></div></div>'}).join("")+"</div>"}
+
+function render(){
+  $("#nav").innerHTML=TABS.map(function(t){return '<button class="'+(tab===t[0]?"on":"")+'" onclick="go(\''+t[0]+'\')"><span>'+t[1]+"</span>"+t[2]+"</button>"}).join("");
+  $("#fab").classList.toggle("hide",tab==="cat"||tab==="more");
+  var list=mt(ym),h="";
+  if(tab==="home"){
+    h=mnav()+stats(sums(list))+"<h2>最近記錄</h2>";
+    var r=sorted(list).slice(0,6);
+    h+='<div class="card">'+(r.length?r.map(rowH).join(""):'<div class="empty">還沒有記錄，點右下角 ＋ 記第一筆</div>')+"</div>";
+  }else if(tab==="ov"){
+    h=mnav()+stats(sums(list))+"<h2>支出分類</h2>"+breakdown(list)+"<h2>"+ym.slice(0,4)+" 年度彙總</h2>"+yearly();
+  }else if(tab==="list"){
+    var l=sorted(list).filter(function(t){return !q||(t.cat+t.note).toLowerCase().indexOf(q.toLowerCase())>-1});
+    h=mnav()+'<input id="q" placeholder="搜尋備註或分類" value="'+esc(q)+'" oninput="q=this.value;keep()">';
+    h+='<div id="lst">'+listH(l)+"</div>";
+  }else if(tab==="cat"){
+    h='<h2>支出分類</h2>'+catH("expense")+"<h2>收入分類</h2>"+catH("income");
+  }else{
+    h=more();
+  }
+  $("#app").innerHTML=h;
+}
+function keep(){var l=sorted(mt(ym)).filter(function(t){return !q||(t.cat+t.note).toLowerCase().indexOf(q.toLowerCase())>-1});$("#lst").innerHTML=listH(l)}
+function listH(l){if(!l.length)return '<div class="card" style="margin-top:12px"><div class="empty">沒有符合的記錄</div></div>';var out="",d="";l.forEach(function(t){if(t.date!==d){if(d)out+="</div>";d=t.date;out+='<div class="dh">'+d+'</div><div class="card">'}out+=rowH(t,1)});return out+"</div>"}
+function yearly(){var y=ym.slice(0,4),mx=1,rows=[];for(var i=1;i<=12;i++){var m=y+"-"+String(i).padStart(2,"0"),s=sums(mt(m));mx=Math.max(mx,s.e,s.i);rows.push([i,s])}
+  return '<div class="card" style="padding:6px 0">'+rows.map(function(r){var s=r[1];return '<div class="yr"><span>'+r[0]+'月</span><div><div class="bar" style="margin:0 0 3px"><i style="width:'+(s.i/mx*100)+'%;background:var(--green)"></i></div><div class="bar" style="margin:0"><i style="width:'+(s.e/mx*100)+'%;background:var(--red)"></i></div></div><span class="'+(s.b<0?"neg":"pos")+'" style="text-align:right">'+(s.b<0?"−":"")+money(s.b)+"</span></div>"}).join("")+'</div><div class="dh">綠＝收入　紅＝支出　右側為結餘</div>'}
+function catH(t){return '<div class="card">'+S.cats[t].map(function(c,i){return '<div class="row"><div class="m"><b>'+esc(c)+'</b></div><button class="btn d" onclick="delCat(\''+t+"',"+i+')">刪除</button></div>'}).join("")+'<div class="row"><input id="nc_'+t+'" placeholder="新增分類名稱"><button class="btn p" onclick="addCat(\''+t+'\')">新增</button></div></div>'}
+function addCat(t){var v=$("#nc_"+t).value.trim();if(v&&S.cats[t].indexOf(v)<0){S.cats[t].push(v);save();render()}}
+function delCat(t,i){if(S.cats[t].length<2)return;if(confirm("刪除此分類？既有記錄不受影響。")){S.cats[t].splice(i,1);save();render()}}
+function more(){var list=mt(ym),s=sums(list);
+  return mnav()+"<h2>月度報表</h2><div class=\"card\"><div class=\"row\"><div class=\"m\">收入 "+money(s.i)+"　支出 "+money(s.e)+"　結餘 "+(s.b<0?"−":"")+money(s.b)+"<span>共 "+list.length+' 筆</span></div><button class="btn p" onclick="copyRep()">複製報表</button></div></div>'+
+  '<h2>匯出／匯入 Excel</h2><div class="card"><div class="row"><div class="m">匯出 XLSX<span>全部收支明細與分類，可當備份</span></div><button class="btn p" onclick="exp()">匯出</button></div><div class="row"><div class="m">匯入 XLSX<span>與現有資料合併，重複的記錄會略過</span></div><button class="btn" onclick="pick()">匯入</button><input id="xf" type="file" accept=".xlsx,.xls" class="hide" onchange="picked(this)"></div></div>'+
+  '<h2>其他</h2><div class="card"><div class="row"><div class="m">匯入 2026/11 範例資料<span>PDF 報表中的 10 筆</span></div><button class="btn" onclick="demo()">匯入</button></div><div class="row"><div class="m">清除全部資料<span>無法復原，請先備份</span></div><button class="btn d" onclick="wipe()">清除</button></div></div>'}
+function repText(){var l=sorted(mt(ym)),s=sums(l);return "個人收支明細帳 "+ym+"\n收入 "+money(s.i)+" / 支出 "+money(s.e)+" / 結餘 "+(s.b<0?"-":"")+money(s.b)+"\n\n"+l.map(function(t){return t.date+" "+(t.type==="income"?"收入":"支出")+" "+t.cat+" "+t.note+" "+(t.type==="income"?"+":"-")+t.amt}).join("\n")}
+function copyTxt(t){try{navigator.clipboard.writeText(t).then(function(){alert("已複製")},function(){alert("無法自動複製，請手動選取")})}catch(e){alert("無法自動複製，請手動選取")}}
+function copyRep(){copyTxt(repText())}
+function picked(el){var f=el.files[0];el.value="";imp(f)}
+function pick(){$("#xf").click()}
+function p2(n){return String(n).padStart(2,"0")}
+function nd(v){if(typeof v==="number"){var d=new Date(Math.round((v-25569)*864e5));return d.getUTCFullYear()+"-"+p2(d.getUTCMonth()+1)+"-"+p2(d.getUTCDate())}var m=String(v||"").trim().match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);return m?m[1]+"-"+p2(m[2])+"-"+p2(m[3]):""}
+function exp(){if(!window.XLSX){alert("Excel 元件載入失敗，請確認網路後重新整理");return}
+  var wb=XLSX.utils.book_new();
+  var a=[["日期","類型","分類","備註","金額"]].concat(sorted(S.tx).map(function(t){return[t.date,t.type==="income"?"收入":"支出",t.cat,t.note,t.amt]}));
+  var w1=XLSX.utils.aoa_to_sheet(a);w1["!cols"]=[{wch:12},{wch:8},{wch:12},{wch:24},{wch:10}];XLSX.utils.book_append_sheet(wb,w1,"收支明細");
+  var c=[["類型","分類"]];S.cats.expense.forEach(function(x){c.push(["支出",x])});S.cats.income.forEach(function(x){c.push(["收入",x])});
+  var w2=XLSX.utils.aoa_to_sheet(c);w2["!cols"]=[{wch:8},{wch:14}];XLSX.utils.book_append_sheet(wb,w2,"分類");
+  var out=new Blob([XLSX.write(wb,{bookType:"xlsx",type:"array"})]);
+  var fn="個人收支明細帳_"+today+".xlsx";
+  function plain(){var u=URL.createObjectURL(out),a=document.createElement("a");a.href=u;a.download=fn;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},4000)}
+  if(!window.claude||!claude.use){plain();return}
+  claude.use("downloads").then(function(dl){if(!dl){plain();return}
+    return dl.save({filename:fn,data:out}).catch(function(e){if(!e||e.code!=="declined")alert("匯出失敗："+(e&&e.message||"未知錯誤"))})},function(){plain()})}
+function imp(f){if(!f)return;if(!window.XLSX){alert("Excel 元件載入失敗，請確認網路後重新整理");return}
+  var r=new FileReader();r.onload=function(){try{
+    var wb=XLSX.read(r.result,{type:"array"});var ws=wb.Sheets["收支明細"]||wb.Sheets[wb.SheetNames[0]];
+    var rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true});var seen={};
+    S.tx.forEach(function(t){seen[[t.date,t.type,t.cat,t.note,t.amt].join("|")]=1});
+    var add=0,skip=0,bad=0;
+    rows.forEach(function(x,i){if(i===0&&String(x[0]).trim()==="日期")return;if(!x||!x.length)return;
+      var d=nd(x[0]),a=Math.round(Math.abs(+x[4])),ty=String(x[1]||"").indexOf("收")>-1?"income":"expense",cat=String(x[2]||"其他").trim()||"其他",note=String(x[3]==null?"":x[3]).trim();
+      if(!d||!(a>0)){bad++;return}
+      var k=[d,ty,cat,note,a].join("|");if(seen[k]){skip++;return}seen[k]=1;
+      if(S.cats[ty].indexOf(cat)<0)S.cats[ty].push(cat);
+      S.tx.push({id:"i"+Date.now()+"_"+i,date:d,type:ty,cat:cat,note:note,amt:a});add++});
+    var cs=wb.Sheets["分類"];if(cs)XLSX.utils.sheet_to_json(cs,{header:1}).forEach(function(x,i){if(i===0||!x[1])return;var ty=String(x[0]).indexOf("收")>-1?"income":"expense",n=String(x[1]).trim();if(n&&S.cats[ty].indexOf(n)<0)S.cats[ty].push(n)});
+    save();render();alert("匯入完成：新增 "+add+" 筆，略過重複 "+skip+" 筆"+(bad?"，格式有誤 "+bad+" 筆":""))
+  }catch(e){alert("無法讀取這個檔案，請確認是匯出的 XLSX")}};r.readAsArrayBuffer(f)}
+function wipe(){if(confirm("確定清除全部資料？")){S={tx:[],cats:JSON.parse(JSON.stringify(DEF))};save();render()}}
+function demo(){var d=[["2026-11-04","餐飲","bread",70],["2026-11-04","餐飲","早餐",155],["2026-11-04","健康","假牙",6000],["2026-11-03","餐飲","DINNER",270],["2026-11-03","餐飲","早餐",200],["2026-11-02","日常用品","soap",150],["2026-11-02","餐飲","dinner",380],["2026-11-02","餐飲","早餐",246],["2026-11-01","餐飲","晚餐",390],["2026-11-01","餐飲","早餐",130]];
+  d.forEach(function(r,i){S.tx.push({id:"d"+Date.now()+i,date:r[0],type:"expense",cat:r[1],note:r[2],amt:r[3]})});save();ym="2026-11";tab="home";render()}
+function go(t){tab=t;q="";render();scrollTo(0,0)}
+
+function openForm(t){form=t||{id:"",date:today,type:"expense",cat:S.cats.expense[0],note:"",amt:""};sheet();$("#ov").classList.add("show")}
+function edit(id){var t=S.tx.filter(function(x){return x.id===id})[0];if(t)openForm(JSON.parse(JSON.stringify(t)))}
+function sheet(){var cs=S.cats[form.type];if(cs.indexOf(form.cat)<0&&form.cat)cs=cs.concat([form.cat]);
+  $("#sheet").innerHTML='<div class="seg"><button class="chip '+(form.type==="expense"?"on":"")+'" onclick="setT(\'expense\')">支出</button><button class="chip '+(form.type==="income"?"on":"")+'" onclick="setT(\'income\')">收入</button></div>'+
+  '<label>金額</label><input class="amt" id="f_amt" type="number" inputmode="numeric" min="0" placeholder="0" value="'+esc(form.amt)+'">'+
+  '<label>分類</label><div class="chips">'+cs.map(function(c){return '<button class="chip '+(form.cat===c?"on":"")+'" onclick="setC(this)" data-c="'+esc(c)+'">'+esc(c)+"</button>"}).join("")+"</div>"+
+  '<label>日期</label><input id="f_date" type="date" value="'+form.date+'"><label>備註</label><input id="f_note" placeholder="例如：早餐" value="'+esc(form.note)+'">'+
+  '<div style="display:flex;gap:8px;margin-top:18px">'+(form.id?'<button class="btn d" onclick="del()">刪除</button>':"")+'<button class="btn" style="flex:1" onclick="closeF()">取消</button><button class="btn p" style="flex:2" onclick="saveF()">儲存</button></div>'}
+function pull(){form.amt=$("#f_amt").value;form.date=$("#f_date").value;form.note=$("#f_note").value}
+function setT(t){pull();form.type=t;form.cat=S.cats[t][0];sheet()}
+function setC(b){pull();form.cat=b.getAttribute("data-c");sheet()}
+function closeF(){$("#ov").classList.remove("show")}
+function saveF(){pull();var a=Math.round(+form.amt);if(!(a>0)){alert("請輸入金額");return}if(!form.date){alert("請選擇日期");return}
+  var t={id:form.id||("t"+Date.now()),date:form.date,type:form.type,cat:form.cat,note:form.note.trim(),amt:a};
+  if(form.id)S.tx=S.tx.map(function(x){return x.id===t.id?t:x});else S.tx.push(t);
+  save();ym=t.date.slice(0,7);closeF();render()}
+function delTx(id){if(confirm("刪除這筆記錄？")){S.tx=S.tx.filter(function(x){return x.id!==id});save();render()}}
+function del(){if(confirm("刪除這筆記錄？")){S.tx=S.tx.filter(function(x){return x.id!==form.id});save();closeF();render()}}
+$("#fab").onclick=function(){openForm()};
+$("#ov").onclick=function(e){if(e.target===this)closeF()};
+load();$("#vt").textContent=today;render();
+</script>
+</body>
+</html>
