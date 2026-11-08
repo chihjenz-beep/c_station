@@ -13,6 +13,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="平安排班">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#f4ede7;
@@ -1059,7 +1062,7 @@
   /* 浮水印：固定在畫面上的溫馨圖樣（愛心捧在手心＋文字），透明度 14%（原本 30%，已調淡），蓋在內容上但不擋點擊；選單列、標題列、彈窗仍在它上面 */
   #wm{
     position:fixed;inset:0;z-index:30;pointer-events:none;opacity:.14;mix-blend-mode:multiply;
-    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='260' viewBox='0 0 300 260'><g transform='rotate(-14 150 130)'><g fill='none' stroke='%23d9825a' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M150 112c-9-13-31-9-31 9 0 15 20 26 31 37 11-11 31-22 31-37 0-18-22-22-31-9z'/><path d='M112 156c11 13 26 20 38 20s27-7 38-20'/><path d='M104 150c-6 4-8 11-4 17'/><path d='M196 150c6 4 8 11 4 17'/></g><text x='150' y='208' text-anchor='middle' font-size='21' font-weight='700' letter-spacing='7' fill='%23d9825a' font-family='Noto Sans TC,PingFang TC,Microsoft JhengHei,sans-serif'>%E5%B9%B3%E5%AE%89%E9%95%B7%E7%85%A7</text><text x='150' y='230' text-anchor='middle' font-size='10.5' letter-spacing='4' fill='%237fae93' font-family='Noto Sans TC,PingFang TC,Microsoft JhengHei,sans-serif'>%E7%94%A8%E5%BF%83%E9%99%AA%E4%BC%B4 %C2%B7 %E6%BA%AB%E6%9A%96%E7%9B%B8%E9%9A%A8</text></g><g fill='none' stroke='%237fae93' stroke-width='1.8' stroke-linecap='round'><path d='M12 24c10-2 16 4 18 14M12 24c4 8 12 10 18 6M30 38c-2 10-10 14-18 12'/><path d='M288 236c-10 2-16-4-18-14M288 236c-4-8-12-10-18-6M270 222c2-10 10-14 18-12'/></g></svg>");
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='260' viewBox='0 0 300 260'><g transform='rotate(-14 150 130)'><g fill='none' stroke='%23b58b7e' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M150 112c-9-13-31-9-31 9 0 15 20 26 31 37 11-11 31-22 31-37 0-18-22-22-31-9z'/><path d='M112 156c11 13 26 20 38 20s27-7 38-20'/><path d='M104 150c-6 4-8 11-4 17'/><path d='M196 150c6 4 8 11 4 17'/></g><text x='150' y='208' text-anchor='middle' font-size='21' font-weight='700' letter-spacing='7' fill='%23b58b7e' font-family='Noto Sans TC,PingFang TC,Microsoft JhengHei,sans-serif'>%E5%B9%B3%E5%AE%89%E9%95%B7%E7%85%A7</text><text x='150' y='230' text-anchor='middle' font-size='10.5' letter-spacing='4' fill='%238da496' font-family='Noto Sans TC,PingFang TC,Microsoft JhengHei,sans-serif'>%E7%94%A8%E5%BF%83%E9%99%AA%E4%BC%B4 %C2%B7 %E6%BA%AB%E6%9A%96%E7%9B%B8%E9%9A%A8</text></g><g fill='none' stroke='%238da496' stroke-width='1.8' stroke-linecap='round'><path d='M12 24c10-2 16 4 18 14M12 24c4 8 12 10 18 6M30 38c-2 10-10 14-18 12'/><path d='M288 236c-10 2-16-4-18-14M288 236c-4-8-12-10-18-6M270 222c2-10 10-14 18-12'/></g></svg>");
     background-size:460px 400px;background-repeat:repeat;
   }
   body.locked #wm{display:none;}
@@ -1153,6 +1156,136 @@
   .matrix-table.by-date tr.holiday-row td:not(.has){background:#fdeee8;}
   .matrix-table.by-date td.matrix-offday{text-align:center;font-size:12px;font-weight:600;letter-spacing:.4em;color:#b79a85;background:#fbf3e3;height:auto;cursor:pointer;}
   .matrix-table.by-date td.matrix-offday.holiday{color:var(--danger);background:#fdeee8;letter-spacing:.2em;}
+
+  /* =========================================================
+     優雅細緻・文青風 THEME（最後載入，覆蓋前面的配色）
+     亞麻紙色底、墨色文字、磚紅主色、鼠尾草綠點綴；襯線標題、細線框、留白與淡淡紙紋
+     ========================================================= */
+  :root{
+    --bg:#f5f0e7; --paper:#fffdf9; --paper-soft:#faf5ec;
+    --brown-dark:#3a322b; --brown:#9a5b49; --brown-light:#d4b0a2;
+    --gold:#b8914f; --gold-light:#f0e4cc;
+    --sage:#7d9082; --sage-dark:#556a5c; --sage-bg:#e8eee9;
+    --clinic:#4d6a8f; --clinic-bg:#e7edf4;
+    --station:#587a62; --station-bg:#e6eee8;
+    --danger:#b5483b; --danger-bg:#f8e7e3;
+    --warn:#a77824; --warn-bg:#f8efd9;
+    --text:#3a322b; --text-soft:#85796c; --border:#e6ddce; --radius:12px;
+    --shadow:0 1px 2px rgba(60,45,35,.04), 0 10px 26px -14px rgba(60,45,35,.16);
+    --shadow-hover:0 2px 4px rgba(60,45,35,.05), 0 16px 32px -16px rgba(60,45,35,.22);
+    --serif:"Noto Serif TC","Songti TC","Source Han Serif TC","PMingLiU",serif;
+    --sans:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  }
+  html{background:#f5f0e7;}
+  body{
+    font-family:var(--sans);letter-spacing:.02em;color:var(--text);
+    background:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .42  0 0 0 0 .33  0 0 0 0 .25  0 0 0 .055 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>"),
+      radial-gradient(ellipse at 0% 0%, rgba(236,224,203,.75) 0, rgba(236,224,203,0) 50%),
+      radial-gradient(ellipse at 100% 100%, rgba(196,210,198,.35) 0, rgba(196,210,198,0) 55%),
+      linear-gradient(180deg,#f8f4ec 0%,#f4eee4 100%);
+  }
+  input,select,textarea,button{font-family:var(--sans);}
+  *{scrollbar-width:thin;scrollbar-color:#d6c9b4 transparent;}
+  *::-webkit-scrollbar{width:8px;height:8px;}
+  *::-webkit-scrollbar-thumb{background:#d6c9b4;border-radius:8px;}
+  *::-webkit-scrollbar-track{background:transparent;}
+  ::selection{background:rgba(184,145,79,.28);}
+
+  /* 標題列：亞麻紙色，不再是大色塊 */
+  header{
+    background:linear-gradient(180deg,#fbf8f1,#f3ecdf);
+    border-bottom:1px solid var(--border);box-shadow:none;color:var(--text);
+  }
+  header::after{height:1px;background:linear-gradient(90deg,rgba(184,145,79,0),rgba(184,145,79,.7) 22%,rgba(184,145,79,.7) 78%,rgba(184,145,79,0));opacity:1;}
+  header h1{font-family:var(--serif);color:var(--brown-dark);font-weight:700;letter-spacing:.14em;text-shadow:none;}
+  header .sub{color:var(--text-soft);letter-spacing:.2em;font-size:11px;}
+  .icon-btn{background:transparent;border:1px solid #d9cdb9;color:var(--brown-dark);box-shadow:none;letter-spacing:.1em;}
+  .icon-btn:hover{background:#f6efe2;border-color:#c9b99f;}
+
+  nav.tabs{background:rgba(255,253,249,.88);border-bottom:1px solid var(--border);box-shadow:none;}
+  .tab-btn{font-family:var(--serif);font-weight:600;letter-spacing:.1em;color:#a3978a;}
+  .tab-btn:hover{color:var(--brown-dark);background:transparent;}
+  .tab-btn.active{color:var(--brown-dark);border-bottom:2px solid var(--brown);}
+  .tab-btn.active::before{display:none;}
+
+  /* 卡片：細線框、柔和陰影、襯線標題 */
+  .card{background:rgba(255,253,249,.94);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);}
+  .card:hover{border-color:#dccfba;box-shadow:var(--shadow-hover);}
+  .card h2{font-family:var(--serif);color:var(--brown-dark);font-weight:700;letter-spacing:.08em;border-bottom:1px solid var(--border);}
+  .card h2::first-letter{color:inherit;}
+  .badge{background:#f4ecdc;color:#8a6d3b;border:1px solid #e9dcc2;font-weight:500;letter-spacing:.05em;}
+  .badge.gold{background:#f4ecdc;color:#8a6d3b;}
+  .badge.station{background:var(--sage-bg);color:var(--sage-dark);border-color:#d4dfd6;}
+  .badge.clinic{background:var(--clinic-bg);color:var(--clinic);border-color:#d3dde9;}
+
+  /* 按鈕：安靜、細緻 */
+  .btn{background:var(--brown);border:1px solid var(--brown);border-radius:10px;box-shadow:none;letter-spacing:.08em;font-weight:500;color:#fff;}
+  .btn:hover{background:#82493a;border-color:#82493a;box-shadow:none;}
+  .btn.outline{background:transparent;border:1px solid #d6c9b4;color:var(--brown-dark);}
+  .btn.outline:hover{background:#f6efe2;border-color:#c4b393;}
+  .btn.gold{background:var(--gold);border-color:var(--gold);color:#fff;}
+  .btn.gold:hover{background:#a07d3f;border-color:#a07d3f;}
+  input[type="text"],input[type="time"],input[type="month"],input[type="date"],input[type="number"],input[type="password"],select,textarea{
+    border:1px solid #ddd2c0;border-radius:10px;background:#fffefb;color:var(--text);
+  }
+  input[type="text"]:focus,input[type="time"]:focus,input[type="month"]:focus,input[type="date"]:focus,input[type="number"]:focus,input[type="password"]:focus,select:focus,textarea:focus{
+    border-color:var(--sage);box-shadow:0 0 0 3px rgba(125,144,130,.18);
+  }
+  footer{background:rgba(255,253,249,.92);border-top:1px solid var(--border);color:#a3978a;letter-spacing:.06em;}
+
+  /* 月曆 */
+  .cal-cell{border-radius:10px;border:1px solid #ebe2d3;background:#fffefb;}
+  .cal-cell:hover{background:#faf5ea;border-color:#d9c9ae;}
+  .cal-cell.weekend{background:#f9f4ea;}
+  .cal-cell.today{background:#f4ecd9;box-shadow:inset 0 0 0 1px rgba(184,145,79,.6);}
+  .cal-weekday{background:transparent;border-bottom:1px solid var(--border);border-radius:0;color:#9a8e80;font-family:var(--serif);font-weight:600;letter-spacing:.2em;}
+  .cal-weekday:nth-child(1),.cal-weekday:nth-child(7){color:#b5483b;}
+
+  /* 表格 */
+  .report-table{border:1px solid var(--border);border-radius:10px;}
+  .report-table th{background:#f7f1e5;color:#8a7e70;font-family:var(--serif);font-weight:600;letter-spacing:.06em;border-bottom:1px solid var(--border);}
+  .report-table td{border-bottom:1px solid #efe7d9;}
+  .matrix-table th{background:#f6efe2;font-family:var(--serif);}
+  .matrix-table.by-date tr.weekend-row th{background:#f1eadc;color:#b5483b;}
+  .matrix-table.by-date tr.weekend-row td{background:#faf5eb;}
+  .matrix-table.by-date tr.holiday-row th{background:#f6e3dd;}
+  .matrix-table.by-date tr.holiday-row td:not(.has){background:#fbefea;}
+  .matrix-table.by-date tr.today-row th{background:var(--brown);}
+  .matrix-table.by-date td.matrix-offday{background:#f8f2e6;color:#a89b8c;}
+  .matrix-table.by-date td.matrix-offday.holiday{background:#fbefea;color:var(--danger);}
+
+  /* 彈窗、抽屜、登入 */
+  .modal-overlay{background:rgba(58,50,43,.38);}
+  .modal-box{border:1px solid var(--border);background:var(--paper);border-radius:18px 18px 0 0;}
+  .modal-head{background:linear-gradient(180deg,#f9f4ea,var(--paper));border-bottom:1px solid var(--border);font-family:var(--serif);}
+  #loginGate{background:linear-gradient(160deg,#ece3d3,#f8f3ea);}
+  #pwdModal,#adminLoginModal{background:rgba(58,50,43,.5);}
+  .gate-card{border:1px solid var(--border);border-radius:18px;box-shadow:0 20px 50px -20px rgba(58,50,43,.35);}
+  .gate-card h2{font-family:var(--serif);letter-spacing:.1em;}
+  .gate-card input{border-color:#ddd2c0;border-radius:10px;}
+  .gate-card button{border-color:var(--brown);border-radius:10px;}
+  .gate-card button.ghost{color:var(--brown);}
+
+  /* 各種小元件 */
+  .site-card,.teacher-card,.tpl-card,.entry-row,.leave-overview-row,.target-site-row{border-radius:12px;border-color:var(--border);}
+  .pal-tray{background:#faf5ec;}
+  .sched-palette{background:linear-gradient(180deg,#fbf7ef,#f6efe2);border-color:var(--border);border-radius:12px;}
+  .wip{background:linear-gradient(135deg,#fbf7ef,#f6efe2);border-color:var(--border);}
+  .weekday-toggle.active{background:var(--brown);border-color:var(--brown);}
+  .tag-chip{border-radius:999px;}
+  .bulk-report-box{border-radius:10px;}
+  #courseCard .cs-card{border-radius:10px;}
+  #courseCard .cs-card .cs-half{background:#f4ecdc;color:#8a6d3b;}
+
+  /* M5 月曆格子：每項問題一行（含說明文字） */
+  #conflictCalGrid .cal-cell{min-height:104px;height:auto;align-content:flex-start;}
+  .cc-line{display:flex;gap:4px;align-items:flex-start;font-size:11px;line-height:1.4;padding:3px 6px;margin-top:4px;border-radius:6px;border-left:3px solid;background:rgba(255,255,255,.78);cursor:help;}
+  .cc-line.severe{border-left-color:var(--danger);color:#7a281f;}
+  .cc-line.warn{border-left-color:var(--warn);color:#7a5614;}
+  .cc-line .cc-ico{flex:none;}
+  .cc-line .cc-txt{min-width:0;word-break:break-all;}
+  .cc-more{font-size:10.5px;color:var(--text-soft);margin-top:4px;text-align:right;cursor:help;}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
@@ -1791,11 +1924,12 @@
           </div>
           <button class="btn outline" onclick="navConflictCal(1)">下一個 ›</button>
         </div>
-        <div class="cal-legend" style="margin-bottom:10px;">
-          <span><i style="background:var(--danger);"></i>整天無人／人員衝突</span>
-          <span><i style="background:var(--warn);"></i>只排半天／休診異常</span>
+        <div class="cal-legend" style="margin-bottom:6px;">
+          <span><i style="background:var(--danger);"></i>紅色底：人員衝突、整天無人、非營運日／假日排班、外師課程衝突</span>
+          <span><i style="background:var(--warn);"></i>黃色底：只排半天、休診異常</span>
           <span><i style="background:var(--paper);border:1px solid var(--border);"></i>正常</span>
         </div>
+        <div style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">格子裡<b>每一行就是一項問題</b>；<b>點一下格子</b>會跳出該日完整說明（人員、地點、時間、原因，與「列表檢視」相同），再按「前往這天的排班處理」即可處理。</div>
         <div id="conflictCalGrid" class="cal-grid"></div>
       </div>
     </div>
@@ -6571,6 +6705,81 @@ function goConflictCalToday(){
 }
 // 月曆檢視：同一天若同時有多種問題，嚴重度取最高者決定底色——
 // 衝突①②、提醒③（整天無人）為紅色；提醒④（只排半天）、休診異常為橘色；當天沒有任何問題則維持一般格子。
+// 月曆格子裡的說明：每種問題一行，用的文字與列表檢視相同（只是縮短、地點太多時用「等N處」）
+// 只在括號外面的「、」才是分隔多個原因（括號裡「只營運 週一、週二…」的頓號不能切）
+function splitTopLevelReasons(text){
+  const out = []; let depth = 0, cur = '';
+  for(const ch of String(text)){
+    if(ch==='（'||ch==='(') depth++;
+    if(ch==='）'||ch===')') depth = Math.max(0, depth-1);
+    if(ch==='、' && depth===0){ out.push(cur); cur=''; } else cur += ch;
+  }
+  if(cur) out.push(cur);
+  return out;
+}
+function shortConflictReason(reason){
+  return splitTopLevelReasons(reason).map(part=>{
+    if(part.includes('跨地點')) return '跨地點時間重疊';
+    if(part.includes('請假')) return '與請假衝突';
+    if(part.includes('未設定營運日')) return '未設定營運日仍排班';
+    if(part.includes('非營運')) return '非營運日／時段仍排班';
+    if(part.includes('國定假日')) return '國定假日仍排班';
+    return part;
+  }).join('、');
+}
+// 月曆點格子：先看完整說明（人員、地點、時間、原因，跟列表檢視一樣），要處理再按「前往排班」
+function openConflictDayDetail(dateStr){
+  const group = buildConflictDayGroups().dayGroups[dateStr];
+  if(!group){ jumpToScheduleDate(dateStr); return; }   // 這天沒有任何提醒 → 直接到排班
+  const WD = ['日','一','二','三','四','五','六'];
+  const dow = new Date(dateStr+'T00:00:00').getDay();
+  document.getElementById('conflictDayModal')?.remove();
+  const box = document.createElement('div');
+  box.id = 'conflictDayModal';
+  box.style.cssText = 'position:fixed;inset:0;z-index:9998;background:rgba(58,50,43,.45);display:flex;align-items:center;justify-content:center;padding:14px;';
+  box.innerHTML = `<div style="background:var(--paper);border:1px solid var(--border);border-radius:16px;max-width:620px;width:100%;max-height:88vh;overflow:auto;padding:16px 18px;box-shadow:0 24px 60px -20px rgba(58,50,43,.45);">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+      <b style="font-family:var(--serif);font-size:16px;letter-spacing:.06em;">📅 ${dateStr}（${WD[dow]}）</b>
+      <span class="conflict-day-count">${group.rows.length} 項提醒</span>
+      <button class="btn outline" style="margin-left:auto;" onclick="document.getElementById('conflictDayModal').remove()">✕ 關閉</button>
+    </div>
+    <div class="conflict-day-card" style="cursor:default;"><div class="conflict-day-rows">${conflictDayRowsHtml(group)}</div></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
+      <button class="btn" onclick="document.getElementById('conflictDayModal').remove();jumpToScheduleDate('${dateStr}')">前往這天的排班處理 →</button>
+    </div>
+  </div>`;
+  box.addEventListener('click', e=>{ if(e.target===box) box.remove(); });
+  document.body.appendChild(box);
+}
+function buildConflictCellLines(group){
+  const brief = names => names.length<=3 ? names.join('、') : names.slice(0,3).join('、') + `…共${names.length}處`;
+  const siteNames = rows => rows.map(r=>siteLabelPlain(r.siteId));
+  const byReason = rows => rows.reduce((g,r)=>{ (g[r.reason] = g[r.reason]||[]).push(r); return g; }, {});
+  const lines = [];
+  // 同一個人、同一個原因（例如跨地點重疊會有兩筆班各標一次）合併成一行
+  const conflictGroups = {};
+  group.rows.filter(r=>r.kind==='conflict').forEach(r=>{
+    const key = r.staffId + '|' + shortConflictReason(r.reason);
+    (conflictGroups[key] = conflictGroups[key] || []).push(r);
+  });
+  Object.values(conflictGroups).forEach(rows=>{
+    const r = rows[0];
+    lines.push({ sev:'severe', icon:'⚠', text:`<b>${getStaffName(r.staffId)}</b>｜${shortConflictReason(r.reason)}${rows.length>1?`（${rows.length} 筆班）`:''}`,
+      full: rows.map(x=>`${getStaffName(x.staffId)}（${siteLabelPlain(x.siteId)} ${x.start}–${x.end}）：${x.reason}`).join('\n') });
+  });
+  const gaps = group.rows.filter(r=>r.kind==='gap');
+  if(gaps.length) lines.push({ sev:'severe', icon:'⚠', text:`<b>整天無人</b>｜${brief(siteNames(gaps))}`, full:`當天完全沒有安排人力：${siteNames(gaps).join('、')}` });
+  group.rows.filter(r=>r.kind==='course').forEach(r=>{
+    lines.push({ sev:'severe', icon:'🎓', text:`<b>課程衝突</b>｜${siteLabelPlain(r.siteId)}`, full:`${siteLabelPlain(r.siteId)}：${r.reason}` });
+  });
+  Object.entries(byReason(group.rows.filter(r=>r.kind==='half'))).forEach(([reason, rows])=>{
+    lines.push({ sev:'warn', icon:'🌗', text:`<b>${reason}</b>｜${brief(siteNames(rows))}`, full:`${reason}：${siteNames(rows).join('、')}` });
+  });
+  Object.entries(byReason(group.rows.filter(r=>r.kind==='closed'))).forEach(([reason, rows])=>{
+    lines.push({ sev:'warn', icon:'🚫', text:`<b>${reason}</b>｜${brief(siteNames(rows))}`, full:`${reason}：${siteNames(rows).join('、')}` });
+  });
+  return lines;
+}
 function renderConflictCalendar(){
   const grid = document.getElementById('conflictCalGrid');
   const title = document.getElementById('conflictCalTitle');
@@ -6597,55 +6806,21 @@ function renderConflictCalendar(){
     if(group){
       const hasSevere = group.rows.some(r=>r.kind==='conflict' || r.kind==='gap' || r.kind==='course');
       severityCls = hasSevere ? 'cc-severe' : 'cc-warn';
-      // 每種問題各顯示一個小標籤（例如「⚠ 整天無人 ×3」），而非逐筆列出，避免格子被塞爆
-      const byKind = {};
-      group.rows.forEach(r=>{ (byKind[r.kind] = byKind[r.kind]||[]).push(r); });
-      const kindLabel = { conflict:'⚠ 人員衝突', gap:'⚠ 整天無人', half:'🌗 只排半天', closed:'🚫 休診異常', course:'⚠ 課程衝突' };
-      badgesHtml = Object.keys(byKind).map(k=>`<span class="cc-badge">${kindLabel[k]} <b>×${byKind[k].length}</b></span>`).join('');
+      const lines = buildConflictCellLines(group);
+      const MAXL = 4;
+      const esc = t=>String(t).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+      badgesHtml = lines.slice(0,MAXL).map(l=>`<div class="cc-line ${l.sev}" title="${esc(l.full)}"><span class="cc-ico">${l.icon}</span><span class="cc-txt">${l.text}</span></div>`).join('')
+        + (lines.length>MAXL ? `<div class="cc-more" title="${esc(lines.slice(MAXL).map(l=>l.full).join('\n'))}">＋還有 ${lines.length-MAXL} 項，點格子看完整說明</div>` : '');
     }
-    html += `<div class="cal-cell ${otherMonth?'other-month':''} ${isToday?'today':''} ${severityCls} ${(dow===0||dow===6)?'weekend':''}" data-date="${dateStr}" onclick="jumpToScheduleDate('${dateStr}')">
+    html += `<div class="cal-cell ${otherMonth?'other-month':''} ${isToday?'today':''} ${severityCls} ${(dow===0||dow===6)?'weekend':''}" data-date="${dateStr}" onclick="openConflictDayDetail('${dateStr}')">
       <div class="cal-head"><span class="cal-daynum">${d.getDate()}</span></div>
       ${badgesHtml}
     </div>`;
   }
   grid.innerHTML = html;
 }
-function renderConflictOverview(){
-  const summaryEl = document.getElementById('conflictSummary');
-  const listEl = document.getElementById('conflictList');
-  if(!summaryEl || !listEl) return; // 員工模式看不到 M5，這個區塊的 DOM 根本沒畫出來，直接跳過即可
-
-  const { dayGroups, conflicts, gaps, halfDayGaps, closedScheduled, courseConflicts } = buildConflictDayGroups();
-  const overlapCount = conflicts.filter(c=>c.reasons.includes('overlap')).length;
-  const leaveCount = conflicts.filter(c=>c.reasons.includes('leave')).length;
-  const offDayCount = conflicts.filter(c=>c.reasons.includes('offday')).length;
-  const holidayCount = conflicts.filter(c=>c.reasons.includes('holiday')).length;
-  const dateCount = new Set([...conflicts.map(c=>c.dateStr), ...gaps.map(g=>g.dateStr), ...halfDayGaps.map(g=>g.dateStr), ...closedScheduled.map(g=>g.dateStr), ...courseConflicts.map(g=>g.dateStr)]).size;
-
-  summaryEl.innerHTML = `
-    <div class="conflict-stat-row">
-      <div class="conflict-stat-card"><div class="num">${conflicts.length}</div><div class="lbl">總衝突筆數</div></div>
-      <div class="conflict-stat-card"><div class="num">${overlapCount}</div><div class="lbl">跨地點重疊</div></div>
-      <div class="conflict-stat-card"><div class="num">${leaveCount}</div><div class="lbl">與請假衝突</div></div>
-      <div class="conflict-stat-card"><div class="num">${offDayCount}</div><div class="lbl">非營運日排班</div></div>
-      <div class="conflict-stat-card"><div class="num">${holidayCount}</div><div class="lbl">國定假日排班</div></div>
-      <div class="conflict-stat-card"><div class="num">${gaps.length}</div><div class="lbl">據點未安排人力</div></div>
-      <div class="conflict-stat-card"><div class="num">${halfDayGaps.length}</div><div class="lbl">只排半天</div></div>
-      <div class="conflict-stat-card"><div class="num">${courseConflicts.length}</div><div class="lbl">外師課程衝突</div></div>
-      <div class="conflict-stat-card"><div class="num">${dateCount}</div><div class="lbl">受影響日期</div></div>
-    </div>
-    ${holidayCount>0 ? `<div style="margin:8px 0;"><button class="btn outline" onclick="removeHolidayScheduleEntries()">🧹 移除國定假日的排班（${holidayCount} 筆）</button></div>` : ''}
-  `;
-
-  if(conflicts.length===0 && gaps.length===0 && halfDayGaps.length===0 && closedScheduled.length===0 && courseConflicts.length===0){
-    listEl.innerHTML = '<div class="no-conflict-box">✅ 目前沒有偵測到任何排班衝突或據點漏排</div>';
-    if(conflictView==='calendar') renderConflictCalendar();
-    return;
-  }
-  // 以日期分組：同一天只建立一張卡片，將診所、各里與所有風險項目集中呈現（分組邏輯已抽到 buildConflictDayGroups）。
-  // 保留整張卡片點擊跳轉到當日排班彈窗的既有互動。
-  const dayCardsHtml = Object.keys(dayGroups).sort().map(dateStr=>{
-    const group = dayGroups[dateStr];
+// 某一天所有提醒的完整說明（列表檢視與月曆「點格子」的詳細視窗共用同一份）
+function conflictDayRowsHtml(group){
     const gapRows = group.rows.filter(row=>row.kind==='gap');
     const halfRows = group.rows.filter(row=>row.kind==='half');
     const conflictRows = group.rows.filter(row=>row.kind==='conflict');
@@ -6693,7 +6868,45 @@ function renderConflictOverview(){
         <span class="ci-reason">🎓 ${row.reason}</span>
       </div>
     `).join('');
-    const rowsHtml = gapHtml + courseHtml + halfHtml + closedHtml + conflictRowsHtml;
+    return gapHtml + courseHtml + halfHtml + closedHtml + conflictRowsHtml;
+}
+function renderConflictOverview(){
+  const summaryEl = document.getElementById('conflictSummary');
+  const listEl = document.getElementById('conflictList');
+  if(!summaryEl || !listEl) return; // 員工模式看不到 M5，這個區塊的 DOM 根本沒畫出來，直接跳過即可
+
+  const { dayGroups, conflicts, gaps, halfDayGaps, closedScheduled, courseConflicts } = buildConflictDayGroups();
+  const overlapCount = conflicts.filter(c=>c.reasons.includes('overlap')).length;
+  const leaveCount = conflicts.filter(c=>c.reasons.includes('leave')).length;
+  const offDayCount = conflicts.filter(c=>c.reasons.includes('offday')).length;
+  const holidayCount = conflicts.filter(c=>c.reasons.includes('holiday')).length;
+  const dateCount = new Set([...conflicts.map(c=>c.dateStr), ...gaps.map(g=>g.dateStr), ...halfDayGaps.map(g=>g.dateStr), ...closedScheduled.map(g=>g.dateStr), ...courseConflicts.map(g=>g.dateStr)]).size;
+
+  summaryEl.innerHTML = `
+    <div class="conflict-stat-row">
+      <div class="conflict-stat-card"><div class="num">${conflicts.length}</div><div class="lbl">總衝突筆數</div></div>
+      <div class="conflict-stat-card"><div class="num">${overlapCount}</div><div class="lbl">跨地點重疊</div></div>
+      <div class="conflict-stat-card"><div class="num">${leaveCount}</div><div class="lbl">與請假衝突</div></div>
+      <div class="conflict-stat-card"><div class="num">${offDayCount}</div><div class="lbl">非營運日排班</div></div>
+      <div class="conflict-stat-card"><div class="num">${holidayCount}</div><div class="lbl">國定假日排班</div></div>
+      <div class="conflict-stat-card"><div class="num">${gaps.length}</div><div class="lbl">據點未安排人力</div></div>
+      <div class="conflict-stat-card"><div class="num">${halfDayGaps.length}</div><div class="lbl">只排半天</div></div>
+      <div class="conflict-stat-card"><div class="num">${courseConflicts.length}</div><div class="lbl">外師課程衝突</div></div>
+      <div class="conflict-stat-card"><div class="num">${dateCount}</div><div class="lbl">受影響日期</div></div>
+    </div>
+    ${holidayCount>0 ? `<div style="margin:8px 0;"><button class="btn outline" onclick="removeHolidayScheduleEntries()">🧹 移除國定假日的排班（${holidayCount} 筆）</button></div>` : ''}
+  `;
+
+  if(conflicts.length===0 && gaps.length===0 && halfDayGaps.length===0 && closedScheduled.length===0 && courseConflicts.length===0){
+    listEl.innerHTML = '<div class="no-conflict-box">✅ 目前沒有偵測到任何排班衝突或據點漏排</div>';
+    if(conflictView==='calendar') renderConflictCalendar();
+    return;
+  }
+  // 以日期分組：同一天只建立一張卡片，將診所、各里與所有風險項目集中呈現（分組邏輯已抽到 buildConflictDayGroups）。
+  // 保留整張卡片點擊跳轉到當日排班彈窗的既有互動。
+  const dayCardsHtml = Object.keys(dayGroups).sort().map(dateStr=>{
+    const group = dayGroups[dateStr];
+    const rowsHtml = conflictDayRowsHtml(group);
     return `<div class="conflict-day-card" onclick="jumpToScheduleDate('${dateStr}')">
       <div class="conflict-day-head">
         <div class="ci-date">📅 ${dateStr}</div>
