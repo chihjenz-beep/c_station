@@ -1472,7 +1472,7 @@
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
         <select id="holidayYearSel" onchange="renderHolidaySettings()" style="width:auto;"></select>
-        <input type="date" id="holidayNewDate">
+        <input type="date" id="holidayNewDate" min="2000-01-01" max="2040-12-31">
         <input type="text" id="holidayNewName" placeholder="假日名稱（如：國慶日補假）" style="flex:1;min-width:150px;">
         <button class="btn" onclick="addHoliday()">＋ 新增假日</button>
         <button class="btn outline" onclick="resetHolidaysToDefault()" title="只還原 2026 年內建名單">還原 2026 內建名單</button>
@@ -3952,7 +3952,7 @@ function openHolidayReview(text, yearHint){
         <button class="btn outline" style="margin-top:6px;" onclick="reparseHolidayText()">🔄 重新解析</button>
       </div>
       <div style="flex:1;min-width:300px;">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span style="font-size:12px;">年度</span><input type="number" id="holidayReviewYear" style="width:90px;" min="2000" max="2100"><span id="holidayReviewCount" style="font-size:12px;color:var(--text-soft);"></span></div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span style="font-size:12px;">年度</span><input type="number" id="holidayReviewYear" style="width:90px;" min="2000" max="2040"><span id="holidayReviewCount" style="font-size:12px;color:var(--text-soft);"></span></div>
         <div id="holidayCandidates" style="max-height:52vh;overflow:auto;"></div>
       </div>
     </div>
@@ -3998,6 +3998,7 @@ function applyHolidayCandidates(mode){
   const year = Number(document.getElementById('holidayReviewYear').value);
   const chosen = holidayCandidates.filter(c=>c.checked);
   if(!chosen.length){ alert('沒有勾選任何假日'); return; }
+  if(chosen.some(c=>Number(c.date.slice(0,4)) > HOLIDAY_MAX_YEAR)){ alert(`國定假日最多可設定到 ${HOLIDAY_MAX_YEAR} 年，請確認年度。`); return; }
   if(mode==='replace' && !confirm(`將先清掉 ${year} 年原有的假日，再加入勾選的 ${chosen.length} 天。確定嗎？`)) return;
   ensureHolidayListMaterialized();
   if(mode==='replace') holidayList = holidayList.filter(h=>!h.date.startsWith(year+'-'));
@@ -4014,6 +4015,7 @@ function applyHolidayCandidates(mode){
 }
 
 // ===== M2 國定假日設定 =====
+const HOLIDAY_MAX_YEAR = 2040;   // 可設定的最後一年
 function saveHolidays(){
   holidayList.sort((a,b)=>a.date.localeCompare(b.date));
   rebuildHolidaySet();
@@ -4028,7 +4030,8 @@ function renderHolidaySettings(){
   if(!box || !yearSel) return;
   const entries = currentHolidayEntries();
   const nowY = new Date().getFullYear();
-  const years = Array.from(new Set([nowY-1, nowY, nowY+1, ...entries.map(h=>Number(h.date.slice(0,4)))])).sort();
+  // 年度下拉：從去年到 2040 年，每一年都能設定（也包含名單裡已經有的其他年份）
+  const years = Array.from(new Set([ ...Array.from({ length: Math.max(HOLIDAY_MAX_YEAR, nowY+1) - (nowY-1) + 1 }, (_,i)=>nowY-1+i), ...entries.map(h=>Number(h.date.slice(0,4))) ])).sort((a,b)=>a-b);
   const prev = yearSel.value || String(nowY);
   yearSel.innerHTML = years.map(y=>`<option value="${y}">${y} 年（民國 ${y-1911} 年）</option>`).join('');
   yearSel.value = years.includes(Number(prev)) ? prev : String(nowY);
@@ -4054,6 +4057,7 @@ function addHoliday(){
   const date = document.getElementById('holidayNewDate').value;
   const name = document.getElementById('holidayNewName').value.trim() || '國定假日';
   if(!date){ alert('請選擇假日的日期'); return; }
+  if(Number(date.slice(0,4)) > HOLIDAY_MAX_YEAR){ alert(`國定假日最多可設定到 ${HOLIDAY_MAX_YEAR} 年。`); return; }
   ensureHolidayListMaterialized();
   if(holidayList.some(h=>h.date===date)){ alert('這一天已經在名單裡了'); return; }
   const dow = new Date(date+'T00:00:00').getDay();
