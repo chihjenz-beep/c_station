@@ -6901,7 +6901,7 @@ function exportConflictCalendarPDF(){
   .stat b{ font-family:"Noto Serif TC",serif; font-size:15pt; } .stat span{ font-size:8pt; color:#85796c; }
   .stat.s b{ color:#b5483b; } .stat.w b{ color:#a77824; }
   .legend{ font-size:7.5pt; color:#85796c; margin-bottom:5px; display:flex; gap:14px; }
-  .legend i{ display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:4px; vertical-align:-1px; }
+  .legend i{ display:inline-block; width:11px; height:11px; border-radius:2px; margin-right:5px; vertical-align:-1.5px; }
   .grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
   .wk{ text-align:center; font-family:"Noto Serif TC",serif; font-weight:700; letter-spacing:.3em; color:#85796c; border-bottom:1px solid #e6ddce; padding:2px 0; font-size:9pt; }
   .wk.r{ color:#b5483b; }
@@ -6936,8 +6936,8 @@ function exportConflictCalendarPDF(){
     <div class="stat"><b>${itemCount}</b><span>項 提醒（月曆格子內每一行）</span></div>
   </div>
   <div class="legend">
-    <span><i style="background:#f8e7e3;border:1px solid #e3b8b0"></i>紅色底：人員衝突、整天無人、非營運日／假日排班、外師課程衝突</span>
-    <span><i style="background:#f8efd9;border:1px solid #e4d2a4"></i>黃色底：只排半天、休診異常</span>
+    <span><i style="background:#e0584a;border:1px solid #b5483b"></i>紅色底：人員衝突、整天無人、非營運日／假日排班、外師課程衝突</span>
+    <span><i style="background:#f2b73f;border:1px solid #a77824"></i>黃色底：只排半天、休診異常</span>
     <span><i style="background:#fffefb;border:1px solid #e9e0d1"></i>正常</span>
   </div>
   <div class="grid">
