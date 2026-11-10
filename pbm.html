@@ -6847,7 +6847,9 @@ function exportConflictCalendarPDF(){
     if(!g) continue;
     const lines = buildConflictCellLines(g);
     itemCount += lines.length;
-    if(isSevere(g)) severeDays++; else warnDays++;
+    // 依「提醒內容」計天數，不看格子最後塗什麼顏色：同一天若同時有紅色問題與「只排半天」，兩邊都各算一天
+    if(lines.some(l=>l.sev==='severe')) severeDays++;
+    if(lines.some(l=>l.sev==='warn')) warnDays++;
     monthDays.push({ dateStr, d, g, lines, severe:isSevere(g) });
   }
 
@@ -6929,8 +6931,8 @@ function exportConflictCalendarPDF(){
     <div class="meta">平安長照醫療體系排班系統<br>列印時間 ${stamp}</div>
   </header>
   <div class="stats">
-    <div class="stat s"><b>${severeDays}</b><span>天 紅色（衝突／整天無人）</span></div>
-    <div class="stat w"><b>${warnDays}</b><span>天 黃色（只排半天／休診異常）</span></div>
+    <div class="stat s"><b>${severeDays}</b><span>天 有紅色提醒（衝突／整天無人／非營運日等）</span></div>
+    <div class="stat w"><b>${warnDays}</b><span>天 有黃色提醒（只排半天／休診異常，含同日也有紅色者）</span></div>
     <div class="stat"><b>${itemCount}</b><span>項 提醒（月曆格子內每一行）</span></div>
   </div>
   <div class="legend">
