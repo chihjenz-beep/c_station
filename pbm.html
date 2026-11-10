@@ -1924,6 +1924,7 @@
           </div>
           <button class="btn outline" onclick="navConflictCal(1)">下一個 ›</button>
         </div>
+        <div style="text-align:right;margin-bottom:8px;"><button class="btn gold" onclick="exportConflictCalendarPDF()">🖨️ 匯出本月 PDF</button></div>
         <div class="cal-legend" style="margin-bottom:6px;">
           <span><i style="background:var(--danger);"></i>紅色底：人員衝突、整天無人、非營運日／假日排班、外師課程衝突</span>
           <span><i style="background:var(--warn);"></i>黃色底：只排半天、休診異常</span>
@@ -6823,6 +6824,136 @@ function renderConflictCalendar(){
   }
   grid.innerHTML = html;
 }
+// ===== 匯出本月衝突月曆 PDF =====
+// 開一個排好版的 A4 橫式頁面（第 1 頁月曆、之後是逐日提醒明細），自動叫出列印視窗，目的地選「另存為 PDF」即可。
+// 用瀏覽器列印而不是自己畫 PDF，中文字才不會缺字或糊掉。
+function exportConflictCalendarPDF(){
+  const y = conflictCalRefDate.getFullYear(), m = conflictCalRefDate.getMonth();
+  const esc = t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const WD = ['日','一','二','三','四','五','六'];
+  const { dayGroups } = buildConflictDayGroups();
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const startOffset = new Date(y, m, 1).getDay();
+  const weekRows = Math.ceil((startOffset + daysInMonth) / 7);
+  const mm = String(m+1).padStart(2,'0');
+  const isSevere = g => g.rows.some(r=>r.kind==='conflict' || r.kind==='gap' || r.kind==='course');
+
+  // ---- 統計 ----
+  let severeDays = 0, warnDays = 0, itemCount = 0;
+  const monthDays = [];
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr = `${y}-${mm}-${String(d).padStart(2,'0')}`;
+    const g = dayGroups[dateStr];
+    if(!g) continue;
+    const lines = buildConflictCellLines(g);
+    itemCount += lines.length;
+    if(isSevere(g)) severeDays++; else warnDays++;
+    monthDays.push({ dateStr, d, g, lines, severe:isSevere(g) });
+  }
+
+  // ---- 月曆格子 ----
+  let cells = '';
+  for(let i=0; i<weekRows*7; i++){
+    const dayNum = i - startOffset + 1;
+    if(dayNum<1 || dayNum>daysInMonth){ cells += '<div class="cell off"></div>'; continue; }
+    const dateStr = `${y}-${mm}-${String(dayNum).padStart(2,'0')}`;
+    const dow = new Date(y, m, dayNum).getDay();
+    const md = monthDays.find(x=>x.dateStr===dateStr);
+    const hol = isNationalHoliday(dateStr);
+    const MAXL = 4;
+    const body = md ? md.lines.slice(0,MAXL).map(l=>`<div class="ln ${l.sev}"><span>${l.icon}</span><span>${l.text}</span></div>`).join('')
+        + (md.lines.length>MAXL ? `<div class="more">＋還有 ${md.lines.length-MAXL} 項，詳見明細頁</div>` : '') : '';
+    cells += `<div class="cell ${md ? (md.severe?'sev':'wrn') : ''} ${(dow===0||dow===6)?'wkend':''}">
+      <div class="dn"><b ${(dow===0||dow===6||hol)?'class="red"':''}>${dayNum}</b>${hol?`<i class="tag">${esc(holidayNameOf(dateStr))}</i>`:''}</div>${body}</div>`;
+  }
+
+  // ---- 明細頁 ----
+  const detail = monthDays.map(x=>`
+    <div class="dcard ${x.severe?'sev':'wrn'}">
+      <div class="dh"><b>${mm}/${String(x.d).padStart(2,'0')}（${WD[new Date(y,m,x.d).getDay()]}）</b><span>${x.lines.length} 項</span></div>
+      <ul>${x.lines.map(l=>`<li class="${l.sev}">${l.full.split('\n').map(esc).join('<br>')}</li>`).join('')}</ul>
+    </div>`).join('');
+
+  const w = window.open('', '_blank', 'width=1200,height=800');
+  if(!w){ alert('瀏覽器擋住了彈出視窗，請允許本網站的彈出視窗後再按一次。'); return; }
+  const now = new Date();
+  const stamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  w.document.write(`<!doctype html><html lang="zh-Hant"><head><meta charset="UTF-8"><title>衝突偵測月曆_${y}-${mm}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  @page{ size:A4 landscape; margin:9mm 10mm; }
+  *{ box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body{ margin:0; font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif; color:#3a322b; background:#fff; font-size:9pt; }
+  .tip{ background:#f6efe2; border:1px solid #e6ddce; border-radius:8px; padding:8px 12px; margin:10px; font-size:12px; display:flex; gap:10px; align-items:center; }
+  .tip button{ margin-left:auto; padding:6px 14px; border:1px solid #9a5b49; background:#9a5b49; color:#fff; border-radius:8px; cursor:pointer; }
+  @media print{ .tip{ display:none; } }
+  .page{ page-break-after:always; }
+  .page:last-child{ page-break-after:auto; }
+  header{ display:flex; align-items:flex-end; justify-content:space-between; border-bottom:1px solid #b8914f; padding-bottom:5px; margin-bottom:6px; }
+  h1{ font-family:"Noto Serif TC","Songti TC",serif; font-size:19pt; letter-spacing:.12em; margin:0; }
+  h1 small{ font-size:10pt; letter-spacing:.2em; color:#85796c; margin-left:10px; font-weight:600; }
+  .meta{ text-align:right; font-size:7.5pt; color:#85796c; line-height:1.5; }
+  .stats{ display:flex; gap:8px; margin:0 0 6px; }
+  .stat{ flex:1; border:1px solid #e6ddce; border-radius:8px; padding:4px 8px; background:#fffdf9; display:flex; align-items:baseline; gap:6px; }
+  .stat b{ font-family:"Noto Serif TC",serif; font-size:15pt; } .stat span{ font-size:8pt; color:#85796c; }
+  .stat.s b{ color:#b5483b; } .stat.w b{ color:#a77824; }
+  .legend{ font-size:7.5pt; color:#85796c; margin-bottom:5px; display:flex; gap:14px; }
+  .legend i{ display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:4px; vertical-align:-1px; }
+  .grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
+  .wk{ text-align:center; font-family:"Noto Serif TC",serif; font-weight:700; letter-spacing:.3em; color:#85796c; border-bottom:1px solid #e6ddce; padding:2px 0; font-size:9pt; }
+  .wk.r{ color:#b5483b; }
+  .cell{ border:1px solid #e9e0d1; border-radius:5px; padding:3px 4px; min-height:${Math.floor(128 / weekRows * 1.15)}mm; background:#fffefb; overflow:hidden; }
+  .cell.off{ background:transparent; border-color:transparent; }
+  .cell.wkend{ background:#faf5ea; }
+  .cell.sev{ background:#f8e7e3; border-color:#e3b8b0; }
+  .cell.wrn{ background:#f8efd9; border-color:#e4d2a4; }
+  .dn{ display:flex; justify-content:space-between; align-items:center; margin-bottom:2px; }
+  .dn b{ font-family:"Noto Serif TC",serif; font-size:10pt; } .dn b.red{ color:#b5483b; }
+  .tag{ font-style:normal; font-size:6pt; color:#b5483b; border:1px solid #e3b8b0; border-radius:8px; padding:0 4px; }
+  .ln{ display:flex; gap:3px; font-size:6.6pt; line-height:1.35; margin-top:1.5px; padding:1px 3px; border-left:2px solid #b5483b; background:rgba(255,255,255,.7); border-radius:2px; }
+  .ln.warn{ border-left-color:#b8914f; }
+  .more{ font-size:6pt; color:#85796c; margin-top:2px; }
+  h2{ font-family:"Noto Serif TC",serif; font-size:14pt; letter-spacing:.1em; margin:0 0 6px; padding-bottom:4px; border-bottom:1px solid #b8914f; }
+  .cols{ column-count:2; column-gap:9mm; }
+  .dcard{ break-inside:avoid; border:1px solid #e6ddce; border-left:3px solid #b5483b; border-radius:6px; padding:5px 8px; margin-bottom:6px; background:#fffdf9; }
+  .dcard.wrn{ border-left-color:#b8914f; }
+  .dh{ display:flex; justify-content:space-between; font-family:"Noto Serif TC",serif; font-size:9.5pt; margin-bottom:3px; } .dh span{ color:#85796c; font-size:8pt; font-family:inherit; }
+  ul{ margin:0; padding-left:14px; } li{ font-size:8pt; line-height:1.45; margin-bottom:2px; } li.warn{ color:#7a5a1a; }
+  footer{ margin-top:6px; text-align:center; font-size:7pt; color:#a3978a; letter-spacing:.1em; }
+</style></head><body>
+<div class="tip"><span>📄 列印視窗出現後，請把「目的地」選成<b>「另存為 PDF」</b>，版面請選<b>橫向</b>、邊界<b>預設</b>。</span><button onclick="window.print()">再開一次列印視窗</button></div>
+<section class="page">
+  <header>
+    <h1>衝突偵測月曆<small>${y} 年 ${m+1} 月（民國 ${y-1911} 年）</small></h1>
+    <div class="meta">平安長照醫療體系排班系統<br>列印時間 ${stamp}</div>
+  </header>
+  <div class="stats">
+    <div class="stat s"><b>${severeDays}</b><span>天 紅色（衝突／整天無人）</span></div>
+    <div class="stat w"><b>${warnDays}</b><span>天 黃色（只排半天／休診異常）</span></div>
+    <div class="stat"><b>${itemCount}</b><span>項 提醒（月曆格子內每一行）</span></div>
+  </div>
+  <div class="legend">
+    <span><i style="background:#f8e7e3;border:1px solid #e3b8b0"></i>紅色底：人員衝突、整天無人、非營運日／假日排班、外師課程衝突</span>
+    <span><i style="background:#f8efd9;border:1px solid #e4d2a4"></i>黃色底：只排半天、休診異常</span>
+    <span><i style="background:#fffefb;border:1px solid #e9e0d1"></i>正常</span>
+  </div>
+  <div class="grid">
+    ${WD.map((n,i)=>`<div class="wk ${(i===0||i===6)?'r':''}">${n}</div>`).join('')}
+    ${cells}
+  </div>
+</section>
+${monthDays.length ? `<section class="page"><h2>${y} 年 ${m+1} 月・提醒明細</h2><div class="cols">${detail}</div><footer>— 平安長照醫療體系排班系統 · ${y}-${mm} 衝突偵測 —</footer></section>` : ''}
+</body></html>`);
+  w.document.close();
+  w.focus();
+  // 等網路字型載入完再開列印視窗（最多等 2.5 秒），否則第一頁可能是備用字型
+  const go = ()=>{ try{ w.print(); }catch(e){} };
+  let done = false; const once = ()=>{ if(!done){ done = true; setTimeout(go, 200); } };
+  if(w.document.fonts && w.document.fonts.ready) w.document.fonts.ready.then(once);
+  setTimeout(once, 2500);
+}
+
 // 某一天所有提醒的完整說明（列表檢視與月曆「點格子」的詳細視窗共用同一份）
 function conflictDayRowsHtml(group){
     const gapRows = group.rows.filter(row=>row.kind==='gap');
