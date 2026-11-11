@@ -7381,7 +7381,9 @@ function downloadMatrixImage(){
   const nameCharH = 12, headPad = 10;
   const maxNameLen = Math.max(2, ...staffNames.map(n=>n.length));
   const headRowH = maxNameLen * nameCharH + headPad;
-  const titleH = 40, padding = 12;
+  const titleH = 56, padding = 12;
+  const titleText = `${monthVal} 全體班表（矩陣總覽）`;
+  const titleFont = 'bold 24px "Microsoft JhengHei", sans-serif';
   const tableW = dateColW + staffColW * staffNames.length;
 
   // 圖例（地點色塊）太多時自動換行，避免超出圖片右邊被切掉
@@ -7408,7 +7410,9 @@ function downloadMatrixImage(){
   });
   const totalRowsH = rowHeights.reduce((a,b)=>a+b, 0);
 
-  const canvasW = tableW + padding * 2;
+  mctx.font = titleFont;
+  const titleW = mctx.measureText(titleText).width;
+  const canvasW = Math.max(tableW, titleW) + padding * 2;
   const canvasH = titleH + legendH + headRowH + totalRowsH + padding * 2;
 
   const canvas = document.createElement('canvas');
@@ -7423,9 +7427,10 @@ function downloadMatrixImage(){
 
   // 標題
   ctx.fillStyle = '#3A2E22';
-  ctx.font = 'bold 16px "Microsoft JhengHei", sans-serif';
+  ctx.font = titleFont;
   ctx.textBaseline = 'middle';
-  ctx.fillText(`${monthVal} 全體班表（矩陣總覽）`, padding, padding + titleH/2);
+  ctx.textAlign = 'center';
+  ctx.fillText(titleText, canvasW/2, padding + titleH/2);
 
   // 圖例
   ctx.font = '10px "Microsoft JhengHei", sans-serif';
