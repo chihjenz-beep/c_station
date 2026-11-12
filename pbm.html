@@ -6865,7 +6865,8 @@ function exportConflictCalendarPDF(){
     const MAXL = 4;
     const body = md ? md.lines.slice(0,MAXL).map(l=>`<div class="ln ${l.sev}"><span>${l.icon}</span><span>${l.text}</span></div>`).join('')
         + (md.lines.length>MAXL ? `<div class="more">＋還有 ${md.lines.length-MAXL} 項，詳見明細頁</div>` : '') : '';
-    cells += `<div class="cell ${md ? (md.severe?'sev':'wrn') : ''} ${(dow===0||dow===6)?'wkend':''}">
+    const alsoWarn = !!(md && md.severe && md.lines.some(l=>l.sev==='warn'));
+    cells += `<div class="cell ${md ? (md.severe?'sev':'wrn') : ''} ${alsoWarn?'hw':''} ${(dow===0||dow===6)?'wkend':''}">
       <div class="dn"><b ${(dow===0||dow===6||hol)?'class="red"':''}>${dayNum}</b>${hol?`<i class="tag">${esc(holidayNameOf(dateStr))}</i>`:''}</div>${body}</div>`;
   }
 
@@ -6899,29 +6900,32 @@ function exportConflictCalendarPDF(){
   .stats{ display:flex; gap:8px; margin:0 0 6px; }
   .stat{ flex:1; border:1px solid #e6ddce; border-radius:8px; padding:4px 8px; background:#fffdf9; display:flex; align-items:baseline; gap:6px; }
   .stat b{ font-family:"Noto Serif TC",serif; font-size:15pt; } .stat span{ font-size:8pt; color:#85796c; }
-  .stat.s b{ color:#b5483b; } .stat.w b{ color:#a77824; }
+  .stat.s{ background:#fde3de; border-color:#d98477; } .stat.w{ background:#fff1bd; border-color:#e3b93a; }
+  .stat.s b{ color:#b83a2a; } .stat.w b{ color:#a87400; }
   .legend{ font-size:7.5pt; color:#85796c; margin-bottom:5px; display:flex; gap:14px; }
-  .legend i{ display:inline-block; width:11px; height:11px; border-radius:2px; margin-right:5px; vertical-align:-1.5px; }
+  .legend i{ display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:4px; vertical-align:-1px; }
   .grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
   .wk{ text-align:center; font-family:"Noto Serif TC",serif; font-weight:700; letter-spacing:.3em; color:#85796c; border-bottom:1px solid #e6ddce; padding:2px 0; font-size:9pt; }
   .wk.r{ color:#b5483b; }
   .cell{ border:1px solid #e9e0d1; border-radius:5px; padding:3px 4px; min-height:${Math.floor(128 / weekRows * 1.15)}mm; background:#fffefb; overflow:hidden; }
   .cell.off{ background:transparent; border-color:transparent; }
   .cell.wkend{ background:#faf5ea; }
-  .cell.sev{ background:#f8e7e3; border-color:#e3b8b0; }
-  .cell.wrn{ background:#f8efd9; border-color:#e4d2a4; }
+  .cell{ position:relative; }
+  .cell.sev{ background:#f7c4ba; border:1.5px solid #c24433; box-shadow:inset 0 4px 0 #c24433; }
+  .cell.wrn{ background:#fde89a; border:1.5px solid #d49a00; box-shadow:inset 0 4px 0 #e0a800; }
+  .cell.hw::after{ content:''; position:absolute; top:0; right:0; border-style:solid; border-width:0 22px 22px 0; border-color:transparent #f0b400 transparent transparent; }
   .dn{ display:flex; justify-content:space-between; align-items:center; margin-bottom:2px; }
   .dn b{ font-family:"Noto Serif TC",serif; font-size:10pt; } .dn b.red{ color:#b5483b; }
   .tag{ font-style:normal; font-size:6pt; color:#b5483b; border:1px solid #e3b8b0; border-radius:8px; padding:0 4px; }
-  .ln{ display:flex; gap:3px; font-size:6.6pt; line-height:1.35; margin-top:1.5px; padding:1px 3px; border-left:2px solid #b5483b; background:rgba(255,255,255,.7); border-radius:2px; }
-  .ln.warn{ border-left-color:#b8914f; }
+  .ln{ display:flex; gap:3px; font-size:6.6pt; line-height:1.35; margin-top:1.5px; padding:1px 3px; border-left:3px solid #c24433; background:rgba(255,255,255,.86); border-radius:2px; }
+  .ln.warn{ border-left-color:#e0a800; background:rgba(255,251,226,.95); }
   .more{ font-size:6pt; color:#85796c; margin-top:2px; }
   h2{ font-family:"Noto Serif TC",serif; font-size:14pt; letter-spacing:.1em; margin:0 0 6px; padding-bottom:4px; border-bottom:1px solid #b8914f; }
   .cols{ column-count:2; column-gap:9mm; }
-  .dcard{ break-inside:avoid; border:1px solid #e6ddce; border-left:3px solid #b5483b; border-radius:6px; padding:5px 8px; margin-bottom:6px; background:#fffdf9; }
-  .dcard.wrn{ border-left-color:#b8914f; }
+  .dcard{ break-inside:avoid; border:1px solid #e6ddce; border-left:5px solid #c24433; border-radius:6px; padding:5px 8px; margin-bottom:6px; background:#fff5f3; }
+  .dcard.wrn{ border-left-color:#e0a800; background:#fffbe6; }
   .dh{ display:flex; justify-content:space-between; font-family:"Noto Serif TC",serif; font-size:9.5pt; margin-bottom:3px; } .dh span{ color:#85796c; font-size:8pt; font-family:inherit; }
-  ul{ margin:0; padding-left:14px; } li{ font-size:8pt; line-height:1.45; margin-bottom:2px; } li.warn{ color:#7a5a1a; }
+  ul{ margin:0; padding-left:14px; } li{ font-size:8pt; line-height:1.45; margin-bottom:2px; } li.warn{ color:#8a5f00; font-weight:500; }
   footer{ margin-top:6px; text-align:center; font-size:7pt; color:#a3978a; letter-spacing:.1em; }
 </style></head><body>
 <div class="tip"><span>📄 列印視窗出現後，請把「目的地」選成<b>「另存為 PDF」</b>，版面請選<b>橫向</b>、邊界<b>預設</b>。</span><button onclick="window.print()">再開一次列印視窗</button></div>
@@ -6936,9 +6940,10 @@ function exportConflictCalendarPDF(){
     <div class="stat"><b>${itemCount}</b><span>項 提醒（月曆格子內每一行）</span></div>
   </div>
   <div class="legend">
-    <span><i style="background:#e0584a;border:1px solid #b5483b"></i>紅色底：人員衝突、整天無人、非營運日／假日排班、外師課程衝突</span>
-    <span><i style="background:#f2b73f;border:1px solid #a77824"></i>黃色底：只排半天、休診異常</span>
-    <span><i style="background:#fffefb;border:1px solid #e9e0d1"></i>正常</span>
+    <span><i style="background:#f7c4ba;border:1.5px solid #c24433;width:13px;height:13px"></i><b style="color:#b83a2a">紅色</b>：人員衝突、整天無人、非營運日／假日排班、外師課程衝突</span>
+    <span><i style="background:#fde89a;border:1.5px solid #d49a00;width:13px;height:13px"></i><b style="color:#a87400">黃色</b>：只排半天、休診異常</span>
+    <span><i style="background:#fffefb;border:1px solid #d9cfbd;width:13px;height:13px"></i>正常</span>
+    <span><i style="background:#f0b400;width:0;height:0;border-style:solid;border-width:0 11px 11px 0;border-color:transparent #f0b400 transparent transparent;border-radius:0"></i>右上角黃色三角＝同一天紅色底之外，另有黃色提醒</span>
   </div>
   <div class="grid">
     ${WD.map((n,i)=>`<div class="wk ${(i===0||i===6)?'r':''}">${n}</div>`).join('')}
@@ -7381,9 +7386,7 @@ function downloadMatrixImage(){
   const nameCharH = 12, headPad = 10;
   const maxNameLen = Math.max(2, ...staffNames.map(n=>n.length));
   const headRowH = maxNameLen * nameCharH + headPad;
-  const titleH = 56, padding = 12;
-  const titleText = `${monthVal} 全體班表（矩陣總覽）`;
-  const titleFont = 'bold 24px "Microsoft JhengHei", sans-serif';
+  const titleH = 40, padding = 12;
   const tableW = dateColW + staffColW * staffNames.length;
 
   // 圖例（地點色塊）太多時自動換行，避免超出圖片右邊被切掉
@@ -7410,9 +7413,7 @@ function downloadMatrixImage(){
   });
   const totalRowsH = rowHeights.reduce((a,b)=>a+b, 0);
 
-  mctx.font = titleFont;
-  const titleW = mctx.measureText(titleText).width;
-  const canvasW = Math.max(tableW, titleW) + padding * 2;
+  const canvasW = tableW + padding * 2;
   const canvasH = titleH + legendH + headRowH + totalRowsH + padding * 2;
 
   const canvas = document.createElement('canvas');
@@ -7427,10 +7428,9 @@ function downloadMatrixImage(){
 
   // 標題
   ctx.fillStyle = '#3A2E22';
-  ctx.font = titleFont;
+  ctx.font = 'bold 16px "Microsoft JhengHei", sans-serif';
   ctx.textBaseline = 'middle';
-  ctx.textAlign = 'center';
-  ctx.fillText(titleText, canvasW/2, padding + titleH/2);
+  ctx.fillText(`${monthVal} 全體班表（矩陣總覽）`, padding, padding + titleH/2);
 
   // 圖例
   ctx.font = '10px "Microsoft JhengHei", sans-serif';
