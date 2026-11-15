@@ -1286,6 +1286,46 @@
   .cc-line .cc-ico{flex:none;}
   .cc-line .cc-txt{min-width:0;word-break:break-all;}
   .cc-more{font-size:10.5px;color:var(--text-soft);margin-top:4px;text-align:right;cursor:help;}
+
+  /* M3 診所排班表（刷子模式） */
+  .gx-bar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-bottom:8px;font-size:12px;}
+  .gx-bar .gx-lbl{font-weight:700;color:var(--brown-dark);}
+  .gx-brush{display:inline-flex;flex-wrap:wrap;gap:5px;}
+  .gx-pill{padding:4px 11px;border-radius:999px;border:1.5px solid var(--border);background:var(--paper);cursor:pointer;font-size:12px;user-select:none;}
+  .gx-pill.on{color:#fff;border-color:transparent;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.18);}
+  .gx-pill.clear.on{background:#8a7b70;}
+  .gx-msg{font-size:12px;color:var(--text-soft);min-height:18px;margin-bottom:6px;}
+  .gx-table{border-collapse:separate;border-spacing:0;font-size:11.5px;white-space:nowrap;user-select:none;}
+  .gx-table th,.gx-table td{border-right:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--paper);text-align:center;padding:0;}
+  .gx-table thead th{position:sticky;top:0;z-index:2;background:#f7f0e9;color:var(--brown-dark);padding:5px 2px;min-width:44px;}
+  .gx-table thead th.wk,.gx-table thead th.hol{background:#feeee0;color:var(--danger);}
+  .gx-table tbody th,.gx-table thead th:first-child{position:sticky;left:0;z-index:3;background:#f7f0e9;color:var(--brown-dark);padding:4px 10px;min-width:74px;text-align:left;}
+  .gx-table thead th:first-child{z-index:4;}
+  .gx-cell{min-width:44px;cursor:crosshair;}
+  .gx-cell.wk,.gx-cell.hol{background:#fceee2;}
+  .gx-half{height:20px;line-height:20px;font-size:10.5px;color:#fff;font-weight:600;overflow:hidden;text-overflow:ellipsis;max-width:56px;}
+  .gx-half+.gx-half{border-top:1px dashed rgba(255,255,255,.55);}
+  .gx-half.empty{color:transparent;background:transparent;}
+  .gx-cell:not(.locked) .gx-half.empty:hover{background:rgba(184,134,60,.22);}
+  .gx-half.leave{background:#e8ded5;color:var(--text-soft);}
+  .gx-cell.locked{cursor:not-allowed;opacity:.8;}
+  .gx-foot th,.gx-foot td{font-size:10.5px;color:var(--text-soft);padding:3px 2px;background:#fbf7ef;}
+  .gx-foot td.zero{background:var(--danger-bg);color:var(--danger);font-weight:700;}
+  /* M6 自動排班建議 */
+  .m6-day{border:1px solid var(--border);border-radius:12px;margin-bottom:8px;background:var(--paper);overflow:hidden;}
+  .m6-day-head{padding:6px 12px;font-weight:700;font-size:13px;background:#f7f1e5;color:var(--brown-dark);}
+  .m6-day-head.wk{color:var(--danger);}
+  .m6-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 12px;border-top:1px solid #efe7d9;font-size:12.5px;}
+  .m6-row.off{opacity:.55;}
+  .m6-row.warn{background:var(--warn-bg);}
+  .m6-row.bad{background:var(--danger-bg);}
+  .m6-kind{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap;}
+  .m6-kind.main{background:var(--station-bg);color:var(--station);}
+  .m6-kind.sub{background:var(--clinic-bg);color:var(--clinic);}
+  .m6-kind.warn{background:var(--warn-bg);color:var(--warn);}
+  .m6-kind.bad{background:var(--danger-bg);color:var(--danger);}
+  .m6-row select{min-height:30px;padding:3px 8px;font-size:12px;}
+  .m6-note{font-size:11.5px;color:var(--text-soft);flex:1;min-width:140px;}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
@@ -1410,7 +1450,7 @@
 
     <div class="card">
       <h2>🏘️ 據點指派 <span class="badge station" id="siteCountBadge">0個據點</span></h2>
-      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">每個據點可指派多位主責人員與多位延緩老師（皆從22位員工中選取）。醫療院所（平安、清禾等）改在上方「醫療院所」卡片管理，不在這裡。<br>🗓️ 「上班日」每按一次星期會循環切換：<b>灰＝不營運 → 整天 → 上午 → 下午</b>；新增的據點預設全部不營運，請自行設定。</div>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">每個據點可指派多位主責人員與多位延緩老師（皆從22位員工中選取）。醫療院所（平安、清禾等）改在上方「醫療院所」卡片管理，不在這裡。<br>👩‍🏫 <b>主責人員＝向衛生局報備的專職老師</b>：M5 會稽核他在據點營運日必須固定排在該據點（請假時列出可代班人選）；據點不營運的日子可以調去其他地方。<br>🗓️ 「上班日」每按一次星期會循環切換：<b>灰＝不營運 → 整天 → 上午 → 下午</b>；新增的據點預設全部不營運，請自行設定。</div>
       <div id="siteList"></div>
       <div style="margin-top:10px;display:flex;gap:8px;">
         <input type="text" id="newSiteName" placeholder="新增據點名稱" style="flex:1;">
@@ -1514,6 +1554,7 @@
           <button class="btn outline" id="viewModeMonthBtn" onclick="setCalView('month')">月</button>
           <button class="btn outline" id="viewModeWeekBtn" onclick="setCalView('week')">週</button>
           <button class="btn outline" id="viewModeMatrixBtn" onclick="setCalView('matrix')">矩陣總覽</button>
+          <button class="btn outline" id="viewModeGridBtn" onclick="setCalView('grid')" title="診所人員排班表：選地點後在格子上點一下或拖過去，快速排整個月">✏️ 診所排班表</button>
         </div>
       </div>
       <div class="sched-split" id="schedSplit">
@@ -1938,12 +1979,31 @@
 
   <div class="panel" id="panel-m6">
     <div class="card">
-      <h2>M6 自動排班建議 <span class="badge">WIP</span></h2>
-      <div class="wip">
-        <div class="icon">🤖</div>
-        <div class="title">自動建議草稿</div>
-        <div class="desc">依可排地點與上月班表輪替建議，避免連續同班過久<br>產出草稿後可人工逐筆調整再確認套用</div>
+      <h2>🤖 自動排班建議 <span class="badge gold">草稿・人工確認後才寫入</span></h2>
+      <div class="desc" style="font-size:12px;color:var(--text-soft);margin-bottom:10px;">
+        依 M1 設定產生整月班表草稿，<b>不會直接改動排班</b>，你可以逐筆調整、取消勾選，確認後再一次套用。規則：<br>
+        ① 每個據點的「主責人員」＝向衛生局報備的專職老師（一個據點一位），據點營運的日子與時段（整天／上午／下午）都固定排在該據點；國定假日不排。<br>
+        ② 據點不營運的日子，專職老師不排班，可自由調去其他地方。<br>
+        ③ 專職老師請假時，系統自動找人代班：「延緩老師」優先，其次是符合上班類型（醫療院所／據點）、當天沒請假、沒排到別處、也不是其他據點專職的員工，並讓代班次數平均分配。<br>
+        ④ 已經排好的班不會被動到，只補缺口；專職已排在別處、或找不到代班人選的，會標示出來請你手動決定（預設不勾選）。醫療院所不在自動排班範圍。
       </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <input type="month" id="m6Month">
+        <button class="btn gold" onclick="runM6Generate()">🤖 產生建議草稿</button>
+        <span id="m6Hint" style="font-size:12px;color:var(--text-soft);"></span>
+      </div>
+    </div>
+    <div class="card" id="m6DraftCard" style="display:none;">
+      <h2>📝 建議草稿 <span id="m6MonthLabel" class="badge"></span></h2>
+      <div id="m6Summary" style="margin-bottom:10px;"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center;">
+        <button class="btn outline" onclick="m6ToggleAll(true)">全部勾選</button>
+        <button class="btn outline" onclick="m6ToggleAll(false)">全部取消</button>
+        <label style="font-size:12px;display:flex;align-items:center;gap:6px;"><input type="checkbox" id="m6OnlyIssues" style="width:auto;" onchange="renderM6Draft()">只看代班與需處理</label>
+        <button class="btn gold" style="margin-left:auto;" onclick="applyM6Draft()">✅ 套用勾選的草稿到排班</button>
+      </div>
+      <div id="m6Report" style="margin-bottom:10px;"></div>
+      <div id="m6DraftList"></div>
     </div>
   </div>
 
@@ -4167,7 +4227,7 @@ function applyTplPreview(start, end){
 // ===========================================================
 // M3 月曆排班
 // ===========================================================
-let calMode = 'month'; // 'month' | 'week'
+let calMode = 'month'; // 'month' | 'week' | 'matrix' | 'grid'
 let calRefDate = new Date(); // 參考日期，決定目前顯示的月份/週
 let modalDate = null; // 'YYYY-MM-DD' 目前彈窗對應日期
 
@@ -4272,16 +4332,17 @@ function setCalView(mode){
   document.getElementById('viewModeMonthBtn').classList.toggle('gold', mode==='month');
   document.getElementById('viewModeWeekBtn').classList.toggle('gold', mode==='week');
   document.getElementById('viewModeMatrixBtn').classList.toggle('gold', mode==='matrix');
+  document.getElementById('viewModeGridBtn')?.classList.toggle('gold', mode==='grid');
   const calGrid = document.getElementById('calGrid');
   const matrixContainer = document.getElementById('matrixContainer');
   const legendNormal = document.getElementById('calLegendNormal');
   const splitEl = document.getElementById('schedSplit');
-  if(splitEl) splitEl.classList.toggle('matrix-mode', mode==='matrix'); // 矩陣總覽需要整排寬度，隱藏左側彈丸選單
-  if(mode==='matrix'){
+  if(splitEl) splitEl.classList.toggle('matrix-mode', mode==='matrix' || mode==='grid'); // 矩陣總覽需要整排寬度，隱藏左側彈丸選單
+  if(mode==='matrix' || mode==='grid'){
     calGrid.style.display = 'none';
     matrixContainer.style.display = '';
     legendNormal.style.display = 'none';
-    renderMatrixView();
+    if(mode==='grid') renderGridView(); else renderMatrixView();
   } else {
     calGrid.style.display = '';
     matrixContainer.style.display = 'none';
@@ -4441,6 +4502,10 @@ function renderCalendar(){
   // 統一分流：若目前是矩陣總覽模式，所有原本呼叫renderCalendar()的地方都改為刷新矩陣，
   // 避免每個新增/刪除/修改排班的呼叫點都要各自記得判斷calMode（之前在矩陣模式下新增跨地點排班，
   // 矩陣畫面沒有跟著更新，就是因為這裡漏了判斷）。
+  if(calMode==='grid'){
+    renderGridView();
+    return;
+  }
   if(calMode==='matrix'){
     renderMatrixView();
     return;
@@ -6618,12 +6683,63 @@ function scanClosedClinicScheduled(){
   });
   return results;
 }
+// 專職人員稽核：向衛生局報備後，據點的「主責人員」就是該據點的專職老師，營運時段必須固定排在該據點。
+//  ・營運日當天（據點的國定假日除外），專職沒排在自己的據點，或被排到其他地點 → 紅色「專職未到位」
+//  ・專職當天請假、而且據點同時段沒有別人代班 → 黃色「專職請假需代班」，並列出可代班的人選（符合上班類型、當天沒請假、沒有排到其他地方）
+//  ・據點不營運的日子，專職可以被調去其他地方，不檢查。
+const HALF_RANGE = { am:['00:00','12:00'], pm:['12:00','23:59'] };
+function entryOverlapsHalf(e, half){ return half==='am' ? normHM(e.start) < '12:00' : normHM(e.end) > '12:00'; }
+function scanDedicatedStaff(){
+  const results = [];
+  const HALF_TXT = { am:'上午', pm:'下午' };
+  getCoverageCheckDates().forEach(dateStr=>{
+    if(isNationalHoliday(dateStr)) return;                      // 據點的國定假日一律停課
+    const dow = new Date(dateStr+'T00:00:00').getDay();
+    const dayEntries = schedule[dateStr] || [];
+    sites.filter(x=>!x.isClinic).forEach(site=>{
+      const slot = siteDaySlot(site, dow);
+      if(!slot) return;
+      const halves = slot==='full' ? ['am','pm'] : [slot];
+      realStaffIdsOnly(site.mainStaffIds).forEach(staffId=>{
+        const st = staff.find(x=>x.id===staffId);
+        if(!st || !st.active) return;
+        const myLeaves = staffLeavesOn(staffId, dateStr);
+        const leaveHalves = [], missingHalves = [];
+        halves.forEach(h=>{
+          const onLeave = myLeaves.some(l=>leaveCoversRange(l, HALF_RANGE[h][0], HALF_RANGE[h][1]));
+          const here = dayEntries.some(e=>e.staffId===staffId && e.site===site.id && entryOverlapsHalf(e,h));
+          if(here) return;
+          (onLeave ? leaveHalves : missingHalves).push(h);
+        });
+        if(missingHalves.length){
+          const elsewhere = dayEntries.filter(e=>e.staffId===staffId && e.site!==site.id && missingHalves.some(h=>entryOverlapsHalf(e,h)));
+          const where = elsewhere.length ? `，被排到其他地點：${[...new Set(elsewhere.map(e=>siteLabelPlain(e.site)))].join('、')}` : '';
+          results.push({ dateStr, siteId:site.id, staffId, kind:'dedicated',
+            reason:`專職「${st.name}」未排在報備據點「${site.name}」（${missingHalves.map(h=>HALF_TXT[h]).join('、')}）${where}` });
+        }
+        // 專職請假：據點同時段若已有別人代班就不用提醒；否則列出可代班人選
+        const uncovered = leaveHalves.filter(h=>!dayEntries.some(e=>e.staffId!==staffId && e.site===site.id && entryOverlapsHalf(e,h)));
+        if(uncovered.length){
+          const cands = staff.filter(x=>x.active && x.id!==staffId && staffAllowedAtSite(x, site)).filter(x=>
+            uncovered.every(h=>{
+              const lv = staffLeavesOn(x.id, dateStr).some(l=>leaveCoversRange(l, HALF_RANGE[h][0], HALF_RANGE[h][1]));
+              const busy = dayEntries.some(e=>e.staffId===x.id && entryOverlapsHalf(e,h));
+              return !lv && !busy;
+            }));
+          results.push({ dateStr, siteId:site.id, staffId, kind:'dedLeave', candidates: cands.map(x=>x.name),
+            reason:`專職「${st.name}」請假（${uncovered.map(h=>HALF_TXT[h]).join('、')}），「${site.name}」需找人代班` });
+        }
+      });
+    });
+  });
+  return results;
+}
 // 把①②③④四種掃描結果，依日期分組成 dayGroups：同一天只建立一組，彙整當天涉及的據點與各項風險，
 // 供「列表檢視」與「月曆檢視」共用，避免兩邊各自重複掃描與分組邏輯。
 // M5：匯出 Excel（只匯出，沒有匯入意義——這是根據排班/請假/課程即時算出來的檢查結果，不是可編輯回填的來源資料）
 function exportM5XLSX(){
   const { dayGroups } = buildConflictDayGroups();
-  const kindLabel = { conflict:'衝突', gap:'未安排人力', half:'只排半天', closed:'休診異常', course:'課程衝突' };
+  const kindLabel = { conflict:'衝突', gap:'未安排人力', half:'只排半天', closed:'休診異常', course:'課程衝突', dedicated:'專職未到位', dedLeave:'專職請假需代班' };
   const rows = [];
   Object.keys(dayGroups).sort().forEach(dateStr=>{
     dayGroups[dateStr].rows.forEach(r=>{
@@ -6633,7 +6749,7 @@ function exportM5XLSX(){
         人員: r.staffId ? getStaffName(r.staffId) : '',
         地點: r.siteId ? siteLabelPlain(r.siteId) : '',
         時段: (r.start && r.end) ? `${r.start}-${r.end}` : '',
-        說明: r.reason
+        說明: r.reason + ((r.candidates && r.candidates.length) ? `（可代班：${r.candidates.join('、')}）` : '')
       });
     });
   });
@@ -6648,6 +6764,9 @@ function buildConflictDayGroups(){
   const halfDayGaps = scanPartialDayCoverage().filter(notPast);
   const closedScheduled = scanClosedClinicScheduled().filter(notPast);
   const courseConflicts = scanCourseConflicts().filter(notPast);
+  const dedicatedAll = scanDedicatedStaff().filter(notPast);
+  const dedicated = dedicatedAll.filter(x=>x.kind==='dedicated');
+  const dedLeave = dedicatedAll.filter(x=>x.kind==='dedLeave');
 
   const dayGroups = {};
   const ensureDayGroup = dateStr => {
@@ -6687,7 +6806,12 @@ function buildConflictDayGroups(){
     group.rows.push({ kind:'course', siteId:g.siteId,
       reason:`同一據點同時段（${COURSE_HALF_LABELS[g.half]}）有 ${g.sessions.length} 堂外師課程，只能安排 1 堂：${g.sessions.map(courseSessionLabel).join('、')}` });
   });
-  return { dayGroups, conflicts, gaps, halfDayGaps, closedScheduled, courseConflicts };
+  dedicatedAll.forEach(g=>{
+    const group = ensureDayGroup(g.dateStr);
+    addDaySite(group, g.siteId);
+    group.rows.push({ kind:g.kind, siteId:g.siteId, staffId:g.staffId, reason:g.reason, candidates:g.candidates||[] });
+  });
+  return { dayGroups, conflicts, gaps, halfDayGaps, closedScheduled, courseConflicts, dedicated, dedLeave };
 }
 // 列表／月曆檢視切換
 let conflictView = 'list';
@@ -6772,6 +6896,12 @@ function buildConflictCellLines(group){
     lines.push({ sev:'severe', icon:'⚠', text:`<b>${getStaffName(r.staffId)}</b>｜${shortConflictReason(r.reason)}${rows.length>1?`（${rows.length} 筆班）`:''}`,
       full: rows.map(x=>`${getStaffName(x.staffId)}（${siteLabelPlain(x.siteId)} ${x.start}–${x.end}）：${x.reason}`).join('\n') });
   });
+  group.rows.filter(r=>r.kind==='dedicated').forEach(r=>{
+    lines.push({ sev:'severe', icon:'⚠', text:`<b>專職未到位</b>｜${getStaffName(r.staffId)}（${siteLabelPlain(r.siteId)}）`, full:r.reason });
+  });
+  group.rows.filter(r=>r.kind==='dedLeave').forEach(r=>{
+    lines.push({ sev:'warn', icon:'🔁', text:`<b>專職請假需代班</b>｜${getStaffName(r.staffId)}（${siteLabelPlain(r.siteId)}）`, full:`${r.reason}\n可代班：${r.candidates.length ? r.candidates.join('、') : '目前沒有符合條件的人選'}` });
+  });
   const gaps = group.rows.filter(r=>r.kind==='gap');
   if(gaps.length) lines.push({ sev:'severe', icon:'⚠', text:`<b>整天無人</b>｜${brief(siteNames(gaps))}`, full:`當天完全沒有安排人力：${siteNames(gaps).join('、')}` });
   group.rows.filter(r=>r.kind==='course').forEach(r=>{
@@ -6809,7 +6939,7 @@ function renderConflictCalendar(){
     const group = dayGroups[dateStr];
     let severityCls = '', badgesHtml = '';
     if(group){
-      const hasSevere = group.rows.some(r=>r.kind==='conflict' || r.kind==='gap' || r.kind==='course');
+      const hasSevere = group.rows.some(r=>r.kind==='conflict' || r.kind==='gap' || r.kind==='course' || r.kind==='dedicated');
       severityCls = hasSevere ? 'cc-severe' : 'cc-warn';
       const lines = buildConflictCellLines(group);
       const MAXL = 4;
@@ -6836,7 +6966,7 @@ function exportConflictCalendarPDF(){
   const startOffset = new Date(y, m, 1).getDay();
   const weekRows = Math.ceil((startOffset + daysInMonth) / 7);
   const mm = String(m+1).padStart(2,'0');
-  const isSevere = g => g.rows.some(r=>r.kind==='conflict' || r.kind==='gap' || r.kind==='course');
+  const isSevere = g => g.rows.some(r=>r.kind==='conflict' || r.kind==='gap' || r.kind==='course' || r.kind==='dedicated');
 
   // ---- 統計 ----
   let severeDays = 0, warnDays = 0, itemCount = 0;
@@ -6968,6 +7098,8 @@ function conflictDayRowsHtml(group){
     const conflictRows = group.rows.filter(row=>row.kind==='conflict');
     const closedRows = group.rows.filter(row=>row.kind==='closed');
     const courseRows = group.rows.filter(row=>row.kind==='course');
+    const dedRows = group.rows.filter(row=>row.kind==='dedicated');
+    const dedLeaveRows = group.rows.filter(row=>row.kind==='dedLeave');
     const compactSiteLabels = rows => rows.map(row=>
       `<span class="site-badge ${siteColorClass(row.siteId)}">${siteLabel(row.siteId)}</span>`
     ).join('');
@@ -7010,19 +7142,32 @@ function conflictDayRowsHtml(group){
         <span class="ci-reason">🎓 ${row.reason}</span>
       </div>
     `).join('');
-    return gapHtml + courseHtml + halfHtml + closedHtml + conflictRowsHtml;
+    const dedHtml = dedRows.map(row=>`
+      <div class="conflict-day-row conflict">
+        <strong>${getStaffName(row.staffId)}</strong>
+        <span class="day-row-detail">${siteLabel(row.siteId)}</span>
+        <span class="ci-reason">⚠ ${row.reason}</span>
+      </div>
+    `).join('');
+    const dedLeaveHtml = dedLeaveRows.map(row=>`
+      <div class="conflict-day-inline half">
+        <span class="ci-reason">🔁 ${row.reason}</span>
+        <div class="conflict-inline-sites" style="font-size:12px;">可代班人選：${row.candidates.length ? row.candidates.map(n=>`<span class="tag-chip">${n}</span>`).join(' ') : '<span style="color:var(--danger);">目前沒有符合條件的人選（上班類型符合、當天沒請假、沒排到別處）</span>'}</div>
+      </div>
+    `).join('');
+    return dedHtml + gapHtml + courseHtml + dedLeaveHtml + halfHtml + closedHtml + conflictRowsHtml;
 }
 function renderConflictOverview(){
   const summaryEl = document.getElementById('conflictSummary');
   const listEl = document.getElementById('conflictList');
   if(!summaryEl || !listEl) return; // 員工模式看不到 M5，這個區塊的 DOM 根本沒畫出來，直接跳過即可
 
-  const { dayGroups, conflicts, gaps, halfDayGaps, closedScheduled, courseConflicts } = buildConflictDayGroups();
+  const { dayGroups, conflicts, gaps, halfDayGaps, closedScheduled, courseConflicts, dedicated, dedLeave } = buildConflictDayGroups();
   const overlapCount = conflicts.filter(c=>c.reasons.includes('overlap')).length;
   const leaveCount = conflicts.filter(c=>c.reasons.includes('leave')).length;
   const offDayCount = conflicts.filter(c=>c.reasons.includes('offday')).length;
   const holidayCount = conflicts.filter(c=>c.reasons.includes('holiday')).length;
-  const dateCount = new Set([...conflicts.map(c=>c.dateStr), ...gaps.map(g=>g.dateStr), ...halfDayGaps.map(g=>g.dateStr), ...closedScheduled.map(g=>g.dateStr), ...courseConflicts.map(g=>g.dateStr)]).size;
+  const dateCount = new Set([...conflicts.map(c=>c.dateStr), ...gaps.map(g=>g.dateStr), ...halfDayGaps.map(g=>g.dateStr), ...closedScheduled.map(g=>g.dateStr), ...courseConflicts.map(g=>g.dateStr), ...dedicated.map(g=>g.dateStr), ...dedLeave.map(g=>g.dateStr)]).size;
 
   summaryEl.innerHTML = `
     <div class="conflict-stat-row">
@@ -7034,12 +7179,14 @@ function renderConflictOverview(){
       <div class="conflict-stat-card"><div class="num">${gaps.length}</div><div class="lbl">據點未安排人力</div></div>
       <div class="conflict-stat-card"><div class="num">${halfDayGaps.length}</div><div class="lbl">只排半天</div></div>
       <div class="conflict-stat-card"><div class="num">${courseConflicts.length}</div><div class="lbl">外師課程衝突</div></div>
+      <div class="conflict-stat-card"><div class="num">${dedicated.length}</div><div class="lbl">專職未到位</div></div>
+      <div class="conflict-stat-card"><div class="num">${dedLeave.length}</div><div class="lbl">專職需代班</div></div>
       <div class="conflict-stat-card"><div class="num">${dateCount}</div><div class="lbl">受影響日期</div></div>
     </div>
     ${holidayCount>0 ? `<div style="margin:8px 0;"><button class="btn outline" onclick="removeHolidayScheduleEntries()">🧹 移除國定假日的排班（${holidayCount} 筆）</button></div>` : ''}
   `;
 
-  if(conflicts.length===0 && gaps.length===0 && halfDayGaps.length===0 && closedScheduled.length===0 && courseConflicts.length===0){
+  if(conflicts.length===0 && gaps.length===0 && halfDayGaps.length===0 && closedScheduled.length===0 && courseConflicts.length===0 && dedicated.length===0 && dedLeave.length===0){
     listEl.innerHTML = '<div class="no-conflict-box">✅ 目前沒有偵測到任何排班衝突或據點漏排</div>';
     if(conflictView==='calendar') renderConflictCalendar();
     return;
@@ -8789,6 +8936,401 @@ function renderAttendanceOverview(){
   container.innerHTML = html;
 }
 
+
+// ===========================================================
+// M3 診所排班表（刷子模式）：縱軸員工、橫軸日期，每格分上午／下午。
+// 選好地點（或「清除」）後，在格子上點一下或按住拖過去就排進去；整天／半天可切換；可復原。
+// ===========================================================
+let gxBrush = { siteId:null, mode:'full', onlyClinic:true };   // siteId: 地點id 或 '__clear'
+let gxStroke = null;   // { snap:Map(date -> 舊資料), n:0, skip:{} }
+let gxUndo = [];
+let gxMsg = '';
+function gxStaffList(){
+  return staff.filter(s=>s.active && (!gxBrush.onlyClinic || s.sites!=='station'));
+}
+function gxHalfInfo(staffId, date, half){
+  const e = (schedule[date]||[]).find(x=>x.staffId===staffId && entryOverlapsHalf(x, half));
+  if(e) return { kind:'site', siteId:e.site };
+  if(m6OnLeave(staffId, date, half)){
+    const l = staffLeavesOn(staffId, date)[0];
+    return { kind:'leave', label: (typeof leaveShortLabel==='function' && l) ? leaveShortLabel(l) : '假' };
+  }
+  return { kind:'empty' };
+}
+function gxCellInner(staffId, date){
+  return ['am','pm'].map(h=>{
+    const i = gxHalfInfo(staffId, date, h);
+    if(i.kind==='site') return `<div class="gx-half" data-h="${h}" style="background:${matrixColorMap[i.siteId]||'#999'};" title="${getSiteName(i.siteId)}">${getSiteName(i.siteId)}</div>`;
+    if(i.kind==='leave') return `<div class="gx-half leave" data-h="${h}">${i.label}</div>`;
+    return `<div class="gx-half empty" data-h="${h}">·</div>`;
+  }).join('');
+}
+function gxClassOf(date){
+  const dow = new Date(date+'T00:00:00').getDay();
+  return ((dow===0||dow===6)?' wk':'') + (isNationalHoliday(date)?' hol':'');
+}
+function renderGridView(){
+  const container = document.getElementById('matrixContainer');
+  const title = document.getElementById('calTitle');
+  if(!container || !title) return;
+  matrixColorMap = buildMatrixColorMap();
+  const y = calRefDate.getFullYear(), m = calRefDate.getMonth();
+  title.textContent = y+'年 '+(m+1)+'月（診所排班表）';
+  if(!gxBrush.siteId){
+    const c = sites.find(x=>x.isClinic) || sites[0];
+    gxBrush.siteId = c ? c.id : '__clear';
+  }
+  const days = new Date(y, m+1, 0).getDate();
+  const WD = ['日','一','二','三','四','五','六'];
+  const dates = []; for(let d=1; d<=days; d++) dates.push(`${y}-${pad2(m+1)}-${pad2(d)}`);
+  const clinics = sites.filter(s=>s.isClinic), stations = sites.filter(s=>!s.isClinic);
+  const pill = s=>{
+    const on = gxBrush.siteId===s.id;
+    return `<span class="gx-pill ${on?'on':''}" style="${on?'background:'+(matrixColorMap[s.id]||'#999'):''}" onclick="gxPick('${s.id}')">${s.isClinic?'🏥':'📍'}${s.name}</span>`;
+  };
+  const list = gxStaffList();
+  const bar = `<div class="gx-bar">
+    <span class="gx-lbl">刷子</span>
+    <span class="gx-brush">${clinics.map(pill).join('')}${stations.map(pill).join('')}<span class="gx-pill clear ${gxBrush.siteId==='__clear'?'on':''}" onclick="gxPick('__clear')">🧹 清除</span></span>
+    <span class="gx-lbl">範圍</span>
+    <label><input type="radio" name="gxMode" style="width:auto;" ${gxBrush.mode==='full'?'checked':''} onchange="gxMode('full')"> 點一下＝整天</label>
+    <label><input type="radio" name="gxMode" style="width:auto;" ${gxBrush.mode==='half'?'checked':''} onchange="gxMode('half')"> 點上／下半格＝半天</label>
+    <label><input type="checkbox" style="width:auto;" ${gxBrush.onlyClinic?'checked':''} onchange="gxOnlyClinic(this.checked)"> 只列可上診所的人員</label>
+    <button class="btn outline" style="padding:4px 12px;font-size:12px;" onclick="gxUndoLast()" ${gxUndo.length?'':'disabled'}>↩ 復原上一次</button>
+  </div>
+  <div class="gx-msg" id="gxMsg">${gxMsg || '選好上方地點，在格子上點一下或按住拖過去即可排班；上半格＝上午、下半格＝下午。已鎖定月份與請假的格子會自動略過。'}</div>`;
+  const head = '<thead><tr><th>員工 ＼ 日期</th>' + dates.map(d=>{
+    const dow = new Date(d+'T00:00:00').getDay();
+    return `<th class="${gxClassOf(d).trim()}">${+d.slice(8)}<br>${WD[dow]}</th>`;
+  }).join('') + '</tr></thead>';
+  const body = '<tbody>' + list.map(s=>`<tr><th>${s.name}</th>` + dates.map(d=>
+    `<td class="gx-cell${gxClassOf(d)}${isDateLocked(d)?' locked':''}" data-s="${s.id}" data-d="${d}">${gxCellInner(s.id, d)}</td>`).join('') + '</tr>').join('') + '</tbody>';
+  // 每日人力：各診所上午／下午排了幾人（0 人且當天營運→紅字），一眼看出哪天缺人
+  const foot = '<tfoot>' + clinics.map(c=>`<tr class="gx-foot"><th>${c.name} 上/下</th>` + dates.map(d=>{
+    const dow = new Date(d+'T00:00:00').getDay();
+    const slot = siteDaySlot(c, dow);
+    if(!slot) return '<td>—</td>';
+    const need = { am: slot!=='pm' && !isClinicHalfClosed(c.id,d,'am'), pm: slot!=='am' && !isClinicHalfClosed(c.id,d,'pm') };
+    const cnt = h=>(schedule[d]||[]).filter(e=>e.site===c.id && entryOverlapsHalf(e,h)).length;
+    const a = cnt('am'), p = cnt('pm');
+    const zero = (need.am && !a) || (need.pm && !p);
+    return `<td class="${zero?'zero':''}">${need.am?a:'休'}/${need.pm?p:'休'}</td>`;
+  }).join('') + '</tr>').join('') + '</tfoot>';
+  const oldSc = container.querySelector('.matrix-scroll');
+  const sl = oldSc ? oldSc.scrollLeft : 0, stp = oldSc ? oldSc.scrollTop : 0;
+  container.innerHTML = bar + `<div class="matrix-scroll"><table class="gx-table" id="gxTable">${head}${body}${foot}</table></div>`;
+  const newSc = container.querySelector('.matrix-scroll');
+  if(newSc){ newSc.scrollLeft = sl; newSc.scrollTop = stp; }
+  gxBind(container);
+}
+function gxPick(id){ gxBrush.siteId = id; renderGridView(); }
+function gxMode(m){ gxBrush.mode = m; }
+function gxOnlyClinic(v){ gxBrush.onlyClinic = v; renderGridView(); }
+function gxSnap(date){
+  if(!gxStroke.snap.has(date)) gxStroke.snap.set(date, schedule[date] ? JSON.parse(JSON.stringify(schedule[date])) : null);
+}
+// 設定某員工某天某半天的地點（siteId=null 代表清除）。回傳 'ok' 或略過原因
+function gxSetHalf(staffId, date, half, siteId){
+  if(isDateLocked(date)) return 'locked';
+  const st = staff.find(x=>x.id===staffId);
+  const site = siteId ? sites.find(x=>x.id===siteId) : null;
+  if(site){
+    if(!staffAllowedAtSite(st, site)) return 'type';
+    if(m6OnLeave(staffId, date, half)) return 'leave';
+  }
+  gxSnap(date);
+  const out = [];
+  (schedule[date]||[]).forEach(e=>{
+    if(e.staffId!==staffId || !entryOverlapsHalf(e, half)){ out.push(e); return; }
+    const coversOther = half==='am' ? normHM(e.end) > '12:00' : normHM(e.start) < '12:00';
+    if(!coversOther) return;   // 只在這半天 → 移除
+    // 整天的班只改這半天：保留另一半天
+    out.push(half==='am' ? { ...e, start: m6Times('pm').start } : { ...e, end: m6Times('am').end });
+  });
+  if(site){ const t = m6Times(half); out.push({ staffId, site:siteId, start:t.start, end:t.end, status:'draft' }); }
+  // 上午、下午同一地點 → 合併回一筆整天
+  const mine = out.filter(e=>e.staffId===staffId);
+  const amE = mine.find(e=>normHM(e.end) <= '12:00'), pmE = mine.find(e=>normHM(e.start) >= '12:00');
+  if(amE && pmE && amE.site===pmE.site && mine.length===2){
+    const t = m6Times('full');
+    const merged = { staffId, site:amE.site, start:t.start, end:t.end, status:'draft' };
+    const rest = out.filter(e=>e.staffId!==staffId);
+    rest.push(merged);
+    out.length = 0; rest.forEach(x=>out.push(x));
+  }
+  if(out.length) schedule[date] = out; else delete schedule[date];
+  return 'ok';
+}
+function gxPaint(td, half){
+  const staffId = td.dataset.s, date = td.dataset.d;
+  const target = gxBrush.siteId==='__clear' ? null : gxBrush.siteId;
+  const halves = gxBrush.mode==='full' ? ['am','pm'] : [half];
+  let anyOk = false;
+  halves.forEach(h=>{
+    const r = gxSetHalf(staffId, date, h, target);
+    if(r==='ok'){ anyOk = true; gxStroke.n++; } else gxStroke.skip[r] = (gxStroke.skip[r]||0) + 1;
+  });
+  if(anyOk) td.innerHTML = gxCellInner(staffId, date);
+}
+function gxBind(container){
+  const table = container.querySelector('#gxTable');
+  if(!table) return;
+  const cellOf = el=> el && el.closest ? el.closest('.gx-cell') : null;
+  const halfOf = (el, ev)=>{
+    const h = el.closest ? el.closest('.gx-half') : null;
+    return h ? h.dataset.h : 'am';
+  };
+  table.onmousedown = ev=>{
+    const td = cellOf(ev.target); if(!td || ev.button!==0) return;
+    ev.preventDefault();
+    gxStroke = { snap:new Map(), n:0, skip:{} };
+    gxPaint(td, halfOf(ev.target, ev));
+    gxStroke.last = td;
+  };
+  table.onmouseover = ev=>{
+    if(!gxStroke) return;
+    const td = cellOf(ev.target);
+    if(!td || td===gxStroke.last) { if(td && gxBrush.mode==='half') gxPaint(td, halfOf(ev.target, ev)); return; }
+    gxStroke.last = td;
+    gxPaint(td, halfOf(ev.target, ev));
+  };
+  if(!window.__gxUpBound){
+    window.__gxUpBound = true;
+    document.addEventListener('mouseup', ()=>{ if(gxStroke) gxFinishStroke(); });
+  }
+}
+function gxFinishStroke(){
+  const st = gxStroke; gxStroke = null;
+  if(!st) return;
+  const skipTxt = { locked:'已鎖定', type:'上班類型不符', leave:'請假' };
+  const sk = Object.keys(st.skip).map(k=>`${skipTxt[k]||k} ${st.skip[k]} 格`).join('、');
+  if(st.n>0){
+    gxUndo.push(st.snap);
+    if(gxUndo.length>30) gxUndo.shift();
+    saveStore(STORE_KEYS.schedule, schedule);
+    if(typeof renderConflictOverview==='function') renderConflictOverview();
+  }
+  gxMsg = st.n>0 ? `✅ 已更新 ${st.n} 個半天` + (sk?`；略過：${sk}`:'') : (sk ? `⚠ 沒有變更；略過：${sk}` : '');
+  renderGridView();
+}
+function gxUndoLast(){
+  const snap = gxUndo.pop(); if(!snap) return;
+  snap.forEach((old, date)=>{ if(old) schedule[date] = old; else delete schedule[date]; });
+  saveStore(STORE_KEYS.schedule, schedule);
+  if(typeof renderConflictOverview==='function') renderConflictOverview();
+  gxMsg = '↩ 已復原上一次排班';
+  renderGridView();
+}
+
+// ===========================================================
+// M6 自動排班建議：專職（主責人員）固定排班＋請假自動找代班
+// 只產生草稿（m6Draft），確認後才用 applyM6Draft() 寫入 schedule；醫療院所不在自動排班範圍。
+// ===========================================================
+let m6Draft = [];
+const M6_KIND_LABEL = { main:'專職固定', sub:'請假代班', warn:'專職已排他處', bad:'找不到代班' };
+function m6Init(){
+  const p = document.getElementById('m6Month');
+  if(!p || p.value) return;
+  const d = new Date();
+  const n = new Date(d.getFullYear(), d.getMonth()+1, 1);
+  p.value = n.getFullYear() + '-' + pad2(n.getMonth()+1);
+}
+function m6Times(slot){
+  const idMap = { full:'tpl_full', am:'tpl_am', pm:'tpl_pm' }, nameMap = { full:'整天', am:'上午', pm:'下午' };
+  const t = shiftTemplates.find(x=>x.id===idMap[slot]) || shiftTemplates.find(x=>x.name===nameMap[slot]);
+  if(t) return { start:normHM(t.start), end:normHM(t.end) };
+  return { full:{start:'08:00',end:'16:30'}, am:{start:'08:00',end:'12:00'}, pm:{start:'13:00',end:'16:30'} }[slot];
+}
+function m6OnLeave(staffId, date, half){
+  return staffLeavesOn(staffId, date).some(l=>leaveCoversRange(l, HALF_RANGE[half][0], HALF_RANGE[half][1]));
+}
+function m6Generate(month){
+  const [y, mo] = month.split('-').map(Number);
+  const days = new Date(y, mo, 0).getDate();
+  const stations = sites.filter(s=>!s.isClinic);
+  const rows = [];
+  const subCount = {}, load = {};
+  Object.keys(schedule).forEach(d=>{
+    if(d.startsWith(month)) (schedule[d]||[]).forEach(e=>{ load[e.staffId] = (load[e.staffId]||0) + 1; });
+  });
+  const noMain = stations.filter(s=>realOperatingDays(s).length && realStaffIdsOnly(s.mainStaffIds).length===0).map(s=>s.name);
+  for(let d=1; d<=days; d++){
+    const date = `${month}-${pad2(d)}`;
+    if(isDateLocked(date) || isNationalHoliday(date)) continue;
+    const dow = new Date(date+'T00:00:00').getDay();
+    const dayEntries = schedule[date] || [];
+    const draftBusy = {};
+    const busyDraft = (sid,h)=> !!(draftBusy[sid] && draftBusy[sid][h]);
+    const mark = (sid,h,siteId)=>{ (draftBusy[sid] = draftBusy[sid] || {})[h] = siteId; };
+    // 第一輪：當天各據點營運時段中，沒請假的專職必須在自己的據點，不能被拉去代班
+    const mustBe = { am:new Set(), pm:new Set() };
+    stations.forEach(site=>{
+      const slot = siteDaySlot(site, dow); if(!slot) return;
+      const halves = slot==='full' ? ['am','pm'] : [slot];
+      realStaffIdsOnly(site.mainStaffIds).forEach(mid=>{
+        halves.forEach(h=>{ if(!m6OnLeave(mid, date, h)) mustBe[h].add(mid); });
+      });
+    });
+    // 第二輪：逐據點、逐半天產生建議
+    stations.forEach(site=>{
+      const slot = siteDaySlot(site, dow); if(!slot) return;
+      const halves = slot==='full' ? ['am','pm'] : [slot];
+      const items = [];
+      realStaffIdsOnly(site.mainStaffIds).forEach(mid=>{
+        const st = staff.find(x=>x.id===mid);
+        if(!st || !st.active) return;
+        halves.forEach(h=>{
+          const atSite = dayEntries.filter(e=>e.site===site.id && entryOverlapsHalf(e,h));
+          if(!m6OnLeave(mid, date, h)){
+            if(atSite.some(e=>e.staffId===mid)) return;     // 專職已經排在這裡
+            const elsewhere = dayEntries.filter(e=>e.staffId===mid && e.site!==site.id && entryOverlapsHalf(e,h));
+            const item = { h, staffId:mid, mainId:mid, kind:'main', note:'', include:true, candidates:[] };
+            if(elsewhere.length || busyDraft(mid,h)){
+              const where = elsewhere.length ? [...new Set(elsewhere.map(e=>getSiteName(e.site)))].join('、') : getSiteName(draftBusy[mid][h]);
+              item.kind = 'warn'; item.include = false; item.note = `${st.name} 這個時段已排在「${where}」`;
+            }else{
+              mark(mid, h, site.id); load[mid] = (load[mid]||0) + 1;
+            }
+            items.push(item);
+          }else{
+            if(atSite.some(e=>e.staffId!==mid)) return;     // 據點這個時段已有人代班
+            const relief = new Set(realStaffIdsOnly(site.reliefStaffIds));
+            const cands = staff.filter(x=>x.active && x.id!==mid && staffAllowedAtSite(x, site)
+              && !m6OnLeave(x.id, date, h)
+              && !dayEntries.some(e=>e.staffId===x.id && entryOverlapsHalf(e,h))
+              && !busyDraft(x.id,h) && !mustBe[h].has(x.id))
+              .sort((a,b)=> (relief.has(b.id)-relief.has(a.id)) || ((subCount[a.id]||0)-(subCount[b.id]||0)) || ((load[a.id]||0)-(load[b.id]||0)) || a.name.localeCompare(b.name,'zh-Hant'))
+              .map(x=>x.id);
+            if(!cands.length){
+              items.push({ h, staffId:'', mainId:mid, kind:'bad', note:`專職 ${st.name} 請假，沒有符合條件的代班人選`, include:false, candidates:[] });
+            }else{
+              const pick = cands[0];
+              mark(pick, h, site.id); subCount[pick] = (subCount[pick]||0) + 1; load[pick] = (load[pick]||0) + 1;
+              items.push({ h, staffId:pick, mainId:mid, kind:'sub', include:true, candidates:cands,
+                note:`專職 ${st.name} 請假代班` + (relief.has(pick) ? '（延緩老師優先）' : '') });
+            }
+          }
+        });
+      });
+      // 合併：整天營運且上午、下午是同一個人、同一種狀況 → 一筆「整天」
+      const used = new Set();
+      items.forEach((it,i)=>{
+        if(used.has(i)) return;
+        const mate = slot==='full' ? items.findIndex((o,j)=> j!==i && !used.has(j) && o.h!==it.h && o.staffId===it.staffId && o.kind===it.kind && o.mainId===it.mainId && o.include===it.include) : -1;
+        const half = mate>=0 ? 'full' : it.h;
+        if(mate>=0) used.add(mate);
+        used.add(i);
+        const t = m6Times(half);
+        rows.push({ id:uid('m6'), date, siteId:site.id, half, start:t.start, end:t.end, staffId:it.staffId, mainId:it.mainId,
+          kind:it.kind, note:it.note, include:it.include, candidates:it.candidates });
+      });
+    });
+  }
+  return { rows, noMain };
+}
+function runM6Generate(){
+  const month = document.getElementById('m6Month').value;
+  if(!month){ alert('請選擇要產生草稿的月份'); return; }
+  if(isMonthLocked(month)){ alert(LOCK_MSG); return; }
+  const { rows, noMain } = m6Generate(month);
+  m6Draft = rows;
+  document.getElementById('m6Hint').textContent = noMain.length
+    ? `⚠ 以下據點有營運日但尚未設定主責人員（專職），無法自動排：${noMain.join('、')}` : '';
+  document.getElementById('m6Report').innerHTML = '';
+  document.getElementById('m6MonthLabel').textContent = month;
+  document.getElementById('m6DraftCard').style.display = '';
+  renderM6Draft();
+}
+function m6Options(r){
+  const site = sites.find(x=>x.id===r.siteId);
+  let ids = r.kind==='main' || r.kind==='warn'
+    ? staff.filter(x=>x.active && staffAllowedAtSite(x, site)).map(x=>x.id)
+    : r.candidates.slice();
+  if(r.staffId && !ids.includes(r.staffId)) ids.unshift(r.staffId);
+  return ids;
+}
+function renderM6Draft(){
+  const box = document.getElementById('m6DraftList');
+  if(!box) return;
+  const only = document.getElementById('m6OnlyIssues').checked;
+  const cnt = k=>m6Draft.filter(r=>r.kind===k).length;
+  document.getElementById('m6Summary').innerHTML = m6Draft.length ? `<div class="conflict-stat-row">
+    <div class="conflict-stat-card" style="background:var(--station-bg);border-color:var(--station);"><div class="num" style="color:var(--station);">${cnt('main')}</div><div class="lbl">專職固定排班</div></div>
+    <div class="conflict-stat-card" style="background:var(--clinic-bg);border-color:var(--clinic);"><div class="num" style="color:var(--clinic);">${cnt('sub')}</div><div class="lbl">請假代班</div></div>
+    <div class="conflict-stat-card"><div class="num">${cnt('warn')+cnt('bad')}</div><div class="lbl">需手動處理</div></div>
+    <div class="conflict-stat-card"><div class="num">${m6Draft.filter(r=>r.include).length}</div><div class="lbl">目前勾選</div></div>
+  </div>` : '';
+  const rows = m6Draft.filter(r=> !only || r.kind!=='main');
+  if(!m6Draft.length){ box.innerHTML = '<div class="no-conflict-box">✅ 這個月沒有需要補的班（專職都已排好，或據點都沒有營運日）</div>'; return; }
+  if(!rows.length){ box.innerHTML = '<div class="report-empty">沒有代班或需處理的項目</div>'; return; }
+  const WD = ['日','一','二','三','四','五','六'];
+  const byDate = {};
+  rows.forEach(r=>{ (byDate[r.date] = byDate[r.date] || []).push(r); });
+  box.innerHTML = Object.keys(byDate).sort().map(date=>{
+    const dow = new Date(date+'T00:00:00').getDay();
+    const list = byDate[date].sort((a,b)=> getSiteName(a.siteId).localeCompare(getSiteName(b.siteId),'zh-Hant') || a.start.localeCompare(b.start));
+    return `<div class="m6-day"><div class="m6-day-head ${(dow===0||dow===6)?'wk':''}">${date.slice(5).replace('-','/')}（${WD[dow]}）</div>` + list.map(r=>{
+      const cls = r.kind==='bad' ? 'bad' : r.kind==='warn' ? 'warn' : '';
+      const opts = m6Options(r);
+      return `<div class="m6-row ${cls} ${r.include?'':'off'}">
+        <input type="checkbox" style="width:auto;" ${r.include?'checked':''} ${r.staffId?'':'disabled'} onchange="m6Toggle('${r.id}',this.checked)">
+        <span class="site-badge ${siteColorClass(r.siteId)}">${siteLabel(r.siteId)}</span>
+        <span>${M6_HALF_LABEL(r.half)} ${r.start}–${r.end}</span>
+        <span class="m6-kind ${r.kind}">${M6_KIND_LABEL[r.kind]}</span>
+        <select onchange="m6SetStaff('${r.id}',this.value)">
+          ${r.staffId?'':'<option value="">（請選擇人員）</option>'}
+          ${opts.map(id=>`<option value="${id}" ${id===r.staffId?'selected':''}>${getStaffName(id)}</option>`).join('')}
+        </select>
+        <span class="m6-note">${r.note||''}</span>
+        <button class="row-del" title="從草稿移除" onclick="m6Remove('${r.id}')">✕</button>
+      </div>`;
+    }).join('') + '</div>';
+  }).join('');
+}
+function M6_HALF_LABEL(h){ return h==='am' ? '上午' : h==='pm' ? '下午' : '整天'; }
+function m6Toggle(id, on){ const r = m6Draft.find(x=>x.id===id); if(r){ r.include = on; renderM6Draft(); } }
+function m6ToggleAll(on){ m6Draft.forEach(r=>{ if(r.staffId) r.include = on; }); renderM6Draft(); }
+function m6Remove(id){ m6Draft = m6Draft.filter(x=>x.id!==id); renderM6Draft(); }
+function m6SetStaff(id, staffId){
+  const r = m6Draft.find(x=>x.id===id); if(!r) return;
+  r.staffId = staffId;
+  if(staffId && (r.kind==='bad' || r.kind==='warn')){ r.include = true; }
+  if(r.kind==='bad' && staffId){ r.kind = 'sub'; r.note = '手動指定代班'; }
+  renderM6Draft();
+}
+function applyM6Draft(){
+  const rows = m6Draft.filter(r=>r.include && r.staffId);
+  if(!rows.length){ alert('沒有勾選任何可套用的草稿'); return; }
+  if(!confirm(`即將把 ${rows.length} 筆草稿寫入排班（已存在或有衝突的會自動略過，並在下方列出原因）。確定套用嗎？`)) return;
+  let added = 0;
+  const skipped = [], appliedIds = new Set();
+  rows.forEach(r=>{
+    const site = sites.find(x=>x.id===r.siteId), st = staff.find(x=>x.id===r.staffId);
+    const label = `${r.date.slice(5).replace('-','/')} ${getSiteName(r.siteId)} ${M6_HALF_LABEL(r.half)} ${getStaffName(r.staffId)}`;
+    let why = '';
+    if(isDateLocked(r.date)) why = '過去月份已鎖定';
+    else if(!staffAllowedAtSite(st, site)) why = '上班類型不符';
+    else if(staffLeavesOn(r.staffId, r.date).some(l=>leaveCoversRange(l, r.start, r.end))) why = '當天請假';
+    else{
+      const clash = (schedule[r.date]||[]).find(e=>e.staffId===r.staffId && timeOverlap(normHM(e.start), normHM(e.end), r.start, r.end));
+      if(clash) why = (clash.site===r.siteId && normHM(clash.start)===r.start && normHM(clash.end)===r.end) ? '已有相同排班' : `時段與「${getSiteName(clash.site)}」的班重疊`;
+    }
+    if(why){ skipped.push(`${label}（${why}）`); return; }
+    if(!schedule[r.date]) schedule[r.date] = [];
+    schedule[r.date].push({ staffId:r.staffId, site:r.siteId, start:r.start, end:r.end, status:'draft' });
+    appliedIds.add(r.id); added++;
+  });
+  if(added){
+    saveStore(STORE_KEYS.schedule, schedule);
+    renderCalendar();
+    if(typeof renderConflictOverview==='function') renderConflictOverview();
+  }
+  m6Draft = m6Draft.filter(r=>!appliedIds.has(r.id));
+  document.getElementById('m6Report').innerHTML = `<div class="bulk-report-box success">✅ 已寫入 <b>${added}</b> 筆排班（狀態為草稿，可到 M3 檢視、M5 檢查）。` +
+    (skipped.length ? `<div class="skip-line">⚠ 略過 ${skipped.length} 筆：${skipped.join('、')}</div>` : '') + '</div>';
+  renderM6Draft();
+}
+
 // ===== 初始渲染 =====
 function renderAllAfterSync(){
   if(IS_ADMIN){
@@ -8806,6 +9348,7 @@ function renderAllAfterSync(){
     renderCalendar(); // 內部會自動依calMode分流到矩陣或月曆渲染
     renderConflictOverview();
     document.getElementById('conflictViewListBtn')?.classList.add('gold');
+    m6Init();
   }
   // M4（請假登記＋總覽）與M7（發布清單）兩種角色都需要：
   // 幹部要管理發布狀態／也可登記請假，員工要登記請假／查詢已發布班表
