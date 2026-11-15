@@ -8941,7 +8941,7 @@ function renderAttendanceOverview(){
 // M3 診所排班表（刷子模式）：縱軸員工、橫軸日期，每格分上午／下午。
 // 選好地點（或「清除」）後，在格子上點一下或按住拖過去就排進去；整天／半天可切換；可復原。
 // ===========================================================
-let gxBrush = { siteId:null, mode:'full', onlyClinic:true };   // siteId: 地點id 或 '__clear'
+let gxBrush = { siteId:null, mode:'half', onlyClinic:true };   // siteId: 地點id 或 '__clear'
 let gxStroke = null;   // { snap:Map(date -> 舊資料), n:0, skip:{} }
 let gxUndo = [];
 let gxMsg = '';
@@ -8993,12 +8993,12 @@ function renderGridView(){
     <span class="gx-lbl">刷子</span>
     <span class="gx-brush">${clinics.map(pill).join('')}${stations.map(pill).join('')}<span class="gx-pill clear ${gxBrush.siteId==='__clear'?'on':''}" onclick="gxPick('__clear')">🧹 清除</span></span>
     <span class="gx-lbl">範圍</span>
-    <label><input type="radio" name="gxMode" style="width:auto;" ${gxBrush.mode==='full'?'checked':''} onchange="gxMode('full')"> 點一下＝整天</label>
-    <label><input type="radio" name="gxMode" style="width:auto;" ${gxBrush.mode==='half'?'checked':''} onchange="gxMode('half')"> 點上／下半格＝半天</label>
+    <label><input type="radio" name="gxMode" style="width:auto;" ${gxBrush.mode==='half'?'checked':''} onchange="gxMode('half')"> 半天（點上半格＝上午、下半格＝下午）</label>
+    <label><input type="radio" name="gxMode" style="width:auto;" ${gxBrush.mode==='full'?'checked':''} onchange="gxMode('full')"> 整天（點哪裡都排整天）</label>
     <label><input type="checkbox" style="width:auto;" ${gxBrush.onlyClinic?'checked':''} onchange="gxOnlyClinic(this.checked)"> 只列可上診所的人員</label>
     <button class="btn outline" style="padding:4px 12px;font-size:12px;" onclick="gxUndoLast()" ${gxUndo.length?'':'disabled'}>↩ 復原上一次</button>
   </div>
-  <div class="gx-msg" id="gxMsg">${gxMsg || '選好上方地點，在格子上點一下或按住拖過去即可排班；上半格＝上午、下半格＝下午。已鎖定月份與請假的格子會自動略過。'}</div>`;
+  <div class="gx-msg" id="gxMsg">${gxMsg || '選好上方地點，在格子上點一下或按住拖過去即可排班；同一格再點一次（已是這個地點）就取消。已鎖定月份與請假的格子會自動略過。'}</div>`;
   const head = '<thead><tr><th>員工 ＼ 日期</th>' + dates.map(d=>{
     const dow = new Date(d+'T00:00:00').getDay();
     return `<th class="${gxClassOf(d).trim()}">${+d.slice(8)}<br>${WD[dow]}</th>`;
@@ -9063,8 +9063,14 @@ function gxSetHalf(staffId, date, half, siteId){
 }
 function gxPaint(td, half){
   const staffId = td.dataset.s, date = td.dataset.d;
-  const target = gxBrush.siteId==='__clear' ? null : gxBrush.siteId;
   const halves = gxBrush.mode==='full' ? ['am','pm'] : [half];
+  // 同一格再點一次＝取消：這次要動的半天（或整天）已經全是目前的刷子地點 → 改成清除。
+  // 整段拖曳以第一格為準，統一「排入」或「取消」，不會一路來回切換。
+  if(gxStroke.erase===undefined){
+    gxStroke.erase = gxBrush.siteId==='__clear' ||
+      halves.every(h=>{ const i = gxHalfInfo(staffId, date, h); return i.kind==='site' && i.siteId===gxBrush.siteId; });
+  }
+  const target = gxStroke.erase ? null : gxBrush.siteId;
   let anyOk = false;
   halves.forEach(h=>{
     const r = gxSetHalf(staffId, date, h, target);
@@ -9110,7 +9116,7 @@ function gxFinishStroke(){
     saveStore(STORE_KEYS.schedule, schedule);
     if(typeof renderConflictOverview==='function') renderConflictOverview();
   }
-  gxMsg = st.n>0 ? `✅ 已更新 ${st.n} 個半天` + (sk?`；略過：${sk}`:'') : (sk ? `⚠ 沒有變更；略過：${sk}` : '');
+  gxMsg = st.n>0 ? `✅ ${st.erase?'已取消':'已排入'} ${st.n} 個半天` + (sk?`；略過：${sk}`:'') : (sk ? `⚠ 沒有變更；略過：${sk}` : '');
   renderGridView();
 }
 function gxUndoLast(){
