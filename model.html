@@ -72,6 +72,11 @@ header select{padding:4px;border:0;border-radius:5px;font:inherit}
 #qeBar{display:flex;gap:6px;justify-content:center;margin-bottom:8px}#qeBar i{width:26px;height:8px;border-radius:4px;background:#d5dbe2}#qeBar i.y{background:#2e9e6a}#qeBar i.n{background:#d98a2b}#qeBar i.cur{outline:2px solid var(--navy);outline-offset:2px}
 #qeCur{height:20px;font-size:13px;color:#667}.qb{display:flex;gap:12px;justify-content:center;margin:10px 0}.qb button{font:inherit;font-size:18px;padding:10px 26px;border-radius:10px;border:1px solid #9ab;background:#fff;cursor:pointer}
 #qeY{background:#e4f5ec;border-color:#2e9e6a}#qeN{background:#fdf0e0;border-color:#d98a2b}.qh{font-size:12.5px;color:#667;line-height:1.7}
+header button.qk{background:#2e9e6a;color:#fff;font-size:16px;font-weight:700;padding:9px 18px;border-radius:9px;box-shadow:0 0 0 2px #fff8,0 2px 6px #0005;line-height:1.25}header button.qk small{display:block;font-size:11.5px;font-weight:400;opacity:.92}header button.pk{background:#2f6fb5;color:#fff;font-size:16px;font-weight:700;padding:9px 18px;border-radius:9px;box-shadow:0 0 0 2px #fff8,0 2px 6px #0005}header button.pk:hover{background:#285f9d}header button.qk:hover{background:#27895b}
+#q3{display:none;position:fixed;inset:0;background:#000a;z-index:20;align-items:center;justify-content:center}#q3.open{display:flex}
+.qw{font-size:15px;color:#456}.q3q{font-size:20px;font-weight:700;color:var(--navy);margin:12px 0;line-height:1.5}
+.qbar{display:flex;gap:6px;justify-content:center;margin-bottom:12px}.qbar i{width:34px;height:8px;border-radius:4px;background:#d5dbe2}.qbar i.y{background:#2e9e6a}.qbar i.cur{outline:2px solid var(--navy);outline-offset:2px}
+#q3Opts{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:10px}#q3Opts button{font:inherit;font-size:16px;padding:9px 14px;border-radius:9px;border:1px solid #9ab;background:#fff;cursor:pointer}#q3Opts button b{color:var(--navy);margin-right:4px}#q3Opts button.on{background:#e4f5ec;border-color:#2e9e6a;font-weight:700}
 @media (max-width:1100px){#app{grid-template-columns:170px 1fr}#panel{grid-column:1/3;max-height:40vh}}
 @media print{
  @page{size:A4;margin:0}
@@ -97,9 +102,10 @@ header select{padding:4px;border:0;border-radius:5px;font:inherit}
   <span class="dt">前次評估 民國<input type="text" id="gPY" size="3">年<input type="text" id="gPM" size="2">月　第1次使用<select id="gFirst"><option value="">不設</option><option value="Y">是</option><option value="N">否</option></select>　填寫類別<select id="gKind"><option value="">不設</option><option value="pre">前測</option><option value="post">後測</option></select></span>
   <span class="dt">評估日期 民國<input type="text" id="dY" size="3">年<input type="text" id="dM" size="2">月<input type="text" id="dD" size="2">日 <button id="dApply" class="pri">套入全部</button><button id="dClear" title="取消統一日期，恢復由辨識／手填">取消</button></span>
   <label>縮放 <input type="range" id="zoom" min="50" max="110" value="85"></label>
-  <button class="pri" id="qeBtn">第2頁快速輸入</button>
-  <button class="pri" id="pOne">列印／存 PDF（本位 4 頁）</button>
-  <button id="pAll">列印全部</button>
+  <button class="qk" id="qeBtn" title="對著紙本逐題按 Y(是)／N(否)，答完自動換下一位">⌨ 第2頁快速輸入<small>按 Y／N 逐題</small></button>
+  <button class="qk" id="q3Btn" title="居住情況、教育程度、病史、自覺健康問題，按數字選取">⌨ 第3頁快速輸入<small>按數字選取</small></button>
+  <button class="pk" id="pOne">🖨 列印／存 PDF（本位 4 頁）</button>
+  <button class="pk" id="pAll">列印全部</button>
   <button id="csv">匯出 CSV</button><button id="jsonOut">備份 JSON</button>
   <label class="btn">還原備份<input type="file" id="jsonIn" accept=".json" hidden></label>
   <button id="reset">重設</button>
@@ -117,6 +123,10 @@ header select{padding:4px;border:0;border-radius:5px;font:inherit}
  <div class="qb"><button id="qeY">Y　是</button><button id="qeN">N　否</button></div>
  <div class="qh">鍵盤：<b>Y</b>／<b>1</b>＝是　<b>N</b>／<b>0</b>＝否　<b>Backspace</b>＝上一題　<b>Esc</b>＝離開<br>答完 8 題自動換下一位</div>
  <div class="qb"><button id="qeBack">← 上一題</button><button id="qeX">離開</button></div></div></div>
+<div id="q3"><div class="qc"><div id="qeWho" style="display:none"></div><div id="q3Who" class="qw"></div><div id="q3Q" class="q3q"></div><div id="q3Bar" class="qbar"></div>
+ <div id="q3Opts"></div>
+ <div class="qh">鍵盤：按選項前的<b>數字／字母</b>選取（複選再按一次取消）　<b>Enter</b>＝下一步　<b>Backspace</b>＝上一步　<b>Esc</b>＝離開</div>
+ <div class="qb"><button id="q3Back">← 上一步</button><button id="q3Next">下一步 →</button><button id="q3X">離開</button></div></div></div>
 <div id="printRoot"></div>
 <div id="modal"><img><pre></pre></div>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
@@ -821,7 +831,7 @@ function csvRows(text) {
   if (cur || row.length) { row.push(cur); rows.push(row); }
   return rows;
 }
-function showSite() { $('#site').textContent = people.length ? '據點：' + (R.site || '（未命名）') + '　✎' : ''; $('#site').title = '點一下可修改據點名稱'; $('#clearRoster').style.display = people.length ? '' : 'none'; document.title = (R.site ? R.site + '｜' : '') + '延緩長輩前後測資料'; $('#pAll').textContent = `列印全部 ${people.length} 位`; }
+function showSite() { $('#site').textContent = people.length ? '據點：' + (R.site || '（未命名）') + '　✎' : ''; $('#site').title = '點一下可修改據點名稱'; $('#clearRoster').style.display = people.length ? '' : 'none'; document.title = (R.site ? R.site + '｜' : '') + '延緩長輩前後測資料'; $('#pAll').textContent = `🖨 列印全部 ${people.length} 位`; }
 /* ---- 內建 .xlsx 讀取（不需外部元件）：zip + DecompressionStream ---- */
 async function unzip(buf) {
   const dv = new DataView(buf), u8 = new Uint8Array(buf);
@@ -912,5 +922,61 @@ $('#clearRoster').onclick = () => {
   R = { site: '', list: [] }; saveRoster(); try { localStorage.removeItem(LS_KEY); } catch (e) { }
   dateSet = { y: '', m: '', d: '' }; G.applied = false; people = []; sel = 0; $('#classNo').value = ''; showDate(); showSite(); select(0); renderLog();
 };
+
+
+/* ===== 第3頁快速輸入：居住情況、教育程度、病史、自覺健康問題 ===== */
+const P3 = [
+  { f: 'live', title: '居住情況（單選）', multi: false, opts: [['1', '1', '獨居'], ['2', '2', '與親友同住']] },
+  { f: 'edu', title: '教育程度（單選）', multi: false, opts: [['1', '1', '不識字'], ['2', '2', '識字，未受正規教育'], ['3', '3', '國小'], ['4', '4', '國中'], ['5', '5', '高中（職）'], ['6', '6', '專科大學'], ['7', '7', '碩博士'], ['8', '8', '其他']] },
+  { f: 'hist', title: '曾被醫師診斷患下列疾病（可複選，按 Enter 下一步）', multi: true, none: '1', opts: [['1', '1', '無'], ['2', '2', '高血壓'], ['3', '3', '心臟疾病'], ['4', '4', '中風'], ['5', '5', '肺部／呼吸疾病'], ['6', '6', '糖尿病'], ['7', '7', '關節炎／風濕'], ['8', '8', '骨折'], ['9', '9', '癌症'], ['0', '10', '身心科相關疾病'], ['A', '11', '其他']] },
+  { f: 'selfIssues', title: '自覺健康問題（可複選，按 Enter 下一位）', multi: true, none: '11', opts: [['1', '11', '無'], ['2', '12', '憂鬱／焦慮／情緒'], ['3', '13', '頸背問題'], ['4', '14', '行走問題'], ['5', '15', '睡眠問題'], ['6', '16', '視力問題'], ['7', '17', '聽力問題'], ['8', 'o', '其他']] }
+];
+let Q3 = null; // {i, s}
+const p3Done = (d, st) => st.multi ? (d[st.f] || []).length > 0 : !!d[st.f];
+function q3Open() {
+  if (!people.length) return;
+  const d = people[sel].d; let s = P3.findIndex(st => !p3Done(d, st)); if (s < 0) s = 0;
+  Q3 = { i: sel, s }; $('#q3').classList.add('open'); q3Show();
+}
+function q3Close() { $('#q3').classList.remove('open'); Q3 = null; renderSheets(); }
+function q3Show() {
+  const p = people[Q3.i], d = p.d, st = P3[Q3.s];
+  $('#q3Who').textContent = `${p.no}. ${p.rosterName}　第 ${Q3.s + 1} / ${P3.length} 項`;
+  $('#q3Q').textContent = st.title;
+  const cur = st.multi ? (d[st.f] || []) : [d[st.f]];
+  $('#q3Opts').innerHTML = st.opts.map(([k, v, l]) => `<button data-v="${v}" class="${cur.includes(v) ? 'on' : ''}"><b>${k}</b> ${l}</button>`).join('');
+  $('#q3Bar').innerHTML = P3.map((x, i) => `<i class="${p3Done(d, x) ? 'y' : ''}${i === Q3.s ? ' cur' : ''}"></i>`).join('');
+  $('#q3Next').style.display = st.multi ? '' : 'none';
+  if (Q3.i !== sel) select(Q3.i, true);
+}
+function q3Pick(v) {
+  const p = people[Q3.i], d = p.d, st = P3[Q3.s]; if (d._o) delete d._o[st.f]; touch(p, 3);
+  if (!st.multi) { d[st.f] = v; save(); q3Step(1); return; }
+  const a = d[st.f] || (d[st.f] = []), i = a.indexOf(v);
+  if (i >= 0) a.splice(i, 1); else { if (v === st.none) a.length = 0; else { const n = a.indexOf(st.none); if (n >= 0) a.splice(n, 1); } a.push(v); }
+  save(); q3Show();
+}
+function q3Step(dir) {
+  const d = people[Q3.i].d, st = P3[Q3.s];
+  if (dir > 0) {
+    if (st.multi && !(d[st.f] || []).length) return;
+    if (Q3.s < P3.length - 1) Q3.s++;
+    else { if (Q3.i >= people.length - 1) { q3Close(); alert('已是最後一位，第 3 頁輸入完成'); return; } Q3 = { i: Q3.i + 1, s: 0 }; }
+  } else if (Q3.s > 0) Q3.s--; else if (Q3.i > 0) { Q3.i--; Q3.s = P3.length - 1; }
+  q3Show();
+}
+document.addEventListener('keydown', e => {
+  if (!Q3) return;
+  const st = P3[Q3.s], k = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+  const o = st.opts.find(x => x[0] === k);
+  if (o) q3Pick(o[1]);
+  else if (k === 'Enter' && st.multi) q3Step(1);
+  else if (k === 'Backspace' || k === 'ArrowLeft') q3Step(-1);
+  else if (k === 'Escape') q3Close();
+  else return;
+  e.preventDefault();
+}, true);
+$('#q3Btn').onclick = q3Open; $('#q3Opts').onclick = e => { const b = e.target.closest('button'); if (b && Q3) q3Pick(b.dataset.v); };
+$('#q3Next').onclick = () => Q3 && q3Step(1); $('#q3Back').onclick = () => Q3 && q3Step(-1); $('#q3X').onclick = () => Q3 && q3Close();
 
 </script></body></html>
