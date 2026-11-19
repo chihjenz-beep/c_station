@@ -64,6 +64,7 @@ input.tf:focus{outline:2px solid #4a90d9;background:#fff}
 #printRoot{display:none}.empty{background:#fff;border:2px dashed var(--line);border-radius:12px;padding:60px 30px;text-align:center;color:#556;font-size:16px;margin:40px auto;width:min(560px,90%)}#site{cursor:pointer;font-size:13px;background:#ffffff26;border-radius:6px;padding:3px 8px}
 .bx{display:inline}.eval .bx{font-size:1.7em;line-height:1;vertical-align:-0.14em}
 #missing{font-size:12.5px;background:#fff6e5;border:1px solid #f0d49a;border-radius:8px;padding:6px 9px;margin-bottom:8px;line-height:1.6}#missing .okk{color:#1f7a4d}
+header input[type=month],header input[type=date]{padding:5px 7px;border:0;border-radius:5px;font:inherit;font-size:14px}header small{font-size:12px;margin-left:4px;opacity:.95}
 header select{padding:4px;border:0;border-radius:5px;font:inherit}
 .hint{font-size:12px;color:#556;line-height:1.6}.hint b{background:#fff3b0;padding:0 3px}.hint u{background:#ffe1de;text-decoration:none;padding:0 3px}
 #qe{display:none;position:fixed;inset:0;background:#000a;z-index:20;align-items:center;justify-content:center}#qe.open{display:flex}
@@ -99,8 +100,8 @@ header button.qk{background:#2e9e6a;color:#fff;font-size:16px;font-weight:700;pa
   <span id="site"></span><label class="btn">匯入清冊<input type="file" id="rosterIn" accept=".xlsx,.xls,.csv" hidden></label><button id="clearRoster">刪除清冊</button>
   <span>目前：<b id="cur"></b></span>
   <span>開班編號（套用全部）<input type="text" id="classNo" placeholder="例：114-001"></span>
-  <span class="dt">前次評估 民國<input type="text" id="gPY" size="3">年<input type="text" id="gPM" size="2">月　第1次使用<select id="gFirst"><option value="">不設</option><option value="Y">是</option><option value="N">否</option></select>　填寫類別<select id="gKind"><option value="">不設</option><option value="pre">前測</option><option value="post">後測</option></select></span>
-  <span class="dt">評估日期 民國<input type="text" id="dY" size="3">年<input type="text" id="dM" size="2">月<input type="text" id="dD" size="2">日 <button id="dApply" class="pri">套入全部</button><button id="dClear" title="取消統一日期，恢復由辨識／手填">取消</button></span>
+  <span class="dt">前次評估 <input type="month" id="gPick" title="選擇年月（月曆）"><input type="hidden" id="gPY"><input type="hidden" id="gPM"><small id="gRoc"></small>　第1次使用<select id="gFirst"><option value="">不設</option><option value="Y">是</option><option value="N">否</option></select>　填寫類別<select id="gKind"><option value="">不設</option><option value="pre">前測</option><option value="post">後測</option></select></span>
+  <span class="dt">評估日期 <input type="date" id="dPick" title="選擇日期（日曆）"><input type="hidden" id="dY"><input type="hidden" id="dM"><input type="hidden" id="dD"><small id="dRoc"></small> <button id="dApply" class="pri">套入全部</button><button id="dClear" title="取消統一日期，恢復由辨識／手填">取消</button></span>
   <label>縮放 <input type="range" id="zoom" min="50" max="110" value="85"></label>
   <button class="qk" id="qeBtn" title="對著紙本逐題按 Y(是)／N(否)，答完自動換下一位">⌨ 第2頁快速輸入<small>按 Y／N 逐題</small></button>
   <button class="qk" id="q3Btn" title="居住情況、教育程度、病史、自覺健康問題，按數字選取">⌨ 第3頁快速輸入<small>按數字選取</small></button>
@@ -700,7 +701,7 @@ $('#modal').addEventListener('click', () => { $('#modal').classList.remove('open
 load();
 $('#classNo').addEventListener('input', e => { people.forEach(p => p.d.classNo = e.target.value); save(); if (document.querySelector('#sheets')) renderSheets(); });
 $('#classNo').value = (people[0] && people[0].d.classNo) || '';
-function showDate() { $('#dY').value = dateSet.y; $('#dM').value = dateSet.m; $('#dD').value = dateSet.d; $('#gFirst').value = G.first; $('#gKind').value = G.kind; $('#gPY').value = G.pY; $('#gPM').value = G.pM; }
+function showDate() { $('#dY').value = dateSet.y; $('#dM').value = dateSet.m; $('#dD').value = dateSet.d; $('#gFirst').value = G.first; $('#gKind').value = G.kind; $('#gPY').value = G.pY; $('#gPM').value = G.pM; syncPick(); }
 function readG() { G.first = $('#gFirst').value; G.kind = $('#gKind').value; G.pY = $('#gPY').value.trim(); G.pM = $('#gPM').value.trim(); }
 function applyDate() {
   dateSet = { y: $('#dY').value.trim(), m: $('#dM').value.trim(), d: $('#dD').value.trim() }; readG();
@@ -978,5 +979,27 @@ document.addEventListener('keydown', e => {
 }, true);
 $('#q3Btn').onclick = q3Open; $('#q3Opts').onclick = e => { const b = e.target.closest('button'); if (b && Q3) q3Pick(b.dataset.v); };
 $('#q3Next').onclick = () => Q3 && q3Step(1); $('#q3Back').onclick = () => Q3 && q3Step(-1); $('#q3X').onclick = () => Q3 && q3Close();
+
+/* ===== 月曆／日曆選擇（顯示西元，內部存民國）===== */
+function pad2(n) { return String(n).padStart(2, '0'); }
+function syncPick() {
+  const gy = +G.pY, gm = +G.pM;
+  $('#gPick').value = gy && gm ? `${gy + 1911}-${pad2(gm)}` : '';
+  $('#gRoc').textContent = gy && gm ? `（民國${gy}年${gm}月）` : '';
+  const y = +dateSet.y, m = +dateSet.m, d = +dateSet.d;
+  $('#dPick').value = y && m && d ? `${y + 1911}-${pad2(m)}-${pad2(d)}` : '';
+  $('#dRoc').textContent = y && m && d ? `（民國${y}年${m}月${d}日）` : '';
+}
+$('#gPick').addEventListener('input', e => {
+  const m = e.target.value.match(/^(\d{4})-(\d{2})$/);
+  $('#gPY').value = m ? String(+m[1] - 1911) : ''; $('#gPM').value = m ? String(+m[2]) : '';
+  $('#gPY').dispatchEvent(new Event('input')); syncPick();
+});
+$('#dPick').addEventListener('input', e => {
+  const m = e.target.value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  $('#dY').value = m ? String(+m[1] - 1911) : ''; $('#dM').value = m ? String(+m[2]) : ''; $('#dD').value = m ? String(+m[3]) : '';
+  $('#dY').dispatchEvent(new Event('input')); syncPick();
+});
+syncPick();
 
 </script></body></html>
