@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>活動照片加字工具</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1d2330;--mut:#666;--bd:#d8dce3;--ac:#d62828;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15181e;--card:#1f242d;--tx:#eef0f4;--mut:#9aa1ae;--bd:#363d4a}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:"Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif;line-height:1.5}
+main{max-width:1500px;margin:0 auto;padding:8px 10px}
+h1{font-size:1.15rem;margin:0 0 2px}
+p.hint{color:var(--mut);margin:0 0 8px;font-size:.82rem}
+.top{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:8px}
+label{font-size:.78rem;color:var(--mut)}
+input[type=text],input[type=date],select{width:100%;padding:5px 7px;font-size:.92rem;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx)}
+button,.btn{font-size:.92rem;padding:5px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--tx);cursor:pointer}
+button.pri{background:var(--ac);border-color:var(--ac);color:#fff;font-weight:700}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.slot{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:7px;display:grid;gap:5px;align-content:start}
+.slot h2{font-size:.9rem;margin:0}
+.hd{display:flex;justify-content:space-between;align-items:center}
+.ph{aspect-ratio:4/3;font-size:.85rem;border:2px dashed var(--bd);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--mut);cursor:pointer;overflow:hidden}
+canvas{width:100%;height:auto;display:block;border-radius:8px}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+input[type=range]{width:100%}
+</style>
+</head>
+<body>
+<main>
+<h1>活動照片加字工具</h1>
+<p class="hint">上傳 5 張照片、填 5 段文字，自動產生紅字白邊的新照片（原圖解析度，可單張或全部下載）。照片不會上傳到網路，全程在您的瀏覽器內處理。</p>
+
+<div class="top">
+  <div>
+    <label>日期（點選月曆，自動轉民國年）</label>
+    <input type="date" id="pdate" value="2026-11-13">
+  </div>
+  <div style="flex:1;min-width:140px">
+    <label>地點（加在日期後面，可清空）</label>
+    <input type="text" id="pplace" value="岱江里">
+  </div>
+  <div class="row">
+    <label class="btn" for="multi">一次選 5 張照片（依選取順序放入欄位）</label>
+    <input type="file" id="multi" accept="image/*" multiple hidden>
+    <button class="pri" id="dlAll">下載全部 5 張</button>
+  </div>
+</div>
+
+<div class="grid" id="grid"></div>
+</main>
+
+<script>
+const defaults=["—懷舊老歌點唱(下午)","—保麗龍栽種實作(上午)","菜色","下午簽到表","上午簽到表"];
+const N=5, slots=[];
+const grid=document.getElementById('grid');
+const pDate=document.getElementById('pdate'),pPlace=document.getElementById('pplace');
+const prefix={get value(){
+  let d='';
+  if(pDate.value){const [y,m,dd]=pDate.value.split('-');d=(+y-1911)+'/'+m+'/'+dd}
+  return d+pPlace.value;
+}};
+
+for(let i=0;i<N;i++){
+  const d=document.createElement('div');d.className='slot';
+  d.innerHTML=`<div class="hd"><h2>第 ${i+1} 張</h2><button id="dl${i}">下載</button></div>
+  <div class="ph" id="ph${i}">點此選擇照片</div>
+  <canvas id="cv${i}" hidden></canvas>
+  <input type="file" accept="image/*" id="f${i}" hidden>
+  <input type="text" id="t${i}" value="${defaults[i]}" title="文字">
+  <div class="opts">
+    <select id="pos${i}" title="位置"><option value="bottom">下方</option><option value="top">上方</option></select>
+    <select id="al${i}" title="對齊"><option value="left">靠左</option><option value="center">置中</option><option value="right">靠右</option></select>
+  </div>
+  <input type="range" id="sz${i}" min="50" max="130" value="100" title="字體大小">`;
+  grid.appendChild(d);
+  const s={img:null,name:''};slots.push(s);
+  const f=d.querySelector('#f'+i);
+  d.querySelector('#ph'+i).onclick=()=>f.click();
+  d.querySelector('#cv'+i).onclick=()=>f.click();
+  f.onchange=()=>{if(f.files[0])load(i,f.files[0])};
+  ['t','pos','al','sz'].forEach(k=>d.querySelector('#'+k+i).addEventListener('input',()=>draw(i)));
+  d.querySelector('#dl'+i).onclick=()=>download(i);
+}
+[pDate,pPlace].forEach(el=>el.addEventListener('input',()=>slots.forEach((_,i)=>draw(i))));
+
+document.getElementById('multi').onchange=e=>{
+  [...e.target.files].slice(0,N).forEach((file,i)=>load(i,file));
+};
+
+function load(i,file){
+  const img=new Image();
+  img.onload=()=>{slots[i].img=img;slots[i].name=file.name;draw(i)};
+  img.src=URL.createObjectURL(file);
+}
+
+function draw(i){
+  const s=slots[i];if(!s.img)return;
+  const cv=document.getElementById('cv'+i),ph=document.getElementById('ph'+i);
+  const w=s.img.naturalWidth,h=s.img.naturalHeight;
+  cv.width=w;cv.height=h;cv.hidden=false;ph.hidden=true;
+  const c=cv.getContext('2d');
+  c.drawImage(s.img,0,0,w,h);
+  const text=prefix.value+document.getElementById('t'+i).value;
+  if(!text)return;
+  const scale=document.getElementById('sz'+i).value/100;
+  const font="'Microsoft JhengHei','PingFang TC','Noto Sans TC',sans-serif";
+  let size=Math.round(w*0.075*scale);
+  c.font=`bold ${size}px ${font}`;
+  const maxW=w*0.96;
+  const tw=c.measureText(text).width;
+  if(tw>maxW){size=Math.floor(size*maxW/tw);c.font=`bold ${size}px ${font}`}
+  const pad=w*0.02, al=document.getElementById('al'+i).value;
+  c.textBaseline='alphabetic';
+  let x;
+  if(al==='left'){c.textAlign='left';x=pad}
+  else if(al==='right'){c.textAlign='right';x=w-pad}
+  else{c.textAlign='center';x=w/2}
+  const y=document.getElementById('pos'+i).value==='top'?size*1.05+h*0.02:h-h*0.03-size*0.15;
+  c.lineJoin='round';
+  c.lineWidth=Math.max(4,size*0.14);
+  c.strokeStyle='#fff';
+  c.strokeText(text,x,y);
+  c.fillStyle='#e60000';
+  c.fillText(text,x,y);
+}
+
+function download(i){
+  const s=slots[i];if(!s.img){alert('第 '+(i+1)+' 張尚未選擇照片');return}
+  const cv=document.getElementById('cv'+i);
+  cv.toBlob(b=>{
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(b);
+    const t=(prefix.value+document.getElementById('t'+i).value).replace(/[\\/:*?"<>|]/g,'_');
+    a.download=(i+1)+'_'+t+'.jpg';
+    document.body.appendChild(a);a.click();a.remove();
+  },'image/jpeg',0.95);
+}
+
+document.getElementById('dlAll').onclick=async()=>{
+  for(let i=0;i<N;i++){if(slots[i].img){download(i);await new Promise(r=>setTimeout(r,500))}}
+};
+// 記憶上次輸入（日期、地點、5 欄文字與版面設定）
+const KEY='photoCaption.v1';
+const ids=['pdate','pplace'];
+for(let i=0;i<N;i++)ids.push('t'+i,'pos'+i,'al'+i,'sz'+i);
+function saveAll(){
+  try{const o={};ids.forEach(id=>o[id]=document.getElementById(id).value);localStorage.setItem(KEY,JSON.stringify(o))}catch(e){}
+}
+try{
+  const o=JSON.parse(localStorage.getItem(KEY)||'null');
+  if(o)ids.forEach(id=>{if(id in o)document.getElementById(id).value=o[id]});
+}catch(e){}
+ids.forEach(id=>document.getElementById(id).addEventListener('input',saveAll));
+</script>
+</body>
+</html>
