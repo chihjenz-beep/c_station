@@ -1,0 +1,1005 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>延緩長輩前後測資料</title>
+<style>
+:root{--navy:#1f3d58;--gold:#c9a96a;--line:#aebccb;--pale:#e8f0f5;--bg:#eef1f4;--ink:#1b2530}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Noto Sans TC","Noto Sans CJK TC","Microsoft JhengHei","PingFang TC",sans-serif;color:var(--ink);background:var(--bg)}
+#app{display:grid;grid-template-columns:220px 1fr 320px;grid-template-rows:auto 1fr;height:100vh}
+header{grid-column:1/4;background:var(--navy);color:#fff;display:flex;gap:10px;align-items:center;padding:8px 14px;flex-wrap:wrap}
+header h1{font-size:16px;margin:0 8px 0 0}
+header button,header label.btn{background:#fff;color:var(--navy);border:0;border-radius:6px;padding:6px 10px;font:inherit;font-size:13px;cursor:pointer}
+header button.pri{background:var(--gold);font-weight:700}
+header input[type=text]{width:120px;padding:5px 7px;border-radius:5px;border:0;font:inherit}
+header small{opacity:.85}
+header .dt input{width:auto;padding:4px 5px;margin:0 3px;text-align:center}
+#side{background:#fff;border-right:1px solid var(--line);overflow:auto}
+#side .ph{padding:8px 10px;font-size:12px;color:#556;border-bottom:1px solid #e3e8ee;position:sticky;top:0;background:#fff}
+#list{list-style:none;margin:0;padding:0}
+#list li{display:flex;align-items:center;gap:6px;padding:7px 10px;cursor:pointer;border-bottom:1px solid #f0f2f5;font-size:14px}
+#list li:hover{background:#f3f7fa}#list li.cur{background:var(--pale);font-weight:700;box-shadow:inset 3px 0 var(--navy)}
+#list .no{width:20px;color:#889;font-size:12px}#list .nm{flex:1}
+.dots{display:flex;gap:2px}.dots i{width:7px;height:7px;border-radius:50%;background:#d5dbe2}.dots i.on{background:#2e9e6a}
+#main{overflow:auto;padding:14px}
+#sheets{transform-origin:top left;width:210mm;margin:0 auto}
+.sheet{width:210mm;min-height:297mm;background:#fff;padding:13mm 15mm 18mm;margin:0 auto 14px;position:relative;box-shadow:0 1px 6px #0003;font-size:12.5pt;line-height:1.55}
+.foot{position:absolute;bottom:9mm;left:0;right:0;text-align:center;font-size:9pt;color:#788}.foot i{margin:0 8px;font-style:normal}.foot b{font-size:12pt;font-weight:400;color:#345}
+.who{position:absolute;top:3mm;left:15mm;font-size:9pt;color:#c0392b}
+h1{font-size:23pt;text-align:center;color:var(--navy);margin:2mm 0 1mm}h1.s{font-size:21pt}
+h2{font-size:15pt;text-align:center;color:#6b7785;margin:0 0 4mm}
+h3{font-size:14pt;color:var(--navy);margin:0 0 2mm}h3.sec{border-bottom:2px solid var(--gold);padding-bottom:1mm;margin-top:5mm}
+h4{font-size:11.5pt;color:var(--navy);margin:5mm 0 1mm}
+p{margin:0 0 2mm}.muted{color:#6b7785;font-size:11pt}.c{text-align:center}
+.box{border:2px solid var(--navy);background:#f1f5f7;padding:4mm 4mm 2mm}.box p{font-size:12pt}
+.sign{margin-top:3mm}
+table{border-collapse:collapse;width:100%}
+.grid td,.grid th{border:1px solid var(--line);padding:2.5mm 3mm;text-align:left;font-weight:400;vertical-align:middle}
+.g4 th,.g3 .hd th{background:var(--pale);color:var(--navy);font-weight:700;width:19%}
+.g4 td{width:31%}.g3 .hd th{background:var(--navy);color:#fff;text-align:center;width:33%}.g3 td{text-align:center}
+.g1 td{padding:3mm}.shade td{background:var(--pale)}.tall{line-height:1.9}.lik td{font-size:12.5pt}
+.date{margin-top:6mm}.thx{margin-top:14mm;color:var(--navy)}
+.rt{text-align:right;color:#445;margin-bottom:2mm}
+.eval{border:1px solid var(--line)}
+.eval th{background:var(--navy);color:#fff;padding:3mm;border:1px solid var(--line)}
+.eval td{padding:1.4mm 3mm;vertical-align:middle;font-size:11.5pt;line-height:1.45}
+.eval .cat{text-align:center;font-weight:700;color:var(--navy)}.eval .ans{text-align:center;font-weight:700}.eval .qt ul{margin:0;padding-left:5mm;list-style:"・ "}
+.b1 td{background:#e9f1f6}.b2 td{background:#f1f5f7}.b0 td,.b3 td{background:#fff}.b3 td.cat{background:#f1f5f7}
+.note{font-size:11pt;margin-top:3mm}
+.tf{display:inline-block;border:0;border-bottom:1px solid #223;background:transparent;font:inherit;font-size:12pt;color:#0b2a6b;height:7mm;padding:0 1mm;text-align:center;vertical-align:bottom;border-radius:0}
+span.tf{text-align:center}
+.cb{cursor:pointer;user-select:none;white-space:nowrap}.cb.on{color:#0b2a6b}@media screen{.cb.on{font-weight:700}}
+.ocr{background:#fff3b0!important}.warn{background:#ffe1de!important}
+.warn::placeholder{color:#c0392b}
+input.tf:focus{outline:2px solid #4a90d9;background:#fff}
+/* 右側面板 */
+#panel{background:#fff;border-left:1px solid var(--line);overflow:auto;padding:10px}
+#panel h3{font-size:14px}#status{font-size:12px;color:#456;background:#f1f5f7;padding:6px 8px;border-radius:6px;margin-bottom:8px}
+.le{display:flex;gap:8px;border:1px solid #dde3ea;border-radius:8px;padding:6px;margin-bottom:8px;font-size:12.5px}
+.le img{width:56px;height:76px;object-fit:cover;object-position:top;border:1px solid #ccd;cursor:zoom-in}
+.le.ok{border-color:#9ccfb5;background:#f4fbf7}.le.mismatch,.le.ask{border-color:#e7b85b;background:#fff9ec}.le.err{border-color:#e59a94;background:#fff3f2}
+.le .b button{margin:4px 4px 0 0;font-size:12px;padding:3px 7px;border:1px solid #9ab;background:#fff;border-radius:5px;cursor:pointer}
+#modal{display:none;position:fixed;inset:0;background:#000b;z-index:9;overflow:auto;padding:20px;cursor:zoom-out}#modal.open{display:block}
+#modal img{display:block;margin:0 auto;max-width:100%}#modal pre{display:none;background:#fff;padding:14px;white-space:pre-wrap;max-width:800px;margin:0 auto}
+#modal.txt img{display:none}#modal.txt pre{display:block}
+#printRoot{display:none}.empty{background:#fff;border:2px dashed var(--line);border-radius:12px;padding:60px 30px;text-align:center;color:#556;font-size:16px;margin:40px auto;width:min(560px,90%)}#site{cursor:pointer;font-size:13px;background:#ffffff26;border-radius:6px;padding:3px 8px}
+.bx{display:inline}.eval .bx{font-size:1.7em;line-height:1;vertical-align:-0.14em}
+#missing{font-size:12.5px;background:#fff6e5;border:1px solid #f0d49a;border-radius:8px;padding:6px 9px;margin-bottom:8px;line-height:1.6}#missing .okk{color:#1f7a4d}
+header input[type=month],header input[type=date]{padding:5px 7px;border:0;border-radius:5px;font:inherit;font-size:14px}header small{font-size:12px;margin-left:4px;opacity:.95}
+header select{padding:4px;border:0;border-radius:5px;font:inherit}
+.hint{font-size:12px;color:#556;line-height:1.6}.hint b{background:#fff3b0;padding:0 3px}.hint u{background:#ffe1de;text-decoration:none;padding:0 3px}
+#qe{display:none;position:fixed;inset:0;background:#000a;z-index:20;align-items:center;justify-content:center}#qe.open{display:flex}
+.qc{background:#fff;border-radius:14px;padding:22px 28px;width:min(640px,92vw);text-align:center}
+#qeWho{font-size:15px;color:#456}#qeQ{font-size:22px;font-weight:700;color:var(--navy);margin:14px 0;line-height:1.5;min-height:66px}
+#qeBar{display:flex;gap:6px;justify-content:center;margin-bottom:8px}#qeBar i{width:26px;height:8px;border-radius:4px;background:#d5dbe2}#qeBar i.y{background:#2e9e6a}#qeBar i.n{background:#d98a2b}#qeBar i.cur{outline:2px solid var(--navy);outline-offset:2px}
+#qeCur{height:20px;font-size:13px;color:#667}.qb{display:flex;gap:12px;justify-content:center;margin:10px 0}.qb button{font:inherit;font-size:18px;padding:10px 26px;border-radius:10px;border:1px solid #9ab;background:#fff;cursor:pointer}
+#qeY{background:#e4f5ec;border-color:#2e9e6a}#qeN{background:#fdf0e0;border-color:#d98a2b}.qh{font-size:12.5px;color:#667;line-height:1.7}
+header button.qk{background:#2e9e6a;color:#fff;font-size:16px;font-weight:700;padding:9px 18px;border-radius:9px;box-shadow:0 0 0 2px #fff8,0 2px 6px #0005;line-height:1.25}header button.qk small{display:block;font-size:11.5px;font-weight:400;opacity:.92}header button.pk{background:#2f6fb5;color:#fff;font-size:16px;font-weight:700;padding:9px 18px;border-radius:9px;box-shadow:0 0 0 2px #fff8,0 2px 6px #0005}header button.pk:hover{background:#285f9d}header button.qk:hover{background:#27895b}
+#q3{display:none;position:fixed;inset:0;background:#000a;z-index:20;align-items:center;justify-content:center}#q3.open{display:flex}
+.qw{font-size:15px;color:#456}.q3q{font-size:20px;font-weight:700;color:var(--navy);margin:12px 0;line-height:1.5}
+.qbar{display:flex;gap:6px;justify-content:center;margin-bottom:12px}.qbar i{width:34px;height:8px;border-radius:4px;background:#d5dbe2}.qbar i.y{background:#2e9e6a}.qbar i.cur{outline:2px solid var(--navy);outline-offset:2px}
+#q3Opts{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:10px}#q3Opts button{font:inherit;font-size:16px;padding:9px 14px;border-radius:9px;border:1px solid #9ab;background:#fff;cursor:pointer}#q3Opts button b{color:var(--navy);margin-right:4px}#q3Opts button.on{background:#e4f5ec;border-color:#2e9e6a;font-weight:700}
+@media (max-width:1100px){#app{grid-template-columns:170px 1fr}#panel{grid-column:1/3;max-height:40vh}}
+@media print{
+ @page{size:A4;margin:0}
+ body{background:#fff}#app,#modal{display:none!important}
+ #printRoot{display:block}
+ #printRoot .sheet{box-shadow:none;margin:0;width:210mm;height:296mm;min-height:0;overflow:hidden;page-break-after:always;break-after:page}
+ .ocr,.warn{background:none!important}
+ #printRoot *{background:none!important;background-color:transparent!important;color:#000!important;box-shadow:none!important;border-color:#555!important}
+ #printRoot .sheet{background:#fff!important}
+ #printRoot .box{border:1.5px solid #000!important}
+ #printRoot h3.sec{border-bottom:1.5px solid #000!important}
+ #printRoot .eval th,#printRoot .g3 .hd th{border:1px solid #000!important;font-weight:700}
+ #printRoot .muted,#printRoot .foot,#printRoot .foot b{color:#333!important}
+ *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style></head><body>
+<div id="app">
+ <header>
+  <h1>延緩長輩前後測資料</h1>
+  <span id="site"></span><label class="btn">匯入清冊<input type="file" id="rosterIn" accept=".xlsx,.xls,.csv" hidden></label><button id="clearRoster">刪除清冊</button>
+  <span>目前：<b id="cur"></b></span>
+  <span>開班編號（套用全部）<input type="text" id="classNo" placeholder="例：114-001"></span>
+  <span class="dt">前次評估 <input type="month" id="gPick" title="選擇年月（月曆）"><input type="hidden" id="gPY"><input type="hidden" id="gPM"><small id="gRoc"></small>　第1次使用<select id="gFirst"><option value="">不設</option><option value="Y">是</option><option value="N">否</option></select>　填寫類別<select id="gKind"><option value="">不設</option><option value="pre">前測</option><option value="post">後測</option></select></span>
+  <span class="dt">評估日期 <input type="date" id="dPick" title="選擇日期（日曆）"><input type="hidden" id="dY"><input type="hidden" id="dM"><input type="hidden" id="dD"><small id="dRoc"></small> <button id="dApply" class="pri">套入全部</button><button id="dClear" title="取消統一日期，恢復由辨識／手填">取消</button></span>
+  <label>縮放 <input type="range" id="zoom" min="50" max="110" value="85"></label>
+  <button class="qk" id="qeBtn" title="對著紙本逐題按 Y(是)／N(否)，答完自動換下一位">⌨ 第2頁快速輸入<small>按 Y／N 逐題</small></button>
+  <button class="qk" id="q3Btn" title="居住情況、教育程度、病史、自覺健康問題，按數字選取">⌨ 第3頁快速輸入<small>按數字選取</small></button>
+  <button class="pk" id="pOne">🖨 列印／存 PDF（本位 4 頁）</button>
+  <button class="pk" id="pAll">列印全部</button>
+  <button id="csv">匯出 CSV</button><button id="jsonOut">備份 JSON</button>
+  <label class="btn">還原備份<input type="file" id="jsonIn" accept=".json" hidden></label>
+  <button id="reset">重設</button>
+ </header>
+ <aside id="side"><div class="ph"><b>個案清冊</b>　<span id="prog"></span><br>綠燈＝該頁資料齊全（滑鼠移上去看缺什麼）</div><ul id="list"></ul></aside>
+ <main id="main"><div id="sheets"></div></main>
+ <aside id="panel">
+  <h3>Ctrl+V 貼上辨識</h3><div id="status"></div>
+  <p class="hint">貼上圖片時，系統依圖上<b>姓名</b>自動對應清冊並切換長輩；沒有姓名的頁（第2頁）會跟同一次貼上、順序最近的有姓名頁面。第4頁固定預設「非常同意」；第2頁第 1～8 題預設「否」、第3頁居住情況預設「獨居」、教育程度預設「不識字」、病史預設「無」、自覺健康問題預設「無」（第5-1題在第5題答「是」時才出現）。第3、4頁的預設值（原住民身分、自行填寫、自覺健康狀況、滿意度）與第2頁預設「否」皆為據點作業規則，系統無法驗證是否符合每位長輩的實際回答，實際不同時請直接修改。辨識結果以 <b>黃底</b> 標示，請對照原圖確認後修改；出生年（4*）與身分證（Q22****）沿用清冊遮蔽格式，不被辨識結果覆蓋。</p>
+  <div id="missing"></div>
+  <div id="log"></div>
+ </aside>
+</div>
+<div id="qe"><div class="qc"><div id="qeWho"></div><div id="qeQ"></div><div id="qeBar"></div><div id="qeCur"></div>
+ <div class="qb"><button id="qeY">Y　是</button><button id="qeN">N　否</button></div>
+ <div class="qh">鍵盤：<b>Y</b>／<b>1</b>＝是　<b>N</b>／<b>0</b>＝否　<b>Backspace</b>＝上一題　<b>Esc</b>＝離開<br>答完 8 題自動換下一位</div>
+ <div class="qb"><button id="qeBack">← 上一題</button><button id="qeX">離開</button></div></div></div>
+<div id="q3"><div class="qc"><div id="qeWho" style="display:none"></div><div id="q3Who" class="qw"></div><div id="q3Q" class="q3q"></div><div id="q3Bar" class="qbar"></div>
+ <div id="q3Opts"></div>
+ <div class="qh">鍵盤：按選項前的<b>數字／字母</b>選取（複選再按一次取消）　<b>Enter</b>＝下一步　<b>Backspace</b>＝上一步　<b>Esc</b>＝離開</div>
+ <div class="qb"><button id="q3Back">← 上一步</button><button id="q3Next">下一步 →</button><button id="q3X">離開</button></div></div></div>
+<div id="printRoot"></div>
+<div id="modal"><img><pre></pre></div>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+<script>
+const ROSTER = [{"no": 1, "name": "葛翁秀蘭", "gender": "F", "caseNo": "111050159", "bY": "", "bYhint": "4*", "bM": "2", "bD": "7", "id": "Q22****956", "phone": "05-3473116", "county": "嘉義縣", "area": "布袋鎮"}, {"no": 2, "name": "蔡春菊", "gender": "F", "caseNo": "112030456", "bY": "", "bYhint": "4*", "bM": "3", "bD": "22", "id": "R20****915", "phone": "05-3478095", "county": "嘉義縣", "area": "布袋鎮"}, {"no": 3, "name": "蔡吳金針", "gender": "F", "caseNo": "113020424", "bY": "", "bYhint": "4*", "bM": "3", "bD": "1", "id": "Q20****658", "phone": "05-3477827", "county": "嘉義縣", "area": "布袋鎮"}, {"no": 4, "name": "蔡鄭趕", "gender": "F", "caseNo": "113020432", "bY": "", "bYhint": "2*", "bM": "2", "bD": "25", "id": "Q20****174", "phone": "05-3471413", "county": "嘉義縣", "area": "布袋鎮"}, {"no": 5, "name": "蔡呂戀娥", "gender": "F", "caseNo": "113021061", "bY": "", "bYhint": "3*", "bM": "2", "bD": "10", "id": "Q20****451", "phone": "0919-313210", "county": "嘉義縣", "area": "布袋鎮"}, {"no": 6, "name": "蔡陳秀絨", "gender": "F", "caseNo": "113025900", "bY": "", "bYhint": "3*", "bM": "3", "bD": "15", "id": "Q20****764", "phone": "05-3475231", "county": "嘉義縣", "area": "布袋鎮"}, {"no": 7, "name": "蔡邱金蓮", "gender": "F", "caseNo": "113025901", "bY": "", "bYhint": "3*", "bM": "7", "bD": "15", "id": "Q20****703", "phone": "0963-426539", "county": "嘉義縣", "area": "布袋鎮"}, {"no": 8, "name": "張陳秝溱", "gender": "F", "caseNo": "113042354", "bY": "", "bYhint": "4*", "bM": "9", "bD": "7", "id": "Q20****624", "phone": "05-3476585", "county": "嘉義縣", "area": "布袋鎮"}, {"no": 9, "name": "林蔡秀霞", "gender": "F", "caseNo": "114019704", "bY": "", "bYhint": "4*", "bM": "10", "bD": "11", "id": "Q20****043", "phone": "0919-176352", "county": "嘉義縣", "area": "布袋鎮"}, {"no": 10, "name": "蔡來好", "gender": "F", "caseNo": "114019769", "bY": "", "bYhint": "3*", "bM": "1", "bD": "5", "id": "Q20****864", "phone": "05-3478839", "county": "嘉義縣", "area": "布袋鎮"}, {"no": 11, "name": "王蔡淑連", "gender": "F", "caseNo": "114020146", "bY": "", "bYhint": "4*", "bM": "2", "bD": "13", "id": "Q20****145", "phone": "05-3477310", "county": "嘉義縣", "area": "布袋鎮"}, {"no": 12, "name": "高金進", "gender": "M", "caseNo": "114025903", "bY": "", "bYhint": "4*", "bM": "10", "bD": "20", "id": "Q10****380", "phone": "0983-973770", "county": "嘉義縣", "area": "布袋鎮"}, {"no": 13, "name": "張吉雄", "gender": "M", "caseNo": "114027476", "bY": "", "bYhint": "3*", "bM": "4", "bD": "30", "id": "Q10****406", "phone": "05-3473339", "county": "嘉義縣", "area": "布袋鎮"}, {"no": 14, "name": "林蔡秀春", "gender": "F", "caseNo": "114036726", "bY": "", "bYhint": "3*", "bM": "11", "bD": "26", "id": "Q20****332", "phone": "05-3473876", "county": "嘉義縣", "area": "布袋鎮"}, {"no": 15, "name": "蔡陳素娥", "gender": "F", "caseNo": "114079568", "bY": "", "bYhint": "2*", "bM": "11", "bD": "2", "id": "Q20****952", "phone": "05-3470548", "county": "嘉義縣", "area": "布袋鎮"}, {"no": 16, "name": "蔡燕雪", "gender": "F", "caseNo": "114082286", "bY": "", "bYhint": "3*", "bM": "1", "bD": "21", "id": "Q20****440", "phone": "05-3473337", "county": "嘉義縣", "area": "布袋鎮"}, {"no": 17, "name": "蔡慶德", "gender": "M", "caseNo": "115017155", "bY": "", "bYhint": "3*", "bM": "6", "bD": "12", "id": "Q10****692", "phone": "05-3473883", "county": "嘉義縣", "area": "布袋鎮"}, {"no": 18, "name": "蔡朱桃美", "gender": "F", "caseNo": "115019335", "bY": "", "bYhint": "4*", "bM": "5", "bD": "2", "id": "F20****695", "phone": "0953-679922", "county": "嘉義縣", "area": "布袋鎮"}, {"no": 19, "name": "蔡張素貞", "gender": "F", "caseNo": "115079291", "bY": "", "bYhint": "4*", "bM": "9", "bD": "3", "id": "Q22****058", "phone": "05-3475550", "county": "嘉義縣", "area": "布袋鎮"}, {"no": 20, "name": "黃大恩", "gender": "M", "caseNo": "115081463", "bY": "", "bYhint": "6*", "bM": "9", "bD": "17", "id": "Q12****916", "phone": "05-3472505", "county": "嘉義縣", "area": "布袋鎮"}, {"no": 21, "name": "蔡張桂英", "gender": "F", "caseNo": "115092320", "bY": "", "bYhint": "2*", "bM": "3", "bD": "18", "id": "Q20****025", "phone": "", "county": "嘉義縣", "area": "布袋鎮"}, {"no": 22, "name": "邱琇荷", "gender": "F", "caseNo": "Q200923684", "bY": "", "bYhint": "3*", "bM": "3", "bD": "29", "id": "Q20****684", "phone": "05-3471801", "county": "嘉義縣", "area": "布袋鎮"}, {"no": 23, "name": "蕭劉素蘭", "gender": "F", "caseNo": "Q200931373", "bY": "", "bYhint": "3*", "bM": "4", "bD": "4", "id": "Q20****373", "phone": "05-3474059", "county": "嘉義縣", "area": "布袋鎮"}, {"no": 24, "name": "蔡陳淑女", "gender": "F", "caseNo": "Q201016688", "bY": "", "bYhint": "3*", "bM": "9", "bD": "18", "id": "Q20****688", "phone": "05-3471267", "county": "嘉義縣", "area": "布袋鎮"}, {"no": 25, "name": "蕭李萌雲", "gender": "F", "caseNo": "Q201903784", "bY": "", "bYhint": "3*", "bM": "10", "bD": "13", "id": "Q20****784", "phone": "05-3479127", "county": "嘉義縣", "area": "布袋鎮"}, {"no": 26, "name": "蔡黃秀枝", "gender": "F", "caseNo": "Q201963440", "bY": "", "bYhint": "3*", "bM": "12", "bD": "15", "id": "Q20****440", "phone": "0932-975240", "county": "嘉義縣", "area": "布袋鎮"}];
+const SITE0 = "平安診所-岱江里(九江)據點";
+/* ===== OCR 文字＋勾選框影像解析（純函式，可在 Node/瀏覽器測試）===== */
+const MARK = /[☑☒☓✓✔√■▣▪⊠図区❎XxＸ×]/;
+const isSkip = c => /[\s　_＿]/.test(c);
+
+/* syms: [{t,x0,y0,x1,y1}]；回傳 {str, arr}，str 與 arr 逐字對齊 */
+function buildDoc(syms) {
+  let str = ''; const arr = [];
+  for (const s of syms) for (const ch of s.t) { if (isSkip(ch)) continue; str += ch; arr.push(s); }
+  return { str, arr };
+}
+function normText(raw) { return [...(raw || '')].filter(c => !isSkip(c)).join(''); }
+
+function classify(t) {
+  if (t.includes('滿意度調查')) return 4;
+  if (t.includes('學員基本資料') || (t.includes('填寫類別') && t.includes('病史'))) return 3;
+  if (t.includes('長者基本資料') || t.includes('量表說明') || t.includes('資料使用說明')) return 1;
+  if (t.includes('評估結果') || t.includes('記憶明顯') || t.includes('視力障礙') || t.includes('聽力障礙')) return 2;
+  if (t.includes('填寫類別') || t.includes('自覺健康')) return 3;
+  return 0;
+}
+
+/* 取 label 之後、下一個 labels 之前的區段 → {s, off} */
+function grab(t, label, labels) {
+  const i = t.indexOf(label);
+  if (i < 0) return null;
+  const st = i + label.length;
+  let e = t.length;
+  for (const l of labels) {
+    if (l === label) continue;
+    const j = t.indexOf(l, st);
+    if (j >= 0 && j < e) e = j;
+  }
+  let s = t.slice(st, e), off = st;
+  const lead = (s.match(/^[：:]+/) || [''])[0].length; s = s.slice(lead); off += lead;
+  return { s, off };
+}
+const S = x => (x ? x.s : '');
+const cjk = (s, min = 2, max = 6) => {
+  if (!s) return '';
+  const m = s.replace(/[一—─]{2,}/g, ' ').match(new RegExp('[\\u4e00-\\u9fff·]{' + min + ',' + max + '}'));
+  return m ? m[0] : '';
+};
+const nums = s => (s || '').replace(/[OoＯ]/g, '0').replace(/[Il|]/g, '1').match(/\d+/g) || [];
+function fmtPhone(d) {
+  if (/^09\d{8}$/.test(d)) return d.slice(0, 4) + '-' + d.slice(4);
+  if (/^0\d{8}$/.test(d)) return d.slice(0, 2) + '-' + d.slice(2);
+  if (/^\d{7}$/.test(d)) return '05-' + d;
+  return d;
+}
+
+function pushDate(f, kY, kM, kD, seg) {
+  const n = nums(S(seg));
+  if (n.length >= 3) { f[kY] = n[0]; f[kM] = n[1]; f[kD] = n[2]; }
+}
+
+function parsePage(page, raw, syms, ink) {
+  const f = {}, warns = [];
+  const doc = syms && syms.length ? buildDoc(syms) : null;
+  const t = doc ? doc.str : normText(raw);
+  
+  if (page === 1) {
+    const L = ['姓名', '出生年', '性別', '手機', '聯絡電話', '現居地址', '鎮市區', '本量表評估', '前次評估日期', '長者同意'];
+    const g = k => grab(t, k, L);
+    const nm = cjk(S(g('姓名'))); if (nm) f.name = nm;
+    const by = nums(S(g('出生年')))[0]; if (by) f.bY = by.slice(0, 3);
+    const mob = S(g('手機')).replace(/[^\d]/g, ''); if (mob.length >= 9) f.mobile = fmtPhone(mob);
+    const tel = S(g('聯絡電話')).replace(/[^\d]/g, ''); if (tel.length >= 7) f.tel = fmtPhone(tel);
+    const pd = nums(S(g('前次評估日期'))); if (pd.length >= 2) { f.prevY = pd[0]; f.prevM = pd[1]; }
+  } else if (page === 2) {
+    pushDate(f, 'evY', 'evM', 'evD', grab(t, '評估日期', ['項目', '題目']));
+  } else if (page === 3) {
+    const L = ['填寫類別', '開班編號', '姓名', '性別', '生日', '連絡電話', '身分證字號', '具原住民身分', '現居縣市', '現居區域', '居住情況', '長輩自行填寫問卷', '教育程度', '病史', '自覺健康問題', '自覺健康狀況', '填寫日期'];
+    const g = k => grab(t, k, L);
+    const cn = S(g('開班編號')).replace(/[^A-Za-z0-9-]/g, ''); if (cn) f.classNo = cn;
+    const nm = cjk(S(g('姓名'))); if (nm) f.name = nm;
+    const bd = nums(S(g('生日'))); if (bd.length >= 3) { f.bY = bd[0]; f.bM = bd[1]; f.bD = bd[2]; }
+    const ph = S(g('連絡電話')).replace(/[^\d]/g, ''); if (ph.length >= 7) f.phone = fmtPhone(ph);
+    const id = (S(g('身分證字號')).toUpperCase().replace(/O/g, '0').match(/[A-Z][0-9]{9}/) || [])[0]; if (id) f.idno = id;
+    pushDate(f, 'fiY', 'fiM', 'fiD', g('填寫日期'));
+  } else if (page === 4) {
+    const reg = S(grab(t, '身分證字號', ['請依']));
+    const id = (reg.toUpperCase().replace(/O/g, '0').match(/[A-Z][0-9]{9}/) || [])[0]; if (id) f.idno = id;
+    const nm = cjk(reg); if (nm) f.name = nm;
+    const cn = reg.replace(nm, '').replace(id || '', '').replace(/[^A-Za-z0-9-]/g, ''); if (cn) f.classNo = cn;
+    const L = ['一、', '二、', '問卷填寫日期'];
+    const D = [['1', '1', '非常不同意'], ['2', '2', '不同意'], ['3', '3', '沒意見'], ['4', '4', '同意'], ['5', '5', '非常同意']];
+    pushDate(f, 'sdY', 'sdM', 'sdD', grab(t, '問卷填寫日期', ['謝謝']));
+  }
+  if (ink) readChecks(page, ink, f, warns);
+  return { fields: f, warns };
+}
+
+/* ===== 勾選框偵測：找出方框，依閱讀順序對應到固定的選項序列 ===== */
+const LAYOUT = {
+  1: [['gender', 'M'], ['gender', 'F'], ['noMobile', true], ['first', 'Y'], ['first', 'N']],
+  2: ['q1', 'q2', 'q3', 'q4', 'q5', 'q51', 'q6', 'q7', 'q8'].flatMap(k => [[k, 'Y'], [k, 'N']]),
+  3: [['kind', 'pre'], ['kind', 'post'], ['gender', 'M'], ['gender', 'F'], ['indig', '1'], ['indig', '2'],
+  ['live', '1'], ['live', '2'], ['selfFill', '1'], ['selfFill', '2'],
+  ...[1, 2, 3, 4, 5, 6, 7, 8].map(n => ['edu', String(n)]),
+  ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(n => ['hist', String(n), 1]),
+  ...[11, 12, 13, 14, 15, 16, 17].map(n => ['selfIssues', String(n), 1]), ['selfIssues', 'o', 1],
+  ['selfHealth', '1'], ['selfHealth', '2'], ['selfHealth', '3']],
+  4: [1, 2, 3, 4, 5].map(n => ['s1', String(n)]).concat([1, 2, 3, 4, 5].map(n => ['s2', String(n)]))
+};
+function findComponents(gray, W, H, dark) {
+  const lab = new Int32Array(W * H), par = [0]; let nl = 0;
+  const find = x => { while (par[x] !== x) { par[x] = par[par[x]]; x = par[x]; } return x; };
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = y * W + x; if (gray[i] >= dark) continue;
+    const a = x > 0 ? lab[i - 1] : 0, b = y > 0 ? lab[i - W] : 0, c = (y > 0 && x > 0) ? lab[i - W - 1] : 0, d = (y > 0 && x < W - 1) ? lab[i - W + 1] : 0;
+    let m = a || b || c || d;
+    if (!m) { m = ++nl; par[m] = m; } else for (const q of [a, b, c, d]) if (q) { const r1 = find(q), r2 = find(m); if (r1 !== r2) par[Math.max(r1, r2)] = Math.min(r1, r2); }
+    lab[i] = m;
+  }
+  const comp = new Map();
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const l = lab[y * W + x]; if (!l) continue; const r = find(l);
+    let c = comp.get(r); if (!c) comp.set(r, c = { x0: x, x1: x, y0: y, y1: y, n: 0 });
+    if (x < c.x0) c.x0 = x; if (x > c.x1) c.x1 = x; if (y < c.y0) c.y0 = y; if (y > c.y1) c.y1 = y; c.n++;
+  }
+  return [...comp.values()].map(c => ({ x0: c.x0, y0: c.y0, w: c.x1 - c.x0 + 1, h: c.y1 - c.y0 + 1, n: c.n }));
+}
+function detectBoxes(ink, dark = 205) {
+  const { gray, W, H } = ink;
+  const dk = (x, y) => x >= 0 && y >= 0 && x < W && y < H && gray[y * W + x] < dark;
+  let cs = findComponents(gray, W, H, dark).filter(c => c.w >= 10 && c.h >= 10 && c.w / c.h > 0.8 && c.w / c.h < 1.25 && c.w < W / 18 && c.n < c.w * c.h * 0.6);
+  // 外框完整（四邊都是墨跡）且中央大致空白
+  cs = cs.filter(c => {
+    let ring = 0, tot = 0;
+    for (let i = 0; i < c.w; i++) for (const y of [c.y0 + 1, c.y0 + c.h - 2]) { tot++; if (dk(c.x0 + i, y) || dk(c.x0 + i, y + (y === c.y0 + 1 ? -1 : 1))) ring++; }
+    for (let j = 0; j < c.h; j++) for (const x of [c.x0 + 1, c.x0 + c.w - 2]) { tot++; if (dk(x, c.y0 + j) || dk(x + (x === c.x0 + 1 ? -1 : 1), c.y0 + j)) ring++; }
+    if (ring / tot < 0.85) return false;
+    const m = Math.round(Math.min(c.w, c.h) * 0.3);
+    return ink.ratio(c.x0 + m, c.y0 + m, c.x0 + c.w - m, c.y0 + c.h - m, dark) < 0.5;
+  });
+  if (!cs.length) return { boxes: [], size: 0 };
+  let best = null, bn = 0;
+  for (const c of cs) { const s = (c.w + c.h) / 2; const n = cs.filter(o => Math.abs((o.w + o.h) / 2 - s) <= s * 0.1).length; if (n > bn) { bn = n; best = s; } }
+  let boxes = cs.filter(c => Math.abs((c.w + c.h) / 2 - best) <= best * 0.12);
+  // 排除夾在文字中間的方形字（左側緊貼其他墨跡，如「回答」「日」）
+  boxes = boxes.filter(c => {
+    const gx = Math.max(3, Math.round(best * 0.22)); let d = 0, tot = 0;
+    for (let y = c.y0 + 2; y < c.y0 + c.h - 2; y++) for (let x = Math.max(0, c.x0 - gx); x < c.x0 - 1; x++) { tot++; if (gray[y * W + x] < dark) d++; }
+    return tot === 0 || d / tot < 0.03;
+  });
+  // 取得閱讀順序（含微幅傾斜校正：選使各列最緊密的角度）
+  const cluster = (arr, tol) => { const rows = []; for (const b of arr) { const r = rows[rows.length - 1]; if (r && Math.abs(r.y - b.yy) < tol) { r.items.push(b); r.y = (r.y * (r.items.length - 1) + b.yy) / r.items.length; } else rows.push({ y: b.yy, items: [b] }); } return rows; };
+  let bestRows = null, bs = 1e18;
+  for (let deg = -2.5; deg <= 2.5001; deg += 0.1) {
+    const k = Math.tan(deg * Math.PI / 180);
+    const arr = boxes.map(b => ({ ...b, yy: b.y0 - b.x0 * k })).sort((a, b) => a.yy - b.yy);
+    const rows = cluster(arr, best * 0.5);
+    const sc = rows.reduce((a, r) => a + r.items.reduce((q, it) => q + (it.yy - r.y) ** 2, 0), 0) + rows.length * 1e-3;
+    if (sc < bs - 1e-6) { bs = sc; bestRows = rows; }
+  }
+  const rows = bestRows;
+  return { boxes: rows.flatMap(r => r.items.sort((a, b) => a.x0 - b.x0)), size: best };
+}
+function readChecks(page, ink, f, warns) {
+  const L = LAYOUT[page]; if (!L) return;
+  let boxes = [], size = 0;
+  for (const dk of [205, 225, 185, 240, 165, 140, 115]) { const r = detectBoxes(ink, dk); boxes = r.boxes; size = r.size; if (boxes.length === L.length) break; }
+  if (boxes.length !== L.length) { warns.push('找到 ' + boxes.length + ' 個勾選框（應為 ' + L.length + '），勾選請手動確認'); return; }
+  const m = Math.round(size * 0.28);
+  const val = boxes.map(b => ink.ratio(b.x0 + m, b.y0 + m, b.x0 + b.w - m, b.y0 + b.h - m, 170));
+  L.forEach(([field, key, multi], i) => {
+    if (val[i] > 0.06) { if (multi) (f[field] = f[field] || []).push(key); else if (f[field] === undefined) f[field] = key; else warns.push('「' + field + '」偵測到多個勾選'); }
+  });
+  f._ink = val.map(v => +v.toFixed(2)); // 除錯用
+}
+
+/* ---- 影像物件：由灰階陣列提供墨量、列/欄投影 ---- */
+function makeInk(gray, W, H, dark = 140) {
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  return {
+    W, H, gray,
+    ratio(x0, y0, x1, y1, dk2) {
+      const dd = dk2 || dark;
+      x0 = clamp(Math.round(x0), 0, W); x1 = clamp(Math.round(x1), 0, W); y0 = clamp(Math.round(y0), 0, H); y1 = clamp(Math.round(y1), 0, H);
+      if (x1 <= x0 || y1 <= y0) return 0;
+      let n = 0; for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) if (gray[y * W + x] < dd) n++;
+      return n / ((x1 - x0) * (y1 - y0));
+    },
+    rowBands(xa, xb, ya, yb, gap, minH) {
+      xa = clamp(Math.round(xa), 0, W); xb = clamp(Math.round(xb), 0, W); ya = clamp(Math.round(ya), 0, H); yb = clamp(Math.round(yb), 0, H);
+      const bands = []; let cur = null, last = -1e9;
+      for (let y = ya; y < yb; y++) {
+        let d = 0; for (let x = xa; x < xb; x++) if (gray[y * W + x] < dark) d++;
+        if (d >= 2) { if (cur && y - last <= gap) cur[1] = y + 1; else { if (cur) bands.push(cur); cur = [y, y + 1]; } last = y; }
+      }
+      if (cur) bands.push(cur);
+      return bands.filter(b => b[1] - b[0] >= minH);
+    },
+    colClusters(xa, xb, ya, yb, gap) {
+      xa = clamp(Math.round(xa), 0, W); xb = clamp(Math.round(xb), 0, W);
+      const cl = []; let cur = null, last = -1e9;
+      for (let x = xa; x < xb; x++) {
+        let d = 0; for (let y = Math.round(ya); y < Math.round(yb); y++) if (gray[y * W + x] < dark) d++;
+        if (d >= 1) { if (cur && x - last <= gap) cur[1] = x + 1; else { if (cur) cl.push(cur); cur = [x, x + 1]; } last = x; }
+      }
+      if (cur) cl.push(cur);
+      return cl;
+    }
+  };
+}
+
+/* ===== 資料模型 ===== */
+const LS_KEY = 'yanhuan_forms_v1';
+const SHARED = ['name', 'bY', 'classNo', 'idno'];
+let people = [];            // 清冊成員
+let sel = 0;                // 目前選取
+let zoom = 0.85;
+let dateSet = { y: '', m: '', d: '' };   // 統一評估日期（民國）
+const DATEKEYS = ['evY', 'evM', 'evD', 'fiY', 'fiM', 'fiD', 'sdY', 'sdM', 'sdD'];
+const dateReady = () => dateSet.y && dateSet.m && dateSet.d;
+let G = { first: 'N', kind: 'pre', pY: '', pM: '', applied: false };   // 統一設定：第1次使用、填寫類別、前次評估日期
+const GKEYS = ['first', 'kind', 'prevY', 'prevM'];
+const gVal = k => ({ first: G.first, kind: G.kind, prevY: G.pY, prevM: G.pM })[k];
+const gLocked = k => G.applied && !!gVal(k);
+const sources = {};         // personIdx -> {page: objectURL} 原圖（僅本次開啟期間保留）
+
+const LS_ROSTER = 'yanhuan_roster_v1';
+let R = { site: SITE0, list: ROSTER };
+function loadRoster() { try { const s = JSON.parse(localStorage.getItem(LS_ROSTER) || 'null'); if (s && Array.isArray(s.list)) R = s; } catch (e) { } }
+function saveRoster() { try { localStorage.setItem(LS_ROSTER, JSON.stringify(R)); } catch (e) { } }
+function initPeople() {
+  people = R.list.map(r => {
+    const mob = /^09/.test(r.phone);
+    return {
+      no: r.no, rosterName: r.name, caseNo: r.caseNo, bYhint: r.bYhint,
+      d: {
+        name: r.name, gender: r.gender, bY: r.bYhint, bM: r.bM, bD: r.bD,
+        county: r.county || '', district: (r.area || '').replace(/[鄉鎮市區]$/, ''), area: r.area || '',
+        mobile: mob ? r.phone : '', noMobile: !mob, tel: mob ? '' : r.phone,
+        phone: r.phone, idno: r.id, classNo: '',
+        live: '1', edu: '1', hist: ['1'], selfIssues: ['11'], s1: '5', s2: '5', indig: '2', selfFill: '2', selfHealth: '2', q1: 'N', q2: 'N', q3: 'N', q4: 'N', q5: 'N', q6: 'N', q7: 'N', q8: 'N', _o: {}, _t: {4: 1}
+      }
+    };
+  });
+}
+function load() {
+  loadRoster(); initPeople();
+  try {
+    const s = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
+    if (s && s.people) s.people.forEach((p, i) => { if (people[i] && p) Object.assign(people[i].d, p); });
+    if (s && s.classNo) people.forEach(p => p.d.classNo = p.d.classNo || s.classNo);
+    if (s && s.date) dateSet = s.date;
+    if (s && s.g) G = Object.assign(G, s.g);
+    people.forEach(p => { p.d.bY = p.d.bY || p.bYhint; p.d.s1 = p.d.s1 || '5'; p.d.s2 = p.d.s2 || '5'; p.d.indig = p.d.indig || '2'; p.d.selfFill = p.d.selfFill || '2'; p.d.selfHealth = p.d.selfHealth || '2'; ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8'].forEach(k => { p.d[k] = p.d[k] || 'N'; }); p.d.live = p.d.live || '1'; p.d.edu = p.d.edu || '1'; if (!(p.d.hist || []).length) p.d.hist = ['1']; if (!(p.d.selfIssues || []).length) p.d.selfIssues = ['11']; });
+  } catch (e) { }
+}
+let saveTimer;
+function save() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try { localStorage.setItem(LS_KEY, JSON.stringify({ people: people.map(p => p.d), classNo: $('#classNo').value, date: dateSet, g: G })); } catch (e) { }
+    renderList();
+  }, 250);
+}
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+/* ===== 表單繪製 ===== */
+function renderPerson(p, idx, editable) {
+  const d = p.d;
+  const cls = k => (d._o && d._o[k] ? ' ocr' : '');
+  const T = (k, w, ph) => editable
+    ? `<input class="tf${cls(k)}" data-k="${k}" value="${esc(d[k])}" placeholder="${esc(ph || '')}" style="width:${w}">`
+    : `<span class="tf" style="width:${w}">${esc(d[k])}</span>`;
+  const C = (k, v, label) => { const on = d[k] === v; return `<span class="cb${on ? ' on' : ''}${d._o && d._o[k] ? ' ocr' : ''}" data-k="${k}" data-v="${v}" data-t="s"><span class="bx">${on ? '☑' : '☐'}</span>${label}</span>`; };
+  const M = (k, v, label) => { const on = (d[k] || []).includes(v); return `<span class="cb${on ? ' on' : ''}${d._o && d._o[k] ? ' ocr' : ''}" data-k="${k}" data-v="${v}" data-t="m"><span class="bx">${on ? '☑' : '☐'}</span>${label}</span>`; };
+  const B = (k, label) => { const on = !!d[k]; return `<span class="cb${on ? ' on' : ''}" data-k="${k}" data-t="b"><span class="bx">${on ? '☑' : '☐'}</span>${label}</span>`; };
+  const YN = k => `<span class="yn">${C(k, 'Y', '是')} ${C(k, 'N', '否')}</span>`;
+  const foot = n => `<div class="foot">延緩長輩前後測資料底稿｜請以黑色或深藍色筆填寫 <i>|</i> <b>${n}</b></div>`;
+  const sheet = (n, body) => `<section class="sheet" data-pg="${n}" data-p="${idx}">${body}${foot(n)}</section>`;
+  const tag = editable ? `<div class="who">${p.no}. ${esc(p.rosterName)}　第 ${'${n}'} 頁</div>` : '';
+  const who = n => editable ? `<div class="who">${p.no}. ${esc(p.rosterName)}　· 第 ${n} / 4 頁</div>` : '';
+
+  /* 第1頁 */
+  const p1 = `
+  ${who(1)}
+  <h1>衛生福利部國民健康署｜長者功能自評量表</h1><h2>長者自評版</h2>
+  <div class="box"><h3>◆ 量表說明</h3>
+   <p>人老了一定會失能嗎？您知道可以延緩失能發生嗎？</p>
+   <p>世界衛生組織（WHO）提出延緩失能的關鍵，需要管理六大面向的內在能力：「認知、行動、營養、視力、聽力及憂鬱」。國民健康署據此發展本量表，透過簡單的測驗，可以了解自我功能的狀況，及早介入處理，進而延緩失能。</p>
+   <p>若您已年滿 65 歲，請利用背面量表，評估長輩的身心狀況。</p></div>
+  <h3 class="sec">長者基本資料</h3>
+  <table class="grid g2">
+   <tr><td>姓名：${T('name', '56mm')}</td><td>出生年：${T('bY', '24mm', p.bYhint)}　性別：${C('gender', 'M', '男')} ${C('gender', 'F', '女')}</td></tr>
+   <tr><td>手機：${T('mobile', '52mm')}</td><td>${B('noMobile', '無')}，聯絡電話：${T('tel', '46mm')}</td></tr>
+   <tr><td>現居地址：${esc(d.county)}${d.county === '嘉義縣' ? '（市）' : ''}</td><td>${esc(d.district)}（鄉）鎮市區：${T('district', '40mm')}</td></tr>
+   <tr><td>第 1 次使用本量表評估：${C('first', 'Y', '是')} ${C('first', 'N', '否')}</td><td>前次評估日期：${T('prevY', '14mm')}年${T('prevM', '14mm')}月</td></tr>
+  </table>
+  <h4>資料使用說明</h4><p class="muted">本量表回收後，相關資料將作為衛生單位政策評估及查詢或個案追蹤健康管理使用。</p>
+  <p class="sign"><b>長者同意請簽名或蓋章（手印）：</b><span class="tf" style="width:110mm"></span></p>`;
+
+  /* 第2頁 */
+  const q = (id, no, text, sub) => `<td class="qt">${no}${text}${sub ? '<ul>' + sub.map(s => '<li>' + s + '</li>').join('') + '</ul>' : ''}</td><td class="ans">${YN(id)}</td>`;
+  const p2 = `
+  ${who(2)}
+  <h1 class="s">長者功能自評量表</h1><h2>長者自評版</h2>
+  <div class="rt">評估日期：${T('evY', '14mm')}年${T('evM', '14mm')}月${T('evD', '14mm')}日</div>
+  <table class="eval">
+   <tr class="hd"><th style="width:15%">項目</th><th style="width:57%">題目</th><th>評估結果</th></tr>
+   <tr class="b1"><td class="cat">認知<br>功能</td>${q('q1', '1. ', '您最近一年來，是否有記憶明顯減退的情形？')}</tr>
+   <tr class="b0"><td class="cat">行動<br>功能</td>${q('q2', '2. ', '您是否出現以下「任一種」情況？', ['非常擔心自己會跌倒？', '過去一年內曾跌倒過？', '坐著時，必須抓握東西才能從椅子上站起來？'])}</tr>
+   <tr class="b2"><td class="cat" rowspan="2">營養<br>不良</td>${q('q3', '3. ', '在非刻意減重的情況下，過去三個月，您的體重是否減輕 3 公斤或以上？')}</tr>
+   <tr class="b3">${q('q4', '4. ', '過去三個月，您是否曾經食慾不好？')}</tr>
+   <tr class="b2"><td class="cat" rowspan="2">視力<br>障礙</td>${q('q5', '5. ', '您的眼睛看遠、看近或閱讀是否有困難？<br>（回答「是」請答 5-1；回答「否」請跳答第 6 題。）')}</tr>
+   <tr class="b3">${q('q51', '5-1. ', '您過去 1 年是否「曾」接受眼睛檢查？')}</tr>
+   <tr class="b2"><td class="cat">聽力<br>障礙</td>${q('q6', '6. ', '您的聽力是否出現以下「任一種」情況？', ['電話或手機交談時聽不清楚，或因沒聽到鈴聲常漏接電話？', '看電視／聽收音機時，常被家人或朋友說音量開太大聲？', '與人交談時，常需要對方提高說話音量或再說一次？', '因為聽力問題而不想去參加朋友聚會或活動？'])}</tr>
+   <tr class="b2"><td class="cat" rowspan="2">憂鬱</td>${q('q7', '7. ', '過去兩週，您是否常感到厭煩（心煩或「阿雜」），或覺得生活沒有希望？')}</tr>
+   <tr class="b2">${q('q8', '8. ', '過去兩週，您是否減少很多的活動和原本您感興趣的事？')}</tr>
+  </table>
+  <p class="note">提醒　以上功能評估結果如有異常（勾選灰底處），可於回診時請教醫師；若暫時沒有尋求相關協助，可參考健康資訊，或查找住家附近可利用的社區資源及課程。</p>`;
+
+  /* 第3頁 */
+  const p3 = `
+  ${who(3)}
+  <h1 class="s">學員基本資料</h1><p class="muted">請依實際情況勾選或填寫。資料僅供課程與健康管理使用。</p>
+  <table class="grid g4">
+   <tr><th>填寫類別</th><td>${C('kind', 'pre', '前測')}　${C('kind', 'post', '後測')}</td><th>開班編號</th><td>${T('classNo', '38mm')}</td></tr>
+   <tr><th>姓名</th><td>${T('name', '38mm')}</td><th>性別</th><td>${C('gender', 'M', '1.男')}　${C('gender', 'F', '2.女')}</td></tr>
+   <tr><th>生日</th><td>民國${T('bY', '14mm', p.bYhint)}年${T('bM', '11mm')}月${T('bD', '11mm')}日</td><th>連絡電話</th><td>${T('phone', '38mm')}</td></tr>
+   <tr><th>身分證字號</th><td>${T('idno', '52mm')}</td><th>具原住民身分</th><td>${C('indig', '1', '1.是')}　${C('indig', '2', '2.否')}</td></tr>
+   <tr><th>現居縣市</th><td>${T('county', '38mm')}</td><th>現居區域</th><td>${T('area', '38mm')}</td></tr>
+   <tr><th>居住情況</th><td>${C('live', '1', '1.獨居')}　${C('live', '2', '2.與親友同住')}</td><th>長輩自行填寫問卷</th><td>${C('selfFill', '1', '1.是')}　${C('selfFill', '2', '2.否')}</td></tr>
+   <tr><th rowspan="2">教育程度</th><td colspan="3" class="tall">${C('edu', '1', '1.不識字')}　　${C('edu', '2', '2.識字，未受正規教育（含私塾）')}</td></tr>
+   <tr><td colspan="3" class="tall">${['3.國小', '4.國中', '5.高中（職）', '6.專科大學', '7.碩博士', '8.其他'].map(s => C('edu', s[0], s)).join('　')}</td></tr>
+   <tr><th>病史</th><td colspan="3" class="tall">◎曾被醫師診斷患下列疾病（可複選）：<br>
+     ${[['1', '無'], ['2', '高血壓'], ['3', '心臟疾病'], ['4', '中風']].map(([v, l]) => M('hist', v, v + '.' + l)).join('　')}<br>
+     ${[['5', '肺部／呼吸疾病'], ['6', '糖尿病'], ['7', '關節炎／風濕'], ['8', '骨折']].map(([v, l]) => M('hist', v, v + '.' + l)).join('　')}<br>
+     ${M('hist', '9', '9.癌症')}　${M('hist', '10', '10.身心科相關疾病')}　${M('hist', '11', '11.其他：')}${T('histOther', '34mm')}</td></tr>
+  </table>
+  <h4>自覺健康問題（可複選）</h4>
+  <table class="grid g1">
+   <tr><td class="tall">${[['11', '無'], ['12', '憂鬱／焦慮／情緒問題'], ['13', '頸背問題（如痠痛）'], ['14', '行走問題']].map(([v, l]) => M('selfIssues', v, v + '.' + l)).join('　')}<br>
+     ${[['15', '睡眠問題'], ['16', '視力問題'], ['17', '聽力問題']].map(([v, l]) => M('selfIssues', v, v + '.' + l)).join('　')}　${M('selfIssues', 'o', '其他：')}${T('selfOther', '34mm')}</td></tr>
+   <tr class="shade"><td><b>自覺健康狀況：</b>　${C('selfHealth', '1', '<b>1.良好</b>')}　　${C('selfHealth', '2', '<b>2.普通</b>')}　　${C('selfHealth', '3', '<b>3.不佳</b>')}</td></tr>
+  </table>
+  <p class="date"><b>填寫日期：　民國 ${T('fiY', '14mm')} 年 ${T('fiM', '14mm')} 月 ${T('fiD', '14mm')} 日</b></p>`;
+
+  /* 第4頁 */
+  const S5 = k => ['1.非常不同意', '2.不同意', '3.沒意見', '4.同意', '5.非常同意'].map(s => C(k, s[0], s)).join('　');
+  const p4 = `
+  ${who(4)}
+  <h1 class="s">滿意度調查表</h1>
+  <table class="grid g3"><tr class="hd"><th>開班編號</th><th>姓名</th><th>身分證字號</th></tr>
+   <tr><td>${T('classNo', '40mm')}</td><td>${T('name', '40mm')}</td><td>${T('idno', '44mm')}</td></tr></table>
+  <h4>請依您的實際感受勾選一項：</h4>
+  <table class="grid g1 lik"><tr class="shade"><td><b>一、參與這活動課程對我目前的狀況確實有幫助：</b></td></tr><tr><td>${S5('s1')}</td></tr></table>
+  <table class="grid g1 lik" style="margin-top:9mm"><tr class="shade"><td><b>二、整體而言，這裡提供的活動課程與服務讓我感到滿意：</b></td></tr><tr><td>${S5('s2')}</td></tr></table>
+  <p class="date"><b>問卷填寫日期：　民國 ${T('sdY', '14mm')} 年 ${T('sdM', '14mm')} 月 ${T('sdD', '14mm')} 日</b></p>
+  <h2 class="thx">謝謝您的填寫與回饋</h2><p class="muted c">您的意見將協助我們持續優化課程與服務品質。</p>`;
+
+  return sheet(1, p1) + sheet(2, p2) + sheet(3, p3) + sheet(4, p4);
+}
+
+/* ===== 介面 ===== */
+function missingOf(d) {
+  const v = k => d[k] !== undefined && d[k] !== null && String(d[k]).trim() !== '';
+  const idOk = v('idno');
+  const dateOk = (a, b, c) => v(a) && v(b) && v(c);
+  const m = { 1: [], 2: [], 3: [], 4: [] };
+  const chk = (pg, ok, label) => { if (!ok) m[pg].push(label); };
+  chk(1, v('name'), '姓名'); chk(1, v('bY'), '出生年'); chk(1, v('gender'), '性別');
+  chk(1, v('mobile') || v('tel'), '電話'); chk(1, v('first'), '第1次使用'); if (d.first === 'N') chk(1, v('prevY') && v('prevM'), '前次評估日期');
+  ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8'].forEach((k, i) => chk(2, v(k), '第' + (i + 1) + '題'));
+  if (d.q5 === 'Y') chk(2, v('q51'), '第5-1題'); chk(2, dateOk('evY', 'evM', 'evD'), '評估日期');
+  chk(3, v('kind'), '填寫類別'); chk(3, v('classNo'), '開班編號'); chk(3, v('bY') && v('bM') && v('bD'), '生日'); chk(3, v('phone'), '連絡電話');
+  chk(3, idOk, '身分證字號'); chk(3, v('indig'), '原住民身分'); chk(3, v('live'), '居住情況'); chk(3, v('selfFill'), '自行填寫'); chk(3, v('edu'), '教育程度');
+  chk(3, (d.hist || []).length > 0, '病史'); chk(3, (d.selfIssues || []).length > 0, '自覺健康問題'); chk(3, v('selfHealth'), '自覺健康狀況'); chk(3, dateOk('fiY', 'fiM', 'fiD'), '填寫日期');
+  chk(4, v('classNo'), '開班編號'); chk(4, idOk, '身分證字號'); chk(4, v('s1') && v('s2'), '滿意度'); chk(4, dateOk('sdY', 'sdM', 'sdD'), '問卷填寫日期');
+  return m;
+}
+function renderList() {
+  if (!people.length) { $('#list').innerHTML = ''; $('#prog').textContent = ''; $('#missing').innerHTML = ''; return; }
+  let done = 0;
+  $('#list').innerHTML = people.map((p, i) => {
+    const m = missingOf(p.d);
+    if ([1, 2, 3, 4].every(n => !m[n].length)) done++;
+    const dots = [1, 2, 3, 4].map(n => `<i class="${m[n].length ? '' : 'on'}" title="第${n}頁${m[n].length ? '缺：' + m[n].join('、') : '資料齊全'}"></i>`).join('');
+    return `<li class="${i === sel ? 'cur' : ''}" data-i="${i}"><span class="no">${p.no}</span><span class="nm">${esc(p.rosterName)}</span><span class="dots">${dots}</span></li>`;
+  }).join('');
+  $('#prog').textContent = `齊全 ${done} / ${people.length} 位`;
+  const m = missingOf(people[sel].d);
+  $('#missing').innerHTML = `<b>${esc(people[sel].rosterName)} 尚缺：</b>` + ([1, 2, 3, 4].map(n => m[n].length ? `<div>第${n}頁：${m[n].join('、')}</div>` : '').join('') || '<div class="okk">四頁資料皆已齊全</div>');
+}
+function renderSheets() {
+  if (!people.length) { $('#sheets').innerHTML = '<div class="empty">尚未匯入清冊。請按上方「匯入清冊」，選擇據點個案清冊（Excel 或 CSV）。</div>'; return; }
+  const sc = $('#main').scrollTop;
+  $('#sheets').innerHTML = renderPerson(people[sel], sel, true);
+  $('#sheets').style.zoom = zoom;
+  $('#main').scrollTop = sc;
+}
+function select(i, keepScroll) {
+  if (!people.length) { renderList(); renderSheets(); $('#cur').textContent = '（無清冊）'; return; }
+  sel = i; renderList(); renderSheets();
+  if (!keepScroll) $('#main').scrollTop = 0;
+  $('#cur').textContent = `${people[i].no}. ${people[i].rosterName}`;
+}
+function touch(p, pg) { (p.d._t = p.d._t || {})[pg] = 1; }
+
+document.addEventListener('input', e => {
+  const el = e.target; if (!el.matches || !el.matches('#sheets input.tf')) return;
+  const p = people[sel], k = el.dataset.k;
+  p.d[k] = el.value; if (p.d._o) delete p.d._o[k];
+  el.classList.remove('ocr'); 
+  touch(p, el.closest('.sheet').dataset.pg);
+  if (SHARED.includes(k) || k === 'bY') document.querySelectorAll(`#sheets input[data-k="${k}"]`).forEach(o => { if (o !== el) { o.value = el.value; o.classList.remove('ocr');  } });
+  if (k === 'classNo') { /* 個別修改不影響其他人 */ }
+  save();
+});
+document.addEventListener('click', e => {
+  const c = e.target.closest && e.target.closest('#sheets .cb');
+  if (c) {
+    const p = people[sel], k = c.dataset.k, t = c.dataset.t, v = c.dataset.v;
+    if (t === 's') p.d[k] = p.d[k] === v ? '' : v;
+    else if (t === 'b') p.d[k] = !p.d[k];
+    else { const a = p.d[k] || (p.d[k] = []); const i = a.indexOf(v); i >= 0 ? a.splice(i, 1) : a.push(v); }
+    if (p.d._o) delete p.d._o[k];
+    touch(p, c.closest('.sheet').dataset.pg);
+    // 性別、姓名等共用欄位：同步其他頁
+    renderSheets(); save(); return;
+  }
+  const li = e.target.closest && e.target.closest('#list li');
+  if (li) select(+li.dataset.i);
+});
+
+/* ===== 列印 / 匯出 ===== */
+function printIdx(list) {
+  if (!people.length) return;
+  $('#printRoot').innerHTML = list.map(i => renderPerson(people[i], i, false)).join('');
+  setTimeout(() => window.print(), 100);
+}
+function dl(name, text, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click();
+}
+function exportCSV() {
+  const keys = ['name', 'gender', 'classNo', 'idno', 'bY', 'bM', 'bD', 'phone', 'mobile', 'tel', 'district', 'area', 'first', 'prevY', 'prevM', 'evY', 'evM', 'evD', 'q1', 'q2', 'q3', 'q4', 'q5', 'q51', 'q6', 'q7', 'q8', 'kind', 'indig', 'live', 'selfFill', 'edu', 'hist', 'histOther', 'selfIssues', 'selfOther', 'selfHealth', 'fiY', 'fiM', 'fiD', 's1', 's2', 'sdY', 'sdM', 'sdD'];
+  const q = v => '"' + String(Array.isArray(v) ? v.join('、') : (v == null ? '' : v)).replace(/"/g, '""') + '"';
+  const rows = [['序號', ...keys].join(',')].concat(people.map(p => [p.no, ...keys.map(k => q(p.d[k]))].map((x, i) => i ? x : q(x)).join(',')));
+  dl('延緩長輩前後測資料.csv', '﻿' + rows.join('\r\n'), 'text/csv');
+}
+function exportJSON() { dl('延緩長輩前後測備份.json', JSON.stringify({ roster: R, people: people.map(p => p.d), classNo: $('#classNo').value, date: dateSet, g: G }), 'application/json'); }
+function importJSON(file) {
+  const r = new FileReader();
+  r.onload = () => { try { const s = JSON.parse(r.result); if (s.roster && s.roster.list) { R = s.roster; saveRoster(); initPeople(); showSite(); } s.people.forEach((d, i) => people[i] && Object.assign(people[i].d, d)); if (s.date) { dateSet = s.date; } if (s.g) G = Object.assign(G, s.g); showDate(); save(); select(sel, true); } catch (e) { alert('備份檔格式不正確'); } };
+  r.readAsText(file);
+}
+
+/* ===== OCR 貼上 ===== */
+let batchId = 0, worker = null, workerP = null, queue = [], busy = false, logId = 0;
+const logs = [];
+function ensureWorker() {
+  if (worker) return Promise.resolve(worker);
+  if (workerP) return workerP;
+  setStatus('載入文字辨識引擎（第一次需下載中文語言包，請稍候）…');
+  workerP = Tesseract.createWorker('chi_tra+eng', 1, {
+    logger: m => { if (m.status && typeof m.progress === 'number') setStatus(`${m.status} ${Math.round(m.progress * 100)}%`); }
+  }).then(async w => { await w.setParameters({ tessedit_pageseg_mode: '6' }); worker = w; return w; });
+  return workerP;
+}
+function setStatus(s) { $('#status').textContent = s; }
+
+document.addEventListener('paste', e => {
+  const items = [...(e.clipboardData && e.clipboardData.items || [])].filter(i => i.type.startsWith('image/'));
+  if (!items.length) return;
+  e.preventDefault();
+  batchId++;
+  items.forEach(it => {
+    const f = it.getAsFile(); if (!f) return;
+    const entry = { id: ++logId, batch: batchId, person: sel, url: URL.createObjectURL(f), state: 'queued', page: 0, msg: '排隊中…', file: f };
+    logs.unshift(entry); queue.push(entry);
+  });
+  renderLog(); runQueue();
+});
+async function scaled(file) {
+  const bmp = await createImageBitmap(file);
+  const W = Math.max(1800, bmp.width), s = W / bmp.width;
+  const c = document.createElement('canvas'); c.width = W; c.height = Math.round(bmp.height * s);
+  const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(bmp, 0, 0, c.width, c.height);
+  return c;
+}
+async function runQueue() {
+  if (busy) return; busy = true;
+  while (queue.length) {
+    const en = queue.shift();
+    try {
+      en.state = 'run'; en.msg = '辨識中…'; renderLog();
+      const w = await ensureWorker();
+      const cv = await scaled(en.file);
+      const r = await w.recognize(cv);
+      en.text = r.data.text;
+      const id = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data, g = new Uint8Array(cv.width * cv.height);
+      for (let i = 0; i < g.length; i++) g[i] = 0.299 * id[i * 4] + 0.587 * id[i * 4 + 1] + 0.114 * id[i * 4 + 2];
+      en.ink = makeInk(g, cv.width, cv.height);
+      en.page = classify(normText(en.text));
+      if (!en.page) { en.state = 'ask'; en.msg = '無法判斷是第幾頁，請指定：'; }
+      else finish(en);
+    } catch (err) { en.state = 'err'; en.msg = '辨識失敗：' + (err && err.message || err); }
+    renderLog();
+  }
+  resolveWaiting(); renderLog();
+  busy = false; setStatus('待命：可繼續 Ctrl+V 貼上圖片');
+}
+function findPerson(nm) {
+  const ex = people.map((p, i) => p.rosterName === nm ? i : -1).filter(i => i >= 0); if (ex.length === 1) return ex[0];
+  const fz = people.map((p, i) => sameName(nm, p.rosterName) ? i : -1).filter(i => i >= 0); return fz.length === 1 ? fz[0] : -1;
+}
+function finish(en, forcePerson) {
+  const res = parsePage(en.page, en.text, null, en.ink); en.res = res;
+  if (typeof forcePerson === 'number') { en.person = forcePerson; if (forcePerson !== sel) select(forcePerson, true); return apply(en, res); }
+  const nm = res.fields.name;
+  if (nm) {
+    const i = findPerson(nm);
+    if (i >= 0) { en.person = i; if (i !== sel) select(i, true); return apply(en, res); }
+    en.state = 'mismatch'; en.msg = `圖上姓名「${nm}」在清冊中找不到唯一相符的人，尚未套用。`; return;
+  }
+  en.state = 'wait'; en.msg = '圖上沒有姓名，等同批次其他頁判斷是誰…';
+}
+function resolveWaiting() {
+  logs.filter(e => e.state === 'wait').sort((x, y) => x.id - y.id).forEach(e => {
+    const named = logs.filter(o => o.batch === e.batch && o.state === 'ok' && o.named);
+    let t = sel, how = '（依目前選取的長輩）';
+    if (named.length) { named.sort((x, y) => Math.abs(x.id - e.id) - Math.abs(y.id - e.id) || x.id - y.id); t = named[0].person; how = '（依同批貼上的有姓名頁面）'; }
+    finish(e, t); e.msg += how;
+  });
+}
+function apply(en, res) {
+  const p = people[en.person]; const keys = Object.keys(res.fields);
+  const skip = k => k === 'name' || ['bY', 'bM', 'bD', 'idno'].includes(k) || k[0] === '_' || (dateReady() && DATEKEYS.includes(k)) || (en.page === 4 && (k === 's1' || k === 's2')) || GKEYS.includes(k) && gLocked(k) || (en.page === 3 && (k === 'indig' || k === 'selfFill' || k === 'selfHealth'));
+  keys.forEach(k => { if (skip(k)) return; p.d[k] = res.fields[k]; (p.d._o = p.d._o || {})[k] = 1; });
+  touch(p, en.page);
+  sources[en.person] = sources[en.person] || {}; sources[en.person][en.page] = en.url;
+  en.state = 'ok'; en.named = !!res.fields.name;
+  en.msg = `已套用到 ${p.rosterName}　第 ${en.page} 頁（填入 ${keys.filter(k => !skip(k)).length} 個欄位）` + (res.warns.length ? '　⚠ ' + res.warns.join('；') : '');
+  if (en.person === sel) renderSheets(); save();
+}
+const sameName = (a, b) => { if (a === b) return true; let n = 0; for (const c of a) if (b.includes(c)) n++; return a.length >= 2 && n >= Math.max(2, Math.ceil(b.length * 0.75)) && Math.abs(a.length - b.length) <= 1; };
+
+function renderLog() {
+  $('#log').innerHTML = logs.slice(0, 30).map(en => {
+    let btn = '';
+    if (en.state === 'ask') btn = [1, 2, 3, 4].map(n => `<button data-a="pg" data-id="${en.id}" data-n="${n}">第${n}頁</button>`).join('');
+    if (en.state === 'mismatch') btn = `<button data-a="force" data-id="${en.id}">套用到目前選取的 ${esc(people[sel].rosterName)}</button>`;
+    if (en.state === 'ok') btn = `<button data-a="show" data-id="${en.id}">看原圖</button><button data-a="text" data-id="${en.id}">辨識文字</button>`;
+    return `<div class="le ${en.state}"><img src="${en.url}" data-a="show" data-id="${en.id}"><div><div class="m">${esc(en.msg)}</div><div class="b">${btn}</div></div></div>`;
+  }).join('') || '<p class="muted">尚無貼上的圖片。選好左側長輩後，直接按 Ctrl+V 貼上表單圖片（可連續貼多張，會自動判斷第幾頁）。</p>';
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-a]'); if (!b) return;
+  const en = logs.find(x => x.id === +b.dataset.id); if (!en) return;
+  const a = b.dataset.a;
+  if (a === 'pg') { en.page = +b.dataset.n; finish(en); }
+  else if (a === 'force') { finish(en, sel); }
+  else if (a === 'show') { $('#modal img').src = en.url; $('#modal').classList.add('open'); }
+  else if (a === 'text') { $('#modal img').removeAttribute('src'); $('#modal pre').textContent = en.text; $('#modal').classList.add('open', 'txt'); }
+  renderLog();
+});
+$('#modal').addEventListener('click', () => { $('#modal').classList.remove('open', 'txt'); $('#modal pre').textContent = ''; });
+
+/* ===== 啟動 ===== */
+load();
+$('#classNo').addEventListener('input', e => { people.forEach(p => p.d.classNo = e.target.value); save(); if (document.querySelector('#sheets')) renderSheets(); });
+$('#classNo').value = (people[0] && people[0].d.classNo) || '';
+function showDate() { $('#dY').value = dateSet.y; $('#dM').value = dateSet.m; $('#dD').value = dateSet.d; $('#gFirst').value = G.first; $('#gKind').value = G.kind; $('#gPY').value = G.pY; $('#gPM').value = G.pM; syncPick(); }
+function readG() { G.first = $('#gFirst').value; G.kind = $('#gKind').value; G.pY = $('#gPY').value.trim(); G.pM = $('#gPM').value.trim(); }
+function applyDate() {
+  dateSet = { y: $('#dY').value.trim(), m: $('#dM').value.trim(), d: $('#dD').value.trim() }; readG();
+  const anyDate = dateSet.y || dateSet.m || dateSet.d;
+  if (anyDate && !dateReady()) { alert('評估日期請填入完整的民國年、月、日'); return; }
+  if (!anyDate && !G.first && !G.kind && !G.pY && !G.pM) { alert('請先設定要套入的內容'); return; }
+  const parts = [];
+  if (dateReady()) parts.push(`評估日期 民國${dateSet.y}年${dateSet.m}月${dateSet.d}日（第2頁評估日期、第3頁填寫日期、第4頁問卷填寫日期）`);
+  if (G.first) parts.push('第1次使用本量表評估：' + (G.first === 'Y' ? '是' : '否'));
+  if (G.pY || G.pM) parts.push(`前次評估日期：${G.pY || '__'}年${G.pM || '__'}月`);
+  if (G.kind) parts.push('填寫類別：' + (G.kind === 'pre' ? '前測' : '後測'));
+  if (!confirm('將以下內容套入全部 ' + people.length + ' 位（會覆蓋原有內容；之後貼圖辨識也不再改動這些欄位）：\n・' + parts.join('\n・'))) return;
+  G.applied = true;
+  people.forEach(p => {
+    if (dateReady()) DATEKEYS.forEach((k, i) => { p.d[k] = [dateSet.y, dateSet.m, dateSet.d][i % 3]; if (p.d._o) delete p.d._o[k]; });
+    GKEYS.forEach(k => { if (gVal(k)) { p.d[k] = gVal(k); if (p.d._o) delete p.d._o[k]; } });
+  });
+  save(); renderSheets();
+}
+['dY', 'dM', 'dD'].forEach(id => $('#' + id).addEventListener('input', () => { dateSet = { y: $('#dY').value.trim(), m: $('#dM').value.trim(), d: $('#dD').value.trim() }; save(); }));
+$('#dApply').onclick = applyDate; $('#dClear').onclick = () => { dateSet = { y: '', m: '', d: '' }; G.applied = false; showDate(); save(); };
+['gFirst', 'gKind', 'gPY', 'gPM'].forEach(id => $('#' + id).addEventListener('input', () => { readG(); save(); }));
+$('#zoom').addEventListener('input', e => { zoom = e.target.value / 100; $('#sheets').style.zoom = zoom; });
+$('#pOne').onclick = () => printIdx([sel]);
+$('#pAll').onclick = () => { if (confirm('將產生 ' + people.length + ' 位 × 4 頁 = ' + people.length * 4 + ' 頁的列印內容，確定？')) printIdx(people.map((_, i) => i)); };
+$('#csv').onclick = exportCSV; $('#jsonOut').onclick = exportJSON;
+$('#jsonIn').onchange = e => e.target.files[0] && importJSON(e.target.files[0]);
+$('#reset').onclick = () => { if (confirm('清除所有已填資料並還原為清冊預設？（建議先匯出備份）')) { try { localStorage.removeItem(LS_KEY); } catch (e) { } load(); select(0); } };
+showDate(); showSite(); select(0); renderLog();
+setStatus('待命：選好長輩後按 Ctrl+V 貼上圖片');
+
+
+/* ===== 第2頁快速輸入：對著紙本逐題按 Y(是)／N(否) ===== */
+const QTXT = { q1: '1. 最近一年，記憶是否明顯減退？', q2: '2. 是否「任一種」：非常擔心跌倒／過去一年曾跌倒／坐著須抓握東西才能站起？', q3: '3. 非刻意減重，過去三個月體重是否減輕 3 公斤或以上？', q4: '4. 過去三個月，是否曾經食慾不好？', q5: '5. 眼睛看遠、看近或閱讀是否有困難？', q51: '5-1. 過去 1 年是否「曾」接受眼睛檢查？', q6: '6. 聽力是否出現「任一種」情況？', q7: '7. 過去兩週，是否常感到厭煩，或覺得生活沒有希望？', q8: '8. 過去兩週，是否減少很多活動和原本感興趣的事？' };
+const qSeq = d => ['q1', 'q2', 'q3', 'q4', 'q5'].concat(d.q5 === 'Y' ? ['q51'] : [], ['q6', 'q7', 'q8']);
+let QE = null; // {i, k}
+function qeOpen() {
+  if (!people.length) return;
+  const d = people[sel].d; const s = qSeq(d);
+  QE = { i: sel, k: s.find(k => !d[k]) || s[0] };
+  $('#qe').classList.add('open'); qeShow();
+}
+function qeClose() { $('#qe').classList.remove('open'); QE = null; renderSheets(); }
+function qeShow() {
+  const p = people[QE.i], d = p.d, s = qSeq(d), n = s.indexOf(QE.k) + 1;
+  $('#qeWho').textContent = `${p.no}. ${p.rosterName}　第 ${n} / ${s.length} 題`;
+  $('#qeQ').textContent = QTXT[QE.k];
+  $('#qeCur').textContent = d[QE.k] ? '目前：' + (d[QE.k] === 'Y' ? '是' : '否') : '';
+  $('#qeBar').innerHTML = s.map(k => `<i class="${d[k] === 'Y' ? 'y' : d[k] === 'N' ? 'n' : ''}${k === QE.k ? ' cur' : ''}"></i>`).join('');
+  if (QE.i !== sel) select(QE.i, true);
+}
+function qeAnswer(v) {
+  const p = people[QE.i], d = p.d; d[QE.k] = v; if (d._o) delete d._o[QE.k]; touch(p, 2);
+  if (QE.k === 'q5' && v !== 'Y') { delete d.q51; }
+  const s = qSeq(d), at = s.indexOf(QE.k);
+  if (at < s.length - 1) QE.k = s[at + 1];
+  else { save(); if (QE.i >= people.length - 1) { qeClose(); alert('已是最後一位，第 2 頁輸入完成'); return; } QE = { i: QE.i + 1, k: 'q1' }; }
+  save(); qeShow();
+}
+function qeBack() {
+  const d = people[QE.i].d, s = qSeq(d), at = s.indexOf(QE.k);
+  if (at > 0) QE.k = s[at - 1]; else if (QE.i > 0) { QE.i--; const s2 = qSeq(people[QE.i].d); QE.k = s2[s2.length - 1]; }
+  qeShow();
+}
+document.addEventListener('keydown', e => {
+  if (!QE) return;
+  const k = e.key;
+  if (/^[yY1]$/.test(k) || k === '是') qeAnswer('Y');
+  else if (/^[nN0]$/.test(k) || k === '否') qeAnswer('N');
+  else if (k === 'Backspace' || k === 'ArrowLeft') qeBack();
+  else if (k === 'Escape') qeClose();
+  else return;
+  e.preventDefault();
+}, true);
+$('#qeBtn').onclick = qeOpen;
+$('#qeY').onclick = () => QE && qeAnswer('Y'); $('#qeN').onclick = () => QE && qeAnswer('N');
+$('#qeBack').onclick = () => QE && qeBack(); $('#qeX').onclick = () => QE && qeClose();
+
+
+/* ===== 匯入據點清冊（Excel／CSV）===== */
+const AREA_CODE = { 臺北: '02', 台北: '02', 新北: '02', 基隆: '02', 桃園: '03', 新竹: '03', 宜蘭: '03', 花蓮: '03', 苗栗: '037', 臺中: '04', 台中: '04', 彰化: '04', 南投: '049', 雲林: '05', 嘉義: '05', 臺南: '06', 台南: '06', 高雄: '07', 屏東: '08', 臺東: '089', 台東: '089', 澎湖: '06', 金門: '082', 連江: '0836' };
+function fmtTel(d, county) {
+  d = String(d || '').replace(/[^\d]/g, ''); if (!d) return '';
+  if (/^09\d{8}$/.test(d)) return d.slice(0, 4) + '-' + d.slice(4);
+  if (/^\d{7,8}$/.test(d)) { const k = Object.keys(AREA_CODE).find(x => (county || '').startsWith(x)); return k ? AREA_CODE[k] + '-' + d : d; }
+  if (/^0(37|49|89)\d{6}$/.test(d)) return d.slice(0, 3) + '-' + d.slice(3);
+  if (/^0\d{8}$/.test(d)) return d.slice(0, 2) + '-' + d.slice(2);
+  if (/^0\d{9}$/.test(d)) return d.slice(0, 2) + '-' + d.slice(2);
+  return d;
+}
+function parseBirth(s) {
+  s = String(s || '').trim().replace(/民國/, '');
+  let m = s.match(/^(\d{4})[-\/.年]\s*(\d{1,2})[-\/.月]\s*(\d{1,2})/);
+  if (m && +m[1] > 1911) return { y: String(+m[1] - 1911), m: String(+m[2]), d: String(+m[3]) };
+  m = s.match(/^([\d*＊]{1,3})[-\/.年]\s*(\d{1,2})[-\/.月]\s*(\d{1,2})/);
+  if (m) return { y: m[1].replace('＊', '*').replace(/^0+(?=\d)/, ''), m: String(+m[2]), d: String(+m[3]) };
+  return { y: '', m: '', d: '' };
+}
+function parseRosterRows(rows) {
+  const hi = rows.findIndex(r => r.some(c => /姓名/.test(String(c == null ? '' : c))));
+  if (hi < 0) throw new Error('找不到含「姓名」的標題列');
+  const H = rows[hi].map(c => String(c == null ? '' : c).trim());
+  const col = re => H.findIndex(h => re.test(h));
+  const c = { name: col(/姓名/), gender: col(/性別/), caseNo: col(/個案編號|^編號/), birth: col(/生日|出生/), id: col(/身分證|身份證/), phone: col(/電話|手機/), addr: col(/地址/) };
+  let site = '';
+  for (let i = 0; i < hi; i++) for (const x of rows[i]) { const s = String(x == null ? '' : x); if (!site && /據點/.test(s)) site = s.replace(/\s*據點個案清冊\s*$/, '').replace(/\s*個案清冊\s*$/, '').trim(); }
+  const list = [];
+  for (const r of rows.slice(hi + 1)) {
+    const name = String(r[c.name] == null ? '' : r[c.name]).trim().replace(/\s+/g, ''); if (!name) continue;
+    const b = parseBirth(c.birth >= 0 ? r[c.birth] : '');
+    const addr = String(c.addr >= 0 && r[c.addr] ? r[c.addr] : '').replace(/\s+/g, '');
+    const am = addr.match(/^([\u4e00-\u9fff]{1,3}?[縣市])([\u4e00-\u9fff]{1,3}?[鄉鎮市區])/);
+    const g = c.gender >= 0 ? String(r[c.gender] || '') : '';
+    const county = am ? am[1] : '';
+    list.push({ no: list.length + 1, name, gender: /男/.test(g) ? 'M' : /女/.test(g) ? 'F' : '', caseNo: c.caseNo >= 0 ? String(r[c.caseNo] || '') : '', bY: /\*/.test(b.y) ? '' : b.y, bYhint: b.y, bM: b.m, bD: b.d, id: c.id >= 0 ? String(r[c.id] || '').trim() : '', phone: fmtTel(c.phone >= 0 ? r[c.phone] : '', county), county, area: am ? am[2] : '' });
+  }
+  if (!list.length) throw new Error('標題列之後沒有任何姓名');
+  return { site, list };
+}
+function csvRows(text) {
+  const rows = []; let row = [], cur = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) { if (ch === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
+    else if (ch === '"') q = true; else if (ch === ',') { row.push(cur); cur = ''; }
+    else if (ch === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; } else if (ch !== '\r') cur += ch;
+  }
+  if (cur || row.length) { row.push(cur); rows.push(row); }
+  return rows;
+}
+function showSite() { $('#site').textContent = people.length ? '據點：' + (R.site || '（未命名）') + '　✎' : ''; $('#site').title = '點一下可修改據點名稱'; $('#clearRoster').style.display = people.length ? '' : 'none'; document.title = (R.site ? R.site + '｜' : '') + '延緩長輩前後測資料'; $('#pAll').textContent = `🖨 列印全部 ${people.length} 位`; }
+/* ---- 內建 .xlsx 讀取（不需外部元件）：zip + DecompressionStream ---- */
+async function unzip(buf) {
+  const dv = new DataView(buf), u8 = new Uint8Array(buf);
+  let e = -1; for (let i = buf.byteLength - 22; i >= Math.max(0, buf.byteLength - 70000); i--) if (dv.getUint32(i, true) === 0x06054b50) { e = i; break; }
+  if (e < 0) throw new Error('不是有效的 .xlsx 檔');
+  const n = dv.getUint16(e + 10, true); let p = dv.getUint32(e + 16, true); const files = {};
+  for (let k = 0; k < n; k++) {
+    const method = dv.getUint16(p + 10, true), csz = dv.getUint32(p + 20, true), nl = dv.getUint16(p + 28, true), el = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), off = dv.getUint32(p + 42, true);
+    const name = new TextDecoder().decode(u8.subarray(p + 46, p + 46 + nl));
+    files[name] = { method, csz, off }; p += 46 + nl + el + cl;
+  }
+  return async name => {
+    const f = files[name]; if (!f) return null;
+    const ds = off => off + 30 + dv.getUint16(off + 26, true) + dv.getUint16(off + 28, true);
+    const s = ds(f.off), data = u8.subarray(s, s + f.csz);
+    if (f.method === 0) return new TextDecoder().decode(data);
+    const out = await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer();
+    return new TextDecoder().decode(out);
+  };
+}
+const colIdx = ref => { let n = 0; for (const ch of ref.replace(/\d+/g, '')) n = n * 26 + ch.charCodeAt(0) - 64; return n - 1; };
+async function xlsxSheets(buf) {
+  const get = await unzip(buf); const dp = new DOMParser();
+  const xml = async n => { const t = await get(n); return t ? dp.parseFromString(t, 'application/xml') : null; };
+  const wb = await xml('xl/workbook.xml'), rels = await xml('xl/_rels/workbook.xml.rels');
+  if (!wb || !rels) throw new Error('不是有效的 .xlsx 檔');
+  const target = {}; rels.querySelectorAll('Relationship').forEach(r => { let t = r.getAttribute('Target'); t = t.replace(/^\//, ''); target[r.getAttribute('Id')] = t.startsWith('xl/') ? t : 'xl/' + t; });
+  const sheets = [...wb.querySelectorAll('sheet')].map(s => ({ name: s.getAttribute('name'), path: target[s.getAttribute('r:id') || s.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'id')] }));
+  let sst = null;
+  const sharedStrings = async () => {
+    if (sst) return sst; sst = [];
+    const d = await xml('xl/sharedStrings.xml'); if (d) d.querySelectorAll('si').forEach(si => sst.push([...si.querySelectorAll('t')].map(t => t.textContent).join('')));
+    return sst;
+  };
+  const rowsOf = async path => {
+    const d = await xml(path); const ss = await sharedStrings(); const rows = [];
+    d.querySelectorAll('sheetData > row').forEach(r => {
+      const ri = +r.getAttribute('r') - 1, row = [];
+      r.querySelectorAll('c').forEach(c => {
+        const t = c.getAttribute('t'); let v = '';
+        if (t === 'inlineStr') v = [...c.querySelectorAll('t')].map(x => x.textContent).join('');
+        else { const ve = c.querySelector('v'); v = ve ? ve.textContent : ''; if (t === 's') v = ss[+v] || ''; }
+        row[colIdx(c.getAttribute('r'))] = v;
+      });
+      for (let i = 0; i < row.length; i++) if (row[i] === undefined) row[i] = '';
+      rows[ri] = row;
+    });
+    for (let i = 0; i < rows.length; i++) if (!rows[i]) rows[i] = [];
+    return rows;
+  };
+  return { sheets, rowsOf };
+}
+async function importRoster(file) {
+  try {
+    let parsed, buf = await file.arrayBuffer();
+    if (/\.csv$/i.test(file.name)) {
+      let txt = new TextDecoder('utf-8').decode(buf); if (txt.includes('�')) txt = new TextDecoder('big5').decode(buf);
+      parsed = parseRosterRows(csvRows(txt.replace(/^﻿/, '')));
+    } else if (/\.xlsx$/i.test(file.name)) {
+      const { sheets, rowsOf } = await xlsxSheets(buf);
+      // 優先讀名稱含「個案」的工作表（如「據點個案清冊」），其餘依序嘗試
+      const order = sheets.filter(s => /個案/.test(s.name)).concat(sheets.filter(s => !/個案/.test(s.name))); let err;
+      for (const s of order) { try { parsed = parseRosterRows(await rowsOf(s.path)); break; } catch (e) { err = err || new Error('工作表「' + s.name + '」：' + e.message); } }
+      if (!parsed) throw err || new Error('找不到清冊工作表');
+    } else {
+      if (typeof XLSX === 'undefined') throw new Error('舊版 .xls 需要連網載入讀取元件；請先另存成 .xlsx 或 CSV 再匯入');
+      const wb = XLSX.read(buf, { type: 'array' }); let err;
+      for (const n of wb.SheetNames) { try { parsed = parseRosterRows(XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: false, defval: '' })); break; } catch (e) { err = err || e; } }
+      if (!parsed) throw err;
+    }
+    const sample = parsed.list.slice(0, 3).map(p => p.name).join('、');
+    if (!confirm(`讀到 ${parsed.list.length} 位${parsed.site ? '（' + parsed.site + '）' : ''}：${sample}…\n\n將以此清冊取代目前清冊，並清除目前已填的資料。\n（建議先按「備份 JSON」）確定匯入？`)) return;
+    R = parsed; saveRoster(); try { localStorage.removeItem(LS_KEY); } catch (e) { }
+    dateSet = { y: '', m: '', d: '' }; G.applied = false; initPeople(); $('#classNo').value = ''; showDate(); showSite(); select(0); renderLog();
+    alert(`已匯入 ${parsed.list.length} 位。請接著設定開班編號、評估日期等，再按「套入全部」。`);
+  } catch (e) { alert('匯入失敗：' + (e && e.message || e)); }
+}
+$('#rosterIn').onchange = e => { if (e.target.files[0]) importRoster(e.target.files[0]); e.target.value = ''; };
+
+$('#site').onclick = () => {
+  if (!people.length) return;
+  const v = prompt('據點名稱：', R.site || ''); if (v === null) return;
+  R.site = v.trim(); saveRoster(); showSite();
+};
+$('#clearRoster').onclick = () => {
+  if (!people.length) return;
+  if (!confirm(`將刪除目前的清冊（${people.length} 位）及所有已填資料，無法復原。\n（建議先按「備份 JSON」）\n\n確定刪除？`)) return;
+  R = { site: '', list: [] }; saveRoster(); try { localStorage.removeItem(LS_KEY); } catch (e) { }
+  dateSet = { y: '', m: '', d: '' }; G.applied = false; people = []; sel = 0; $('#classNo').value = ''; showDate(); showSite(); select(0); renderLog();
+};
+
+
+/* ===== 第3頁快速輸入：居住情況、教育程度、病史、自覺健康問題 ===== */
+const P3 = [
+  { f: 'live', title: '居住情況（單選）', multi: false, opts: [['1', '1', '獨居'], ['2', '2', '與親友同住']] },
+  { f: 'edu', title: '教育程度（單選）', multi: false, opts: [['1', '1', '不識字'], ['2', '2', '識字，未受正規教育'], ['3', '3', '國小'], ['4', '4', '國中'], ['5', '5', '高中（職）'], ['6', '6', '專科大學'], ['7', '7', '碩博士'], ['8', '8', '其他']] },
+  { f: 'hist', title: '曾被醫師診斷患下列疾病（可複選，按 Enter 下一步）', multi: true, none: '1', opts: [['1', '1', '無'], ['2', '2', '高血壓'], ['3', '3', '心臟疾病'], ['4', '4', '中風'], ['5', '5', '肺部／呼吸疾病'], ['6', '6', '糖尿病'], ['7', '7', '關節炎／風濕'], ['8', '8', '骨折'], ['9', '9', '癌症'], ['0', '10', '身心科相關疾病'], ['A', '11', '其他']] },
+  { f: 'selfIssues', title: '自覺健康問題（可複選，按 Enter 下一位）', multi: true, none: '11', opts: [['1', '11', '無'], ['2', '12', '憂鬱／焦慮／情緒'], ['3', '13', '頸背問題'], ['4', '14', '行走問題'], ['5', '15', '睡眠問題'], ['6', '16', '視力問題'], ['7', '17', '聽力問題'], ['8', 'o', '其他']] }
+];
+let Q3 = null; // {i, s}
+const p3Done = (d, st) => st.multi ? (d[st.f] || []).length > 0 : !!d[st.f];
+function q3Open() {
+  if (!people.length) return;
+  const d = people[sel].d; let s = P3.findIndex(st => !p3Done(d, st)); if (s < 0) s = 0;
+  Q3 = { i: sel, s }; $('#q3').classList.add('open'); q3Show();
+}
+function q3Close() { $('#q3').classList.remove('open'); Q3 = null; renderSheets(); }
+function q3Show() {
+  const p = people[Q3.i], d = p.d, st = P3[Q3.s];
+  $('#q3Who').textContent = `${p.no}. ${p.rosterName}　第 ${Q3.s + 1} / ${P3.length} 項`;
+  $('#q3Q').textContent = st.title;
+  const cur = st.multi ? (d[st.f] || []) : [d[st.f]];
+  $('#q3Opts').innerHTML = st.opts.map(([k, v, l]) => `<button data-v="${v}" class="${cur.includes(v) ? 'on' : ''}"><b>${k}</b> ${l}</button>`).join('');
+  $('#q3Bar').innerHTML = P3.map((x, i) => `<i class="${p3Done(d, x) ? 'y' : ''}${i === Q3.s ? ' cur' : ''}"></i>`).join('');
+  $('#q3Next').style.display = st.multi ? '' : 'none';
+  if (Q3.i !== sel) select(Q3.i, true);
+}
+function q3Pick(v) {
+  const p = people[Q3.i], d = p.d, st = P3[Q3.s]; if (d._o) delete d._o[st.f]; touch(p, 3);
+  if (!st.multi) { d[st.f] = v; save(); q3Step(1); return; }
+  const a = d[st.f] || (d[st.f] = []), i = a.indexOf(v);
+  if (i >= 0) a.splice(i, 1); else { if (v === st.none) a.length = 0; else { const n = a.indexOf(st.none); if (n >= 0) a.splice(n, 1); } a.push(v); }
+  save(); q3Show();
+}
+function q3Step(dir) {
+  const d = people[Q3.i].d, st = P3[Q3.s];
+  if (dir > 0) {
+    if (st.multi && !(d[st.f] || []).length) return;
+    if (Q3.s < P3.length - 1) Q3.s++;
+    else { if (Q3.i >= people.length - 1) { q3Close(); alert('已是最後一位，第 3 頁輸入完成'); return; } Q3 = { i: Q3.i + 1, s: 0 }; }
+  } else if (Q3.s > 0) Q3.s--; else if (Q3.i > 0) { Q3.i--; Q3.s = P3.length - 1; }
+  q3Show();
+}
+document.addEventListener('keydown', e => {
+  if (!Q3) return;
+  const st = P3[Q3.s], k = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+  const o = st.opts.find(x => x[0] === k);
+  if (o) q3Pick(o[1]);
+  else if (k === 'Enter' && st.multi) q3Step(1);
+  else if (k === 'Backspace' || k === 'ArrowLeft') q3Step(-1);
+  else if (k === 'Escape') q3Close();
+  else return;
+  e.preventDefault();
+}, true);
+$('#q3Btn').onclick = q3Open; $('#q3Opts').onclick = e => { const b = e.target.closest('button'); if (b && Q3) q3Pick(b.dataset.v); };
+$('#q3Next').onclick = () => Q3 && q3Step(1); $('#q3Back').onclick = () => Q3 && q3Step(-1); $('#q3X').onclick = () => Q3 && q3Close();
+
+/* ===== 月曆／日曆選擇（顯示西元，內部存民國）===== */
+function pad2(n) { return String(n).padStart(2, '0'); }
+function syncPick() {
+  const gy = +G.pY, gm = +G.pM;
+  $('#gPick').value = gy && gm ? `${gy + 1911}-${pad2(gm)}` : '';
+  $('#gRoc').textContent = gy && gm ? `（民國${gy}年${gm}月）` : '';
+  const y = +dateSet.y, m = +dateSet.m, d = +dateSet.d;
+  $('#dPick').value = y && m && d ? `${y + 1911}-${pad2(m)}-${pad2(d)}` : '';
+  $('#dRoc').textContent = y && m && d ? `（民國${y}年${m}月${d}日）` : '';
+}
+$('#gPick').addEventListener('input', e => {
+  const m = e.target.value.match(/^(\d{4})-(\d{2})$/);
+  $('#gPY').value = m ? String(+m[1] - 1911) : ''; $('#gPM').value = m ? String(+m[2]) : '';
+  $('#gPY').dispatchEvent(new Event('input')); syncPick();
+});
+$('#dPick').addEventListener('input', e => {
+  const m = e.target.value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  $('#dY').value = m ? String(+m[1] - 1911) : ''; $('#dM').value = m ? String(+m[2]) : ''; $('#dD').value = m ? String(+m[3]) : '';
+  $('#dY').dispatchEvent(new Event('input')); syncPick();
+});
+syncPick();
+
+</script></body></html>
