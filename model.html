@@ -18,7 +18,7 @@ header .dt input{width:auto;padding:4px 5px;margin:0 3px;text-align:center}
 #list{list-style:none;margin:0;padding:0}
 #list li{display:flex;align-items:center;gap:6px;padding:7px 10px;cursor:pointer;border-bottom:1px solid #f0f2f5;font-size:14px}
 #list li:hover{background:#f3f7fa}#list li.cur{background:var(--pale);font-weight:700;box-shadow:inset 3px 0 var(--navy)}
-#list .no{width:20px;color:#889;font-size:12px}#list .nm{flex:1}
+#list li.skip{opacity:.5}#list li.skip .nm{text-decoration:line-through}#list .inc{margin:0;cursor:pointer}#list .no{width:20px;color:#889;font-size:12px}#side .ph a{color:var(--navy);cursor:pointer;text-decoration:underline;margin-right:8px}#list .nm{flex:1}
 .dots{display:flex;gap:2px}.dots i{width:7px;height:7px;border-radius:50%;background:#d5dbe2}.dots i.on{background:#2e9e6a}
 #main{overflow:auto;padding:14px}
 #sheets{transform-origin:top left;width:210mm;margin:0 auto}
@@ -111,7 +111,7 @@ header button.qk{background:#2e9e6a;color:#fff;font-size:16px;font-weight:700;pa
   <label class="btn">還原備份<input type="file" id="jsonIn" accept=".json" hidden></label>
   <button id="reset">重設</button>
  </header>
- <aside id="side"><div class="ph"><b>個案清冊</b>　<span id="prog"></span><br>綠燈＝該頁資料齊全（滑鼠移上去看缺什麼）</div><ul id="list"></ul></aside>
+ <aside id="side"><div class="ph"><b>個案清冊</b>　<span id="prog"></span><br>綠燈＝該頁資料齊全（滑鼠移上去看缺什麼）<br>☑＝參加評測；取消勾選者不列入進度、套入全部、列印全部、匯出 CSV 與快速輸入。<a id="incAll">全選</a><a id="incNone">全不選</a></div><ul id="list"></ul></aside>
  <main id="main"><div id="sheets"></div></main>
  <aside id="panel">
   <h3>Ctrl+V 貼上辨識</h3><div id="status"></div>
@@ -510,16 +510,18 @@ function missingOf(d) {
   chk(4, v('classNo'), '開班編號'); chk(4, idOk, '身分證字號'); chk(4, v('s1') && v('s2'), '滿意度'); chk(4, dateOk('sdY', 'sdM', 'sdD'), '問卷填寫日期');
   return m;
 }
+const isInc = i => !!people[i] && !people[i].d.skip;
+const nxt = (i, dir) => { for (let j = i + dir; j >= 0 && j < people.length; j += dir) if (isInc(j)) return j; return -1; };
 function renderList() {
   if (!people.length) { $('#list').innerHTML = ''; $('#prog').textContent = ''; $('#missing').innerHTML = ''; return; }
-  let done = 0;
+  let done = 0, nInc = 0;
   $('#list').innerHTML = people.map((p, i) => {
     const m = missingOf(p.d);
-    if ([1, 2, 3, 4].every(n => !m[n].length)) done++;
+    if (!p.d.skip) { nInc++; if ([1, 2, 3, 4].every(n => !m[n].length)) done++; }
     const dots = [1, 2, 3, 4].map(n => `<i class="${m[n].length ? '' : 'on'}" title="第${n}頁${m[n].length ? '缺：' + m[n].join('、') : '資料齊全'}"></i>`).join('');
-    return `<li class="${i === sel ? 'cur' : ''}" data-i="${i}"><span class="no">${p.no}</span><span class="nm">${esc(p.rosterName)}</span><span class="dots">${dots}</span></li>`;
+    return `<li class="${i === sel ? 'cur' : ''}${p.d.skip ? ' skip' : ''}" data-i="${i}"><input type="checkbox" class="inc" title="勾選＝參加評測" ${p.d.skip ? '' : 'checked'}><span class="no">${p.no}</span><span class="nm">${esc(p.rosterName)}</span><span class="dots">${dots}</span></li>`;
   }).join('');
-  $('#prog').textContent = `齊全 ${done} / ${people.length} 位`;
+  $('#prog').textContent = `齊全 ${done} / ${nInc} 位` + (nInc < people.length ? `（不評測 ${people.length - nInc} 位）` : '');
   const m = missingOf(people[sel].d);
   $('#missing').innerHTML = `<b>${esc(people[sel].rosterName)} 尚缺：</b>` + ([1, 2, 3, 4].map(n => m[n].length ? `<div>第${n}頁：${m[n].join('、')}</div>` : '').join('') || '<div class="okk">四頁資料皆已齊全</div>');
 }
@@ -561,6 +563,7 @@ document.addEventListener('click', e => {
     renderSheets(); save(); return;
   }
   const li = e.target.closest && e.target.closest('#list li');
+  if (li && e.target.classList && e.target.classList.contains('inc')) { people[+li.dataset.i].d.skip = !e.target.checked; save(); renderList(); return; }
   if (li) select(+li.dataset.i);
 });
 
@@ -577,7 +580,7 @@ function dl(name, text, type) {
 function exportCSV() {
   const keys = ['name', 'gender', 'classNo', 'idno', 'bY', 'bM', 'bD', 'phone', 'mobile', 'tel', 'district', 'area', 'first', 'prevY', 'prevM', 'evY', 'evM', 'evD', 'q1', 'q2', 'q3', 'q4', 'q5', 'q51', 'q6', 'q7', 'q8', 'kind', 'indig', 'live', 'selfFill', 'edu', 'hist', 'histOther', 'selfIssues', 'selfOther', 'selfHealth', 'fiY', 'fiM', 'fiD', 's1', 's2', 'sdY', 'sdM', 'sdD'];
   const q = v => '"' + String(Array.isArray(v) ? v.join('、') : (v == null ? '' : v)).replace(/"/g, '""') + '"';
-  const rows = [['序號', ...keys].join(',')].concat(people.map(p => [p.no, ...keys.map(k => q(p.d[k]))].map((x, i) => i ? x : q(x)).join(',')));
+  const rows = [['序號', ...keys].join(',')].concat(people.filter(p => !p.d.skip).map(p => [p.no, ...keys.map(k => q(p.d[k]))].map((x, i) => i ? x : q(x)).join(',')));
   dl('延緩長輩前後測資料.csv', '﻿' + rows.join('\r\n'), 'text/csv');
 }
 function exportJSON() { dl('延緩長輩前後測備份.json', JSON.stringify({ roster: R, people: people.map(p => p.d), classNo: $('#classNo').value, date: dateSet, g: G }), 'application/json'); }
@@ -715,9 +718,10 @@ function applyDate() {
   if (G.pY || G.pM) parts.push(`前次評估日期：${G.pY || '__'}年${G.pM || '__'}月`);
   if (G.district) parts.push('（鄉）鎮市區：' + G.district + '（第1頁）、現居區域：' + G.district + (DSUF[G.district] || '') + '（第3頁）');
   if (G.kind) parts.push('填寫類別：' + (G.kind === 'pre' ? '前測' : '後測'));
-  if (!confirm('將以下內容套入全部 ' + people.length + ' 位（會覆蓋原有內容；之後貼圖辨識也不再改動這些欄位）：\n・' + parts.join('\n・'))) return;
+  const nIncl = people.filter(p => !p.d.skip).length;
+  if (!confirm('將以下內容套入全部參加評測的 ' + nIncl + ' 位（會覆蓋原有內容；之後貼圖辨識也不再改動這些欄位）：\n・' + parts.join('\n・'))) return;
   G.applied = true;
-  people.forEach(p => {
+  people.filter(p => !p.d.skip).forEach(p => {
     if (dateReady()) DATEKEYS.forEach((k, i) => { p.d[k] = [dateSet.y, dateSet.m, dateSet.d][i % 3]; if (p.d._o) delete p.d._o[k]; });
     GKEYS.forEach(k => { if (gVal(k)) { p.d[k] = gVal(k); if (p.d._o) delete p.d._o[k]; } });
   });
@@ -728,7 +732,9 @@ $('#dApply').onclick = applyDate; $('#dClear').onclick = () => { dateSet = { y: 
 ['gFirst', 'gKind', 'gDist', 'gPY', 'gPM'].forEach(id => $('#' + id).addEventListener('input', () => { readG(); save(); }));
 $('#zoom').addEventListener('input', e => { zoom = e.target.value / 100; $('#sheets').style.zoom = zoom; });
 $('#pOne').onclick = () => printIdx([sel]);
-$('#pAll').onclick = () => { if (confirm('將產生 ' + people.length + ' 位 × 4 頁 = ' + people.length * 4 + ' 頁的列印內容，確定？')) printIdx(people.map((_, i) => i)); };
+$('#pAll').onclick = () => { const ix = people.map((_, i) => i).filter(isInc); if (!ix.length) { alert('目前沒有勾選參加評測的長輩'); return; } if (confirm('將產生 ' + ix.length + ' 位 × 4 頁 = ' + ix.length * 4 + ' 頁的列印內容，確定？')) printIdx(ix); };
+$('#incAll').onclick = () => { people.forEach(p => delete p.d.skip); save(); renderList(); };
+$('#incNone').onclick = () => { if (confirm('將全部長輩設為「不評測」，之後再逐位勾選。確定？')) { people.forEach(p => p.d.skip = true); save(); renderList(); } };
 $('#csv').onclick = exportCSV; $('#jsonOut').onclick = exportJSON;
 $('#jsonIn').onchange = e => e.target.files[0] && importJSON(e.target.files[0]);
 $('#reset').onclick = () => { if (confirm('清除所有已填資料並還原為清冊預設？（建議先匯出備份）')) { try { localStorage.removeItem(LS_KEY); } catch (e) { } load(); select(0); } };
@@ -742,8 +748,9 @@ const qSeq = d => ['q1', 'q2', 'q3', 'q4', 'q5'].concat(d.q5 === 'Y' ? ['q51'] :
 let QE = null; // {i, k}
 function qeOpen() {
   if (!people.length) return;
-  const d = people[sel].d; const s = qSeq(d);
-  QE = { i: sel, k: s.find(k => !d[k]) || s[0] };
+  const st0 = isInc(sel) ? sel : nxt(sel, 1); if (st0 < 0) { alert('目前沒有勾選參加評測的長輩'); return; }
+  const d = people[st0].d; const s = qSeq(d);
+  QE = { i: st0, k: s.find(k => !d[k]) || s[0] };
   $('#qe').classList.add('open'); qeShow();
 }
 function qeClose() { $('#qe').classList.remove('open'); QE = null; renderSheets(); }
@@ -760,12 +767,12 @@ function qeAnswer(v) {
   if (QE.k === 'q5' && v !== 'Y') { delete d.q51; }
   const s = qSeq(d), at = s.indexOf(QE.k);
   if (at < s.length - 1) QE.k = s[at + 1];
-  else { save(); if (QE.i >= people.length - 1) { qeClose(); alert('已是最後一位，第 2 頁輸入完成'); return; } QE = { i: QE.i + 1, k: 'q1' }; }
+  else { save(); const nx = nxt(QE.i, 1); if (nx < 0) { qeClose(); alert('已是最後一位，第 2 頁輸入完成'); return; } QE = { i: nx, k: 'q1' }; }
   save(); qeShow();
 }
 function qeBack() {
   const d = people[QE.i].d, s = qSeq(d), at = s.indexOf(QE.k);
-  if (at > 0) QE.k = s[at - 1]; else if (QE.i > 0) { QE.i--; const s2 = qSeq(people[QE.i].d); QE.k = s2[s2.length - 1]; }
+  if (at > 0) QE.k = s[at - 1]; else { const pv = nxt(QE.i, -1); if (pv >= 0) { QE.i = pv; const s2 = qSeq(people[QE.i].d); QE.k = s2[s2.length - 1]; } }
   qeShow();
 }
 document.addEventListener('keydown', e => {
@@ -938,8 +945,9 @@ let Q3 = null; // {i, s}
 const p3Done = (d, st) => st.multi ? (d[st.f] || []).length > 0 : !!d[st.f];
 function q3Open() {
   if (!people.length) return;
-  const d = people[sel].d; let s = P3.findIndex(st => !p3Done(d, st)); if (s < 0) s = 0;
-  Q3 = { i: sel, s }; $('#q3').classList.add('open'); q3Show();
+  const st0 = isInc(sel) ? sel : nxt(sel, 1); if (st0 < 0) { alert('目前沒有勾選參加評測的長輩'); return; }
+  const d = people[st0].d; let s = P3.findIndex(st => !p3Done(d, st)); if (s < 0) s = 0;
+  Q3 = { i: st0, s }; $('#q3').classList.add('open'); q3Show();
 }
 function q3Close() { $('#q3').classList.remove('open'); Q3 = null; renderSheets(); }
 function q3Show() {
@@ -964,8 +972,8 @@ function q3Step(dir) {
   if (dir > 0) {
     if (st.multi && !(d[st.f] || []).length) return;
     if (Q3.s < P3.length - 1) Q3.s++;
-    else { if (Q3.i >= people.length - 1) { q3Close(); alert('已是最後一位，第 3 頁輸入完成'); return; } Q3 = { i: Q3.i + 1, s: 0 }; }
-  } else if (Q3.s > 0) Q3.s--; else if (Q3.i > 0) { Q3.i--; Q3.s = P3.length - 1; }
+    else { const nx = nxt(Q3.i, 1); if (nx < 0) { q3Close(); alert('已是最後一位，第 3 頁輸入完成'); return; } Q3 = { i: nx, s: 0 }; }
+  } else if (Q3.s > 0) Q3.s--; else { const pv = nxt(Q3.i, -1); if (pv >= 0) { Q3.i = pv; Q3.s = P3.length - 1; } }
   q3Show();
 }
 document.addEventListener('keydown', e => {
