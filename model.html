@@ -100,7 +100,7 @@ header button.qk{background:#2e9e6a;color:#fff;font-size:16px;font-weight:700;pa
   <span id="site"></span><label class="btn">匯入清冊<input type="file" id="rosterIn" accept=".xlsx,.xls,.csv" hidden></label><button id="clearRoster">刪除清冊</button>
   <span>目前：<b id="cur"></b></span>
   <span>開班編號（套用全部）<input type="text" id="classNo" placeholder="例：114-001"></span>
-  <span class="dt">前次評估 <input type="month" id="gPick" title="選擇年月（月曆）"><input type="hidden" id="gPY"><input type="hidden" id="gPM"><small id="gRoc"></small>　第1次使用<select id="gFirst"><option value="">不設</option><option value="Y">是</option><option value="N">否</option></select>　填寫類別<select id="gKind"><option value="">不設</option><option value="pre">前測</option><option value="post">後測</option></select></span>
+  <span class="dt">前次評估 <input type="month" id="gPick" title="選擇年月（月曆）"><input type="hidden" id="gPY"><input type="hidden" id="gPM"><small id="gRoc"></small>　第1次使用<select id="gFirst"><option value="">不設</option><option value="Y">是</option><option value="N">否</option></select>　填寫類別<select id="gKind"><option value="">不設</option><option value="pre">前測</option><option value="post">後測</option></select>　（鄉）鎮市區<select id="gDist"><option value="">不設</option><option value="布袋">布袋</option><option value="義竹">義竹</option><option value="水上">水上</option><option value="民雄">民雄</option></select></span>
   <span class="dt">評估日期 <input type="date" id="dPick" title="選擇日期（日曆）"><input type="hidden" id="dY"><input type="hidden" id="dM"><input type="hidden" id="dD"><small id="dRoc"></small> <button id="dApply" class="pri">套入全部</button><button id="dClear" title="取消統一日期，恢復由辨識／手填">取消</button></span>
   <label>縮放 <input type="range" id="zoom" min="50" max="110" value="85"></label>
   <button class="qk" id="qeBtn" title="對著紙本逐題按 Y(是)／N(否)，答完自動換下一位">⌨ 第2頁快速輸入<small>按 Y／N 逐題</small></button>
@@ -349,9 +349,10 @@ let zoom = 0.85;
 let dateSet = { y: '', m: '', d: '' };   // 統一評估日期（民國）
 const DATEKEYS = ['evY', 'evM', 'evD', 'fiY', 'fiM', 'fiD', 'sdY', 'sdM', 'sdD'];
 const dateReady = () => dateSet.y && dateSet.m && dateSet.d;
-let G = { first: 'N', kind: 'pre', pY: '', pM: '', applied: false };   // 統一設定：第1次使用、填寫類別、前次評估日期
-const GKEYS = ['first', 'kind', 'prevY', 'prevM'];
-const gVal = k => ({ first: G.first, kind: G.kind, prevY: G.pY, prevM: G.pM })[k];
+let G = { first: 'N', kind: 'pre', pY: '', pM: '', district: '', applied: false };   // 統一設定：第1次使用、填寫類別、前次評估日期
+const GKEYS = ['first', 'kind', 'prevY', 'prevM', 'district', 'area'];
+const DSUF = { '布袋': '鎮', '義竹': '鄉', '水上': '鄉', '民雄': '鄉' };
+const gVal = k => ({ first: G.first, kind: G.kind, prevY: G.pY, prevM: G.pM, district: G.district, area: G.district ? G.district + (DSUF[G.district] || '') : '' })[k];
 const gLocked = k => G.applied && !!gVal(k);
 const sources = {};         // personIdx -> {page: objectURL} 原圖（僅本次開啟期間保留）
 
@@ -424,7 +425,7 @@ function renderPerson(p, idx, editable) {
   <table class="grid g2">
    <tr><td>姓名：${T('name', '56mm')}</td><td>出生年：${T('bY', '24mm', p.bYhint)}　性別：${C('gender', 'M', '男')} ${C('gender', 'F', '女')}</td></tr>
    <tr><td>手機：${T('mobile', '52mm')}</td><td>${B('noMobile', '無')}，聯絡電話：${T('tel', '46mm')}</td></tr>
-   <tr><td>現居地址：${esc(d.county)}${d.county === '嘉義縣' ? '（市）' : ''}</td><td>${esc(d.district)}（鄉）鎮市區：${T('district', '40mm')}</td></tr>
+   <tr><td>現居地址：${esc(d.county)}${d.county === '嘉義縣' ? '（市）' : ''}</td><td>（鄉）鎮市區：${T('district', '40mm')}</td></tr>
    <tr><td>第 1 次使用本量表評估：${C('first', 'Y', '是')} ${C('first', 'N', '否')}</td><td>前次評估日期：${T('prevY', '14mm')}年${T('prevM', '14mm')}月</td></tr>
   </table>
   <h4>資料使用說明</h4><p class="muted">本量表回收後，相關資料將作為衛生單位政策評估及查詢或個案追蹤健康管理使用。</p>
@@ -701,17 +702,18 @@ $('#modal').addEventListener('click', () => { $('#modal').classList.remove('open
 load();
 $('#classNo').addEventListener('input', e => { people.forEach(p => p.d.classNo = e.target.value); save(); if (document.querySelector('#sheets')) renderSheets(); });
 $('#classNo').value = (people[0] && people[0].d.classNo) || '';
-function showDate() { $('#dY').value = dateSet.y; $('#dM').value = dateSet.m; $('#dD').value = dateSet.d; $('#gFirst').value = G.first; $('#gKind').value = G.kind; $('#gPY').value = G.pY; $('#gPM').value = G.pM; syncPick(); }
-function readG() { G.first = $('#gFirst').value; G.kind = $('#gKind').value; G.pY = $('#gPY').value.trim(); G.pM = $('#gPM').value.trim(); }
+function showDate() { $('#dY').value = dateSet.y; $('#dM').value = dateSet.m; $('#dD').value = dateSet.d; $('#gFirst').value = G.first; $('#gKind').value = G.kind; $('#gDist').value = G.district || ''; $('#gPY').value = G.pY; $('#gPM').value = G.pM; syncPick(); }
+function readG() { G.first = $('#gFirst').value; G.kind = $('#gKind').value; G.district = $('#gDist').value; G.pY = $('#gPY').value.trim(); G.pM = $('#gPM').value.trim(); }
 function applyDate() {
   dateSet = { y: $('#dY').value.trim(), m: $('#dM').value.trim(), d: $('#dD').value.trim() }; readG();
   const anyDate = dateSet.y || dateSet.m || dateSet.d;
   if (anyDate && !dateReady()) { alert('評估日期請填入完整的民國年、月、日'); return; }
-  if (!anyDate && !G.first && !G.kind && !G.pY && !G.pM) { alert('請先設定要套入的內容'); return; }
+  if (!anyDate && !G.first && !G.kind && !G.pY && !G.pM && !G.district) { alert('請先設定要套入的內容'); return; }
   const parts = [];
   if (dateReady()) parts.push(`評估日期 民國${dateSet.y}年${dateSet.m}月${dateSet.d}日（第2頁評估日期、第3頁填寫日期、第4頁問卷填寫日期）`);
   if (G.first) parts.push('第1次使用本量表評估：' + (G.first === 'Y' ? '是' : '否'));
   if (G.pY || G.pM) parts.push(`前次評估日期：${G.pY || '__'}年${G.pM || '__'}月`);
+  if (G.district) parts.push('（鄉）鎮市區：' + G.district + '（第1頁）、現居區域：' + G.district + (DSUF[G.district] || '') + '（第3頁）');
   if (G.kind) parts.push('填寫類別：' + (G.kind === 'pre' ? '前測' : '後測'));
   if (!confirm('將以下內容套入全部 ' + people.length + ' 位（會覆蓋原有內容；之後貼圖辨識也不再改動這些欄位）：\n・' + parts.join('\n・'))) return;
   G.applied = true;
@@ -723,7 +725,7 @@ function applyDate() {
 }
 ['dY', 'dM', 'dD'].forEach(id => $('#' + id).addEventListener('input', () => { dateSet = { y: $('#dY').value.trim(), m: $('#dM').value.trim(), d: $('#dD').value.trim() }; save(); }));
 $('#dApply').onclick = applyDate; $('#dClear').onclick = () => { dateSet = { y: '', m: '', d: '' }; G.applied = false; showDate(); save(); };
-['gFirst', 'gKind', 'gPY', 'gPM'].forEach(id => $('#' + id).addEventListener('input', () => { readG(); save(); }));
+['gFirst', 'gKind', 'gDist', 'gPY', 'gPM'].forEach(id => $('#' + id).addEventListener('input', () => { readG(); save(); }));
 $('#zoom').addEventListener('input', e => { zoom = e.target.value / 100; $('#sheets').style.zoom = zoom; });
 $('#pOne').onclick = () => printIdx([sel]);
 $('#pAll').onclick = () => { if (confirm('將產生 ' + people.length + ' 位 × 4 頁 = ' + people.length * 4 + ' 頁的列印內容，確定？')) printIdx(people.map((_, i) => i)); };
