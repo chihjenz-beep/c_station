@@ -115,7 +115,7 @@ header button.qk{background:#2e9e6a;color:#fff;font-size:16px;font-weight:700;pa
  <main id="main"><div id="sheets"></div></main>
  <aside id="panel">
   <h3>Ctrl+V 貼上辨識</h3><div id="status"></div>
-  <p class="hint">貼上圖片時，系統依圖上<b>姓名</b>自動對應清冊並切換長輩；沒有姓名的頁（第2頁）會跟同一次貼上、順序最近的有姓名頁面。第4頁固定預設「非常同意」。辨識結果以 <b>黃底</b> 標示，請對照原圖確認後修改；出生年（4*）與身分證（Q22****）沿用清冊遮蔽格式，不被辨識結果覆蓋。</p>
+  <p class="hint">貼上圖片時，系統依圖上<b>姓名</b>自動對應清冊並切換長輩；沒有姓名的頁（第2頁）會跟同一次貼上、順序最近的有姓名頁面。第4頁固定預設「非常同意」；第2頁第 1～8 題預設「否」（第5-1題在第5題答「是」時才出現）。第3、4頁的預設值（原住民身分、自行填寫、自覺健康狀況、滿意度）與第2頁預設「否」皆為據點作業規則，系統無法驗證是否符合每位長輩的實際回答，實際不同時請直接修改。辨識結果以 <b>黃底</b> 標示，請對照原圖確認後修改；出生年（4*）與身分證（Q22****）沿用清冊遮蔽格式，不被辨識結果覆蓋。</p>
   <div id="missing"></div>
   <div id="log"></div>
  </aside>
@@ -369,7 +369,7 @@ function initPeople() {
         county: r.county || '', district: (r.area || '').replace(/[鄉鎮市區]$/, ''), area: r.area || '',
         mobile: mob ? r.phone : '', noMobile: !mob, tel: mob ? '' : r.phone,
         phone: r.phone, idno: r.id, classNo: '',
-        hist: [], selfIssues: [], s1: '5', s2: '5', indig: '2', selfFill: '2', selfHealth: '2', _o: {}, _t: {4: 1}
+        hist: [], selfIssues: [], s1: '5', s2: '5', indig: '2', selfFill: '2', selfHealth: '2', q1: 'N', q2: 'N', q3: 'N', q4: 'N', q5: 'N', q6: 'N', q7: 'N', q8: 'N', _o: {}, _t: {4: 1}
       }
     };
   });
@@ -382,7 +382,7 @@ function load() {
     if (s && s.classNo) people.forEach(p => p.d.classNo = p.d.classNo || s.classNo);
     if (s && s.date) dateSet = s.date;
     if (s && s.g) G = Object.assign(G, s.g);
-    people.forEach(p => { p.d.bY = p.d.bY || p.bYhint; p.d.s1 = p.d.s1 || '5'; p.d.s2 = p.d.s2 || '5'; p.d.indig = p.d.indig || '2'; p.d.selfFill = p.d.selfFill || '2'; p.d.selfHealth = p.d.selfHealth || '2'; });
+    people.forEach(p => { p.d.bY = p.d.bY || p.bYhint; p.d.s1 = p.d.s1 || '5'; p.d.s2 = p.d.s2 || '5'; p.d.indig = p.d.indig || '2'; p.d.selfFill = p.d.selfFill || '2'; p.d.selfHealth = p.d.selfHealth || '2'; ['q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8'].forEach(k => { p.d[k] = p.d[k] || 'N'; }); });
   } catch (e) { }
 }
 let saveTimer;
