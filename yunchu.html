@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>長輩評估登記</title>
+<style>
+:root{--bg:#fafaf7;--fg:#1c1c1a;--mut:#6b6b66;--card:#fff;--bd:#d6d6cd;--ac:#1f6f5c;--acfg:#fff;--on:#d8efe7;--warn:#b4451f;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#171716;--fg:#ecece6;--mut:#9a9a93;--card:#222220;--bd:#3a3a36;--ac:#4cb89c;--acfg:#08241c;--on:#1d3a32;--warn:#e88a63}}
+:root[data-theme="dark"]{--bg:#171716;--fg:#ecece6;--mut:#9a9a93;--card:#222220;--bd:#3a3a36;--ac:#4cb89c;--acfg:#08241c;--on:#1d3a32;--warn:#e88a63}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:18px/1.5 system-ui,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif}
+#app{max-width:560px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:8px 0 14px}h1 small{font-size:15px;color:var(--mut);font-weight:400}
+h2{font-size:21px;line-height:1.45;margin:14px 0}
+label{display:block;margin:10px 0;color:var(--mut);font-size:15px}
+input{width:100%;font:inherit;padding:12px;margin-top:4px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--fg)}
+button{font:inherit;color:var(--fg);width:100%;min-height:54px;margin:6px 0;border-radius:12px;border:1px solid var(--bd);background:var(--card);cursor:pointer}
+button:disabled{opacity:.4}
+.pri{background:var(--ac);color:var(--acfg);border-color:var(--ac);font-weight:600}
+.opt{text-align:left;padding:10px 16px;display:flex;justify-content:space-between;align-items:center}
+.opt.on{background:var(--on);border-color:var(--ac)}
+.opt small{color:var(--mut)}
+.row{display:flex;gap:8px}.row .opt{justify-content:center}
+.ghost{border:none;background:none;color:var(--mut);min-height:44px;width:auto;padding:0 8px}
+.top{display:flex;justify-content:space-between;align-items:center;color:var(--mut)}
+.bar{height:6px;background:var(--bd);border-radius:3px;overflow:hidden}.bar i{display:block;height:100%;background:var(--ac)}
+.chip{display:inline-block;margin-top:12px;padding:2px 12px;border-radius:99px;background:var(--on);font-size:15px}
+.card,.card2{position:relative;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px 44px 12px 14px;margin:8px 0}
+.card{cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:0 8px}
+.card span,.card em{color:var(--mut);font-size:14px;font-style:normal}
+.card2{padding:12px 14px}
+.x{position:absolute;right:4px;top:4px;width:40px;min-height:40px;border:none;background:none;color:var(--mut)}
+.mut{color:var(--mut);font-size:14px}#hint{color:var(--ac);min-height:26px}
+</style></head><body><div id="app"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script>
+const $=s=>document.querySelector(s),app=$('#app');
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let D={site:'大湖社區',people:[]},V='list',cur=null,step=0,tmp={},tpl=null;
+try{D=JSON.parse(localStorage.getItem('ev1'))||D;tpl=localStorage.getItem('tpl1')}catch(e){}
+const save=()=>{try{localStorage.setItem('ev1',JSON.stringify(D))}catch(e){}};
+const b2s=b=>{let s='';new Uint8Array(b).forEach(c=>s+=String.fromCharCode(c));return btoa(s)};
+const s2b=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0)).buffer;
+const age=p=>p.b?new Date().getFullYear()-(+p.b.slice(0,4)):'';
+/* ---- 題目 ---- */
+const YN=(id,q,bad)=>({id,s:'ICOPE',q,t:'yn',bad});
+const R5=[0,1,2,3,4,5].map(x=>[x+' 分',x]);
+const M=[
+['A','過去三個月是否因食慾不振、消化、咀嚼或吞嚥困難而減少食量？',[['嚴重減少',0],['中度減少',1],['沒有減少',2]]],
+['B','過去三個月體重下降情形',[['超過3公斤',0],['不知道',1],['1–3公斤',2],['沒有下降',3]]],
+['C','活動能力',[['臥床或輪椅',0],['可下床但不能外出',1],['可以外出',2]]],
+['D','過去三個月有無心理創傷或急性疾病？',[['有',0],['沒有',2]]],
+['E','精神心理問題',[['嚴重失智或憂鬱',0],['輕度失智',1],['無問題',2]]],
+['F','BMI（體重kg ÷ 身高m²）',[['小於19',0],['19 至未滿21',1],['21 至未滿23',2],['23以上',3]]],
+['G','可獨立生活（不住護理之家或醫院）？',[['否',0],['是',1]]],
+['H','每天服用超過三種處方藥物？',[['是',0],['否',1]]],
+['I','身上有壓傷或皮膚潰瘍？',[['是',0],['否',1]]],
+['J','每天吃幾餐完整餐食？',[['1餐',0],['2餐',1],['3餐',2]]],
+['K','蛋白質攝取：每天一份奶製品、每週兩份以上豆蛋類、每天肉魚禽，符合幾項？',[['0–1項',0],['2項',0.5],['3項',1]]],
+['L','每天吃兩份以上蔬菜或水果？',[['否',0],['是',1]]],
+['M','每天喝水量（含開水、茶、咖啡）',[['少於3杯',0],['3–5杯',0.5],['多於5杯',1]]],
+['N','進食方式',[['無人協助無法進食',0],['自己進食稍有困難',1],['自己進食無問題',2]]],
+['O','自覺營養狀況',[['覺得營養不良',0],['不確定',1],['覺得沒問題',2]]],
+['P','與同齡者比較，自覺健康狀況',[['不如同齡者',0],['不知道',0.5],['一樣好',1],['更好',2]]],
+['Q','上臂中圍（公分）',[['小於21',0],['21–22',0.5],['22以上',1]]],
+['R','小腿圍（公分）',[['小於31',0],['31以上',1]]]];
+const SIT=[['未達10秒',0],['達10秒',1]];
+const ST=[
+YN('A1','記住「鉛筆、汽車、書」（問完第三題再回來問），是否能全對？','否'),
+YN('A2','詢問今天日期（年/月/日），是否能全對？','否'),
+YN('A3','詢問「您現在在哪裡？」是否答對？','否'),
+{id:'B1',s:'ICOPE',q:'12秒內雙手抱胸連續起立5次：所需秒數（同時用於 SPPB 起坐分數）',t:'sec'},
+YN('C1','過去三個月體重無意減輕3公斤以上？','是'),
+YN('C2','過去三個月是否曾食慾不振？','是'),
+YN('D','眼睛看遠、看近、閱讀是否有困難？','是'),
+YN('E','氣音測試（6、1、9；不行再試2、5、7），是否兩耳都聽得到？','否'),
+YN('F1','過去兩週是否感到心煩或沒有希望？','是'),
+YN('F2','過去兩週是否減少很多活動和興趣？','是'),
+{id:'q',s:'腦適能',q:'定向感：今天是幾年、幾月、幾日、星期幾？（答對一項1分，滿分4）',t:'opt',o:R5.slice(0,5)},
+{id:'r',s:'腦適能',q:'訊息登錄：重述五個字詞（牙齒、毛線、教堂、菊花、紅色），只記第一次',t:'opt',o:R5},
+{id:'sc',s:'腦適能',q:'思考流暢：一分鐘內能說出幾種四隻腳的動物？（填個數）',t:'num'},
+{id:'t',s:'腦適能',q:'訊息回憶：剛才的五個字詞，想起幾個？',t:'opt',o:R5},
+...M.map(m=>({id:'m'+m[0],s:'MNA',q:m[0]+'．'+m[1],t:'opt',o:m[2]})),
+{id:'b1',s:'SPPB',q:'平衡：並排站立',t:'opt',o:SIT},
+{id:'b2',s:'SPPB',q:'平衡：半並排站立',t:'opt',o:SIT},
+{id:'b3',s:'SPPB',q:'平衡：直線站立',t:'opt',o:[['未達3秒',0],['3–9.99秒',1],['達10秒',2]]},
+{id:'g',s:'SPPB',q:'步行速度：走4公尺所需秒數',t:'sec'}];
+const N=ST.length,DOM={A:'認知',B:'行動',C:'營養',D:'視力',E:'聽力',F:'憂鬱'};
+/* ---- 計分 ---- */
+const chairS=v=>v=='x'?0:v<11.2?4:v<13.7?3:v<16.7?2:v<60?1:0;
+const gaitS=v=>v=='x'?0:v<4.82?4:v<6.21?3:v<8.71?2:1;
+const fluS=c=>c<5?0:c<9?1:2;
+function calc(p){const a=p.a,n=k=>+a[k]||0,c={};
+c.flu=a.sc==null?0:fluS(a.sc);c.brain=n('q')+n('r')+c.flu+n('t');
+c.mna=M.reduce((s,m)=>s+n('m'+m[0]),0);
+c.bal=n('b1')+n('b2')+n('b3');c.gait=a.g==null?0:gaitS(a.g);c.chair=a.B1==null?0:chairS(a.B1);
+c.sppb=c.bal+c.gait+c.chair;c.slow=a.B1=='x'||a.B1>12;
+const ab=new Set();ST.forEach(s=>{if(s.bad&&a[s.id]===s.bad)ab.add(DOM[s.id[0]])});
+if(a.B1!=null&&c.slow)ab.add('行動');c.ab=[...ab];return c}
+const done=p=>ST.every(s=>p.a[s.id]!=null);
+/* ---- 畫面 ---- */
+function R(){app.innerHTML=({list:L,info:F,q:Q,sum:S})[V]()}
+function L(){return `<h1>長輩評估登記</h1>
+<label>據點名稱<input value="${esc(D.site)}" oninput="D.site=this.value;save()"></label>
+${D.people.map((p,i)=>`<div class="card" onclick="open_(${i})"><b>${i+1}. ${esc(p.n)}</b><em>${done(p)?'✔ 完成':'已答 '+Object.keys(p.a).length+'/'+N}</em><span>${age(p)}歲・${esc(p.g)}</span><button class="x" onclick="event.stopPropagation();del(${i})">✕</button></div>`).join('')||'<p class="mut">尚未新增長輩</p>'}
+<button class="pri" onclick="add()">＋ 新增長輩</button>
+<button ${D.people.length?'':'disabled'} onclick="gen()">產生 Excel（${D.people.length} 人）</button>
+<p id="msg" class="mut">${tpl?'已記住範本檔。<a href="#" onclick="tpl=null;try{localStorage.removeItem(\'tpl1\')}catch(e){}R();return false">更換範本</a>':'第一次產生時，請選擇你的「前後側登記表單」範本檔，輸出格式會與它完全一致。'}</p>
+<input type="file" id="f" accept=".xlsx" hidden>`}
+function F(){return `<h1>${cur==null?'新增長輩':'修改基本資料'}</h1>
+<label>姓名<input id="n" value="${esc(tmp.n)}"></label>
+<label>生日<input id="b" type="date" value="${esc(tmp.b)}" max="${new Date().toISOString().slice(0,10)}"></label>
+<div class="row">${['男','女'].map(g=>`<button class="opt ${tmp.g==g?'on':''}" onclick="sync();tmp.g='${g}';R()">${g}</button>`).join('')}</div>
+<button class="pri" onclick="go()">${cur==null?'開始評估':'儲存'}</button>
+<button class="ghost" onclick="V=cur==null?'list':'sum';R()">取消</button>`}
+function chip(p,s){const c=calc(p);return s=='ICOPE'?`異常 ${c.ab.length} 項`:s=='MNA'?`${c.mna}/30 分`:''}
+function Q(){const p=D.people[cur],s=ST[step],v=p.a[s.id];
+let h=`<div class="top"><button class="ghost" onclick="V='list';R()">‹ 名單</button><b>${esc(p.n)}</b><span>${step+1}/${N}</span></div><div class="bar"><i style="width:${(step+1)/N*100}%"></i></div>
+<span class="chip">${s.s}${chip(p,s.s)?'・'+chip(p,s.s):''}</span><h2>${esc(s.q)}</h2>`;
+if(s.t=='yn')h+='<div class="row">'+['是','否'].map(x=>`<button class="opt ${v==x?'on':''}" onclick="ans('${x}')">${x}</button>`).join('')+'</div>';
+if(s.t=='opt')h+=s.o.map(o=>`<button class="opt ${v===o[1]?'on':''}" onclick="ans(${o[1]})">${o[0]}${s.s=='腦適能'?'':`<small>${o[1]} 分</small>`}</button>`).join('');
+if(s.t=='num'||s.t=='sec'){h+=`<input id="inp" type="number" inputmode="decimal" step="any" value="${typeof v=='number'?v:''}" oninput="hint(this.value)" onkeydown="if(event.key=='Enter')numOK()"><div id="hint"></div><button class="pri" onclick="numOK()">確定，下一題</button>`;
+if(s.t=='sec')h+=`<button class="opt ${v=='x'?'on':''}" onclick="ans('x')">無法完成</button>`}
+return h+`<button class="ghost" onclick="${step?'step--;R()':'V=\'list\';R()'}">‹ 上一題</button>`}
+function S(){const p=D.people[cur],c=calc(p),a=p.a;
+return `<h1>${esc(p.n)} <small>${age(p)}歲・${esc(p.g)}</small></h1>
+<div class="card2"><b>ICOPE</b>　${c.ab.length?'需留意：'+c.ab.join('、'):'六大領域皆無異常'}</div>
+<div class="card2"><b>腦適能</b><br><span class="mut">定向 ${a.q} ・登錄 ${a.r} ・流暢 ${c.flu} ・回憶 ${a.t}</span></div>
+<div class="card2"><b>MNA</b>　${c.mna}/30 分・${c.mna>=24?'營養正常':c.mna>=17?'有營養不良風險':'營養不良'}</div>
+<div class="card2"><b>SPPB</b><br><span class="mut">平衡 ${c.bal} ・步行 ${c.gait} ・起坐 ${c.chair}</span></div>
+<button class="pri" onclick="add()">儲存，新增下一位</button>
+<button onclick="V='list';R()">回到名單</button>
+<button class="ghost" onclick="tmp={...p};V='info';R()">修改基本資料</button>
+<button class="ghost" onclick="step=0;V='q';R()">重看答案</button>`}
+/* ---- 動作 ---- */
+function sync(){const n=$('#n'),b=$('#b');if(n)tmp.n=n.value.trim();if(b)tmp.b=b.value}
+function add(){cur=null;tmp={n:'',b:'',g:''};V='info';R()}
+function go(){sync();if(!tmp.n||!tmp.b||!tmp.g){alert('請填寫姓名、生日、性別');return}
+if(cur==null){D.people.push({n:tmp.n,b:tmp.b,g:tmp.g,a:{}});cur=D.people.length-1;step=0;V='q'}
+else{Object.assign(D.people[cur],{n:tmp.n,b:tmp.b,g:tmp.g});V='sum'}save();R()}
+function open_(i){cur=i;const p=D.people[i];step=ST.findIndex(s=>p.a[s.id]==null);V=step<0?'sum':'q';if(step<0)step=0;R()}
+function del(i){if(confirm('刪除 '+D.people[i].n+' 的資料？')){D.people.splice(i,1);save();R()}}
+function ans(v){const p=D.people[cur];p.a[ST[step].id]=v;save();if(step<N-1)step++;else V='sum';R()}
+function numOK(){const v=parseFloat($('#inp').value);if(isNaN(v))return;ans(v)}
+function hint(v){const s=ST[step];v=parseFloat(v);let t='';if(!isNaN(v)){if(s.id=='B1')t=`起坐 ${chairS(v)} 分・${v>12?'大於12秒':'12秒內'}`;if(s.id=='g')t=`步行 ${gaitS(v)} 分`;if(s.id=='sc')t=`流暢 ${fluS(v)} 分`}$('#hint').textContent=t}
+function pick(){return new Promise(res=>{const f=$('#f');f.onchange=async()=>{const fl=f.files[0];if(!fl)return res(false);tpl=b2s(await fl.arrayBuffer());try{localStorage.setItem('tpl1',tpl)}catch(e){}res(true)};f.click()})}
+/* ---- 產生 Excel（以使用者範本為底，格式不變） ---- */
+async function gen(){const m=$('#msg');
+try{if(!tpl&&!await pick())return;
+if(!window.ExcelJS){m.textContent='Excel 元件載入失敗，請確認網路連線。';return}
+m.textContent='產生中…';
+const wb=new ExcelJS.Workbook();
+try{await wb.xlsx.load(s2b(tpl))}catch(e){tpl=null;try{localStorage.removeItem('tpl1')}catch(_){}m.textContent='範本檔無法讀取，請重新選擇。';return}
+const[Wi,Wp,Wn]=wb.worksheets;
+[Wi,Wp,Wn].forEach(w=>w.getCell('A1').value='據點名稱：'+D.site);
+const clr=(w,r0,r1,c1)=>{for(let r=r0;r<=r1;r++)for(let c=2;c<=c1;c++)w.getCell(r,c).value=null};
+clr(Wi,6,24,39);clr(Wp,6,18,9);clr(Wn,5,17,24);
+const put=(w,r,last,i,vals)=>{if(r>last){const s=w.getRow(last),d=w.getRow(r);s.eachCell({includeEmpty:true},(c,k)=>{d.getCell(k).style={...c.style}});w.getCell(r,1).value=i+1}
+vals.forEach((v,k)=>{w.getCell(r,2+k).value=v==null?null:v})};
+D.people.forEach((p,i)=>{const c=calc(p),a=p.a,y=p.b?+p.b.slice(0,4):null,id=[p.n,y,p.g,age(p)||null],mm=M.map(x=>a['m'+x[0]]),B=a.B1;
+put(Wi,6+i,24,i,[...id,a.A1,a.A2,a.A3,B==null?null:B=='x'?0:B,B==null?null:c.slow?'是':'否',a.C1,a.C2,a.D,a.E,a.F1,a.F2,a.q,a.r,a.sc==null?null:c.flu,a.t,...mm,c.mna]);
+put(Wp,6+i,18,i,[...id,c.bal,a.g==null?null:c.gait,B==null?null:c.chair,{formula:`SUM(F${6+i}:H${6+i})`,result:c.sppb}]);
+put(Wn,5+i,17,i,[...id,...mm,c.mna])});
+const buf=await wb.xlsx.writeBuffer();
+let dl=null;try{if(window.claude){dl=await claude.use('downloads');if(!dl){const pm=await claude.use('permissions');if(pm){await pm.request(['downloads']);dl=await claude.use('downloads')}}}}catch(_){}
+const fn='前後側登記表單_'+new Date().toISOString().slice(0,10)+'.xlsx',blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+if(!dl){const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=fn;document.body.appendChild(a);a.click();a.remove();m.textContent='已嘗試直接下載；若沒有檔案出現，表示此檢視環境不支援下載，請改用瀏覽器開啟 claude.ai 的 artifact 連結，或用 Claude App 開啟。';return}
+await dl.save({filename:fn,data:blob});
+m.textContent='完成。'}
+catch(e){m.textContent=e&&e.code=='declined'?'已取消儲存。':'失敗：'+(e&&(e.message||e.code)||e)}}
+R();
+</script></body></html>
