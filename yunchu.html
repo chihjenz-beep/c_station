@@ -2,36 +2,54 @@
 <html lang="zh-Hant"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>長輩評估登記</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#fafaf7;--fg:#1c1c1a;--mut:#6b6b66;--card:#fff;--bd:#d6d6cd;--ac:#1f6f5c;--acfg:#fff;--on:#d8efe7;--warn:#b4451f;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#171716;--fg:#ecece6;--mut:#9a9a93;--card:#222220;--bd:#3a3a36;--ac:#4cb89c;--acfg:#08241c;--on:#1d3a32;--warn:#e88a63}}
-:root[data-theme="dark"]{--bg:#171716;--fg:#ecece6;--mut:#9a9a93;--card:#222220;--bd:#3a3a36;--ac:#4cb89c;--acfg:#08241c;--on:#1d3a32;--warn:#e88a63}
+:root{--bg1:#f4edda;--bg2:#ece3cb;--panel:#fbf8ee;--card:#fffdf7;--fg:#2b2a27;--mut:#7a766a;--bd:#ddd4bd;--gold:#b98a58;--sage:#9db5a0;--ac:#2f5d4b;--acfg:#f7f5ec;--on:#dfeadf;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg1:#1d211e;--bg2:#171a18;--panel:#232824;--card:#2a302b;--fg:#efeadc;--mut:#a7ab9d;--bd:#424a43;--gold:#c79b68;--sage:#5f7f69;--ac:#7fc0a0;--acfg:#10231a;--on:#2f4237}}
+:root[data-theme="dark"]{--bg1:#1d211e;--bg2:#171a18;--panel:#232824;--card:#2a302b;--fg:#efeadc;--mut:#a7ab9d;--bd:#424a43;--gold:#c79b68;--sage:#5f7f69;--ac:#7fc0a0;--acfg:#10231a;--on:#2f4237}
+@font-face{font-family:"KebenYasong";src:local("三极刻本雅宋简体"),local("三極刻本雅宋"),local("三极刻本雅宋"),local("SJKebenYasong"),url("kebenyasong-title.woff2") format("woff2");font-display:swap}
+.ttl{font-family:"KebenYasong","Noto Serif TC","Songti TC",serif;font-weight:400;font-size:1.12em}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:18px/1.5 system-ui,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif}
-#app{max-width:560px;margin:0 auto;padding:16px}
-h1{font-size:22px;margin:8px 0 14px}h1 small{font-size:15px;color:var(--mut);font-weight:400}
-h2{font-size:21px;line-height:1.45;margin:14px 0}
-label{display:block;margin:10px 0;color:var(--mut);font-size:15px}
-input{width:100%;font:inherit;padding:12px;margin-top:4px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--fg)}
-button{font:inherit;color:var(--fg);width:100%;min-height:54px;margin:6px 0;border-radius:12px;border:1px solid var(--bd);background:var(--card);cursor:pointer}
+body{margin:0;background:linear-gradient(180deg,var(--bg1),var(--bg2));background-attachment:fixed;color:var(--fg);font:18px/1.6 "Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif}
+#app{max-width:560px;margin:0 auto;padding:0 16px 40px;background:var(--panel);min-height:100vh;box-shadow:0 0 0 1px var(--bd)}
+.hd{margin:0 -16px 6px;padding:22px 16px 0;text-align:center;background:var(--bg1);border-bottom:8px solid var(--panel);box-shadow:0 3px 0 var(--bd)}
+.hd h1{margin:0}
+.shelf{display:block;width:100%;height:auto;margin-top:6px}
+h1{font:600 25px/1.4 "Noto Serif TC",Georgia,serif;margin:6px 0 4px;text-align:center;color:var(--fg);letter-spacing:.14em}
+h1 small{display:block;font:400 14px/1.6 "Noto Sans TC",system-ui,sans-serif;color:var(--mut);letter-spacing:.12em}
+.ic{width:46px;height:38px;display:block;margin:10px auto 0}.fl2{width:36px;height:36px}
+.dv{display:flex;align-items:center;gap:10px;margin:12px 0;color:var(--gold)}.dv:before,.dv:after{content:"";flex:1;border-top:1px solid var(--bd)}.dv svg{width:36px;height:36px}
+h2{font:600 21px/1.55 "Noto Serif TC",Georgia,serif;margin:14px 0}
+label{display:block;margin:10px 0;color:var(--mut);font-size:15px;letter-spacing:.06em}
+input{width:100%;font:inherit;padding:11px 14px;margin-top:4px;border:1.5px solid var(--fg);border-radius:4px;background:var(--card);color:var(--fg)}
+button{font:inherit;color:var(--fg);width:100%;min-height:54px;margin:7px 0;border-radius:6px;border:1.5px solid var(--fg);background:var(--card);cursor:pointer;letter-spacing:.06em}
 button:disabled{opacity:.4}
-.pri{background:var(--ac);color:var(--acfg);border-color:var(--ac);font-weight:600}
-.opt{text-align:left;padding:10px 16px;display:flex;justify-content:space-between;align-items:center}
-.opt.on{background:var(--on);border-color:var(--ac)}
+.pri{background:var(--ac);color:var(--acfg);border-color:var(--ac);box-shadow:0 3px 0 var(--gold);font-weight:600}
+.opt{text-align:left;padding:10px 18px;display:flex;justify-content:space-between;align-items:center}
+.opt.on{background:var(--on);border-color:var(--ac);box-shadow:inset 5px 0 0 var(--ac)}
 .opt small{color:var(--mut)}
 .row{display:flex;gap:8px}.row .opt{justify-content:center}
 .ghost{border:none;background:none;color:var(--mut);min-height:44px;width:auto;padding:0 8px}
-.top{display:flex;justify-content:space-between;align-items:center;color:var(--mut)}
-.bar{height:6px;background:var(--bd);border-radius:3px;overflow:hidden}.bar i{display:block;height:100%;background:var(--ac)}
-.chip{display:inline-block;margin-top:12px;padding:2px 12px;border-radius:99px;background:var(--on);font-size:15px}
-.card,.card2{position:relative;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px 44px 12px 14px;margin:8px 0}
-.card{cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:0 8px}
+.top{display:flex;justify-content:space-between;align-items:center;color:var(--mut);padding-top:10px}
+.bar{height:8px;background:var(--bd);border-radius:2px;overflow:hidden}.bar i{display:block;height:100%;background:var(--ac)}
+.chip{display:inline-block;margin-top:12px;padding:2px 14px;border-radius:2px;background:var(--fg);color:var(--panel);font-size:14px;letter-spacing:.14em}
+.card,.card2{position:relative;background:var(--card);border:2px solid var(--fg);border-radius:2px;padding:12px 44px 12px 16px;margin:12px 0;box-shadow:inset 0 0 0 5px var(--card),inset 0 0 0 6px var(--bd)}
+.card{cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:0 8px}.card b{color:var(--ac)}
 .card span,.card em{color:var(--mut);font-size:14px;font-style:normal}
-.card2{padding:12px 14px}
+.card2{padding:14px 20px}.card2 b{color:var(--ac)}
 .x{position:absolute;right:4px;top:4px;width:40px;min-height:40px;border:none;background:none;color:var(--mut)}
-.mut{color:var(--mut);font-size:14px}#hint{color:var(--ac);min-height:26px}
-</style></head><body><div id="app"></div>
+.mut{color:var(--mut);font-size:14px;text-align:center}#hint{color:var(--ac);min-height:26px}
+</style></head><body><svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="shelf" viewBox="0 0 360 100"><g stroke="#2b2a27" stroke-width="1.2"><rect x="4" y="38" width="46" height="46" fill="#fffdf7" stroke-width="3"/><rect x="12" y="46" width="30" height="30" fill="#e9e6dc" stroke-width=".8"/><rect x="58" y="34" width="12" height="50" fill="#e4e8ef"/><rect x="71" y="46" width="12" height="38" fill="#a9b2aa"/><rect x="84" y="42" width="11" height="42" fill="#f3f1ea"/><rect x="96" y="28" width="13" height="56" fill="#2b2a27"/><rect x="190" y="38" width="13" height="46" fill="#f7f6f0"/><rect x="204" y="44" width="11" height="40" fill="#f2dc4a"/><rect x="216" y="32" width="12" height="52" fill="#dfe6ee"/><rect x="229" y="40" width="11" height="44" fill="#9ccbd6"/><rect x="241" y="30" width="12" height="54" fill="#2b2a27"/></g>
+<path d="M130 84c-9 0-12-12-7-21 3-6 3-9 0-11h14c-3 2-3 5 0 11 5 9 2 21-7 21z" fill="#cfd9cc" stroke="#2b2a27" stroke-width="1.2"/><g stroke="#d9c79a" stroke-width="3" stroke-linecap="round"><path d="M130 52 124 28M130 52v-27M130 52l7-24M130 52l-11-18M130 52l12-16"/></g>
+<path d="M290 84C268 80 262 56 276 40c5 6 10 6 15 0 14 12 8 38-1 44z" fill="#3f6b52" stroke="#2b2a27" stroke-width="1.2"/><path d="M290 84c-3-12-4-26 0-42" stroke="#cfe3d3" stroke-width="1.5" fill="none"/>
+<path d="M312 84c0-22 40-22 40 0z" fill="#dff0f2" fill-opacity=".6" stroke="#6f8f95" stroke-width="1.5"/><circle cx="332" cy="57" r="3" fill="none" stroke="#6f8f95" stroke-width="1.5"/>
+<rect x="0" y="84" width="360" height="9" fill="#fffdf7" stroke="#2b2a27" stroke-width="1.2"/><rect x="0" y="93" width="360" height="4" fill="#b98a58"/></symbol>
+<symbol id="fl" viewBox="0 0 40 40"><path d="M20 37C4 31 2 14 14 6c4 6 8 6 12 0 12 8 10 25-6 31z" fill="#3f6b52" stroke="#2b2a27" stroke-width="1.4"/><path d="M20 37V12" stroke="#cfe3d3" stroke-width="1.6"/></symbol>
+<symbol id="st" viewBox="0 0 48 48"><g stroke="#2b2a27" stroke-width="1.2"><rect x="8" y="14" width="9" height="28" fill="#2b2a27"/><rect x="18" y="8" width="9" height="34" fill="#dfe6ee"/><rect x="28" y="18" width="9" height="24" fill="#9ccbd6"/></g><path d="M5 42h38" stroke="#b98a58" stroke-width="3"/></symbol>
+<symbol id="tp" viewBox="0 0 56 44"><path d="M8 34C8 10 48 10 48 34z" fill="#dff0f2" fill-opacity=".55" stroke="#6f8f95" stroke-width="2"/><circle cx="28" cy="9" r="3.5" fill="none" stroke="#6f8f95" stroke-width="2"/><rect x="4" y="34" width="48" height="7" rx="3" fill="#b98a58" stroke="#2b2a27" stroke-width="1.2"/></symbol>
+</defs></svg><div id="app"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script>
 const $=s=>document.querySelector(s),app=$('#app');
@@ -101,14 +119,16 @@ if(a.B1!=null&&c.slow)ab.add('行動');c.ab=[...ab];return c}
 const done=p=>ST.every(s=>p.a[s.id]!=null);
 /* ---- 畫面 ---- */
 function R(){app.innerHTML=({list:L,info:F,q:Q,sum:S})[V]()}
-function L(){return `<h1>長輩評估登記</h1>
+function L(){return `<header class="hd"><h1><span class="ttl">長輩評估登記</span><small>優雅慢活・書架上的健康時光</small></h1><svg class="shelf" viewBox="0 0 360 100"><use href="#shelf"/></svg></header><div class="dv"><svg><use href="#st"/></svg></div>
 <label>據點名稱<input value="${esc(D.site)}" oninput="D.site=this.value;save()"></label>
-${D.people.map((p,i)=>`<div class="card" onclick="open_(${i})"><b>${i+1}. ${esc(p.n)}</b><em>${done(p)?'✔ 完成':'已答 '+Object.keys(p.a).length+'/'+N}</em><span>${age(p)}歲・${esc(p.g)}</span><button class="x" onclick="event.stopPropagation();del(${i})">✕</button></div>`).join('')||'<p class="mut">尚未新增長輩</p>'}
+${D.people.map((p,i)=>`<div class="card" onclick="open_(${i})"><b>${i+1}. ${esc(p.n)}${p.d?'（測試）':''}</b><em>${done(p)?'✔ 完成':'已答 '+Object.keys(p.a).length+'/'+N}</em><span>${age(p)}歲・${esc(p.g)}</span><button class="x" onclick="event.stopPropagation();del(${i})">✕</button></div>`).join('')||'<p class="mut">尚未新增長輩</p>'}
 <button class="pri" onclick="add()">＋ 新增長輩</button>
+<button onclick="demo()">🎲 隨機產生 5 位測試資料</button>
 <button ${D.people.length?'':'disabled'} onclick="gen()">產生 Excel（${D.people.length} 人）</button>
-<p id="msg" class="mut">已內建你的範本，按下即直接產生，格式與範本一致。</p>
+<div class="row"><button class="ghost" onclick="demo()">隨機產生測試資料</button><button class="ghost" onclick="clearDemo()">清除測試資料</button></div>
+${D.people.length?'<button class="ghost" onclick="clr_()">清空全部名單</button>':''}<p id="msg" class="mut">已內建你的範本，按下即直接產生，格式與範本一致。</p>
 <input type="file" id="f" accept=".xlsx" hidden>`}
-function F(){return `<h1>${cur==null?'新增長輩':'修改基本資料'}</h1>
+function F(){return `<svg class="ic fl2"><use href="#fl"/></svg><h1>${cur==null?'新增長輩':'修改基本資料'}</h1>
 <label>姓名<input id="n" value="${esc(tmp.n)}"></label>
 <label>生日<input id="b" type="date" value="${esc(tmp.b)}" max="${new Date().toISOString().slice(0,10)}"></label>
 <div class="row">${['男','女'].map(g=>`<button class="opt ${tmp.g==g?'on':''}" onclick="sync();tmp.g='${g}';R()">${g}</button>`).join('')}</div>
@@ -124,7 +144,7 @@ if(s.t=='num'||s.t=='sec'){h+=`<input id="inp" type="number" inputmode="decimal"
 if(s.t=='sec')h+=`<button class="opt ${v=='x'?'on':''}" onclick="ans('x')">無法完成</button>`}
 return h+`<button class="ghost" onclick="${step?'step--;R()':'V=\'list\';R()'}">‹ 上一題</button>`}
 function S(){const p=D.people[cur],c=calc(p),a=p.a;
-return `<h1>${esc(p.n)} <small>${age(p)}歲・${esc(p.g)}</small></h1>
+return `<svg class="ic"><use href="#tp"/></svg><h1>${esc(p.n)} <small>${age(p)}歲・${esc(p.g)}</small></h1>
 <div class="card2"><b>ICOPE</b>　${c.ab.length?'需留意：'+c.ab.join('、'):'六大領域皆無異常'}</div>
 <div class="card2"><b>腦適能</b><br><span class="mut">定向 ${a.q} ・登錄 ${a.r} ・流暢 ${c.flu} ・回憶 ${a.t}</span></div>
 <div class="card2"><b>MNA</b>　${c.mna}/30 分・${c.mna>=24?'營養正常':c.mna>=17?'有營養不良風險':'營養不良'}</div>
@@ -135,6 +155,16 @@ return `<h1>${esc(p.n)} <small>${age(p)}歲・${esc(p.g)}</small></h1>
 <button class="ghost" onclick="tmp={...p};V='info';R()">修改基本資料</button>
 <button class="ghost" onclick="step=0;V='q';R()">重看答案</button>`}
 /* ---- 動作 ---- */
+function demo(n=5){const sn='陳林黃張李王吳劉蔡楊許鄭謝郭洪曾邱廖賴徐周葉蘇莊呂江何蕭羅高潘簡朱鍾彭游詹',gn='秀英美玉淑惠月春金花蓮珠枝雲鳳桃梅菊蘭婉明德福財興國榮昌順進添',pk=a=>a[Math.floor(Math.random()*a.length)],ri=(a,b)=>a+Math.floor(Math.random()*(b-a+1)),z=x=>String(x).padStart(2,'0');
+for(let i=0;i<n;i++){const y=ri(1935,1960),a={};
+ST.forEach(s=>{if(s.t=='yn')a[s.id]=Math.random()<.8?(s.bad=='是'?'否':'是'):s.bad;
+else if(s.t=='opt')a[s.id]=s.o[s.o.length-1-Math.floor(Math.random()**2*s.o.length)][1];
+else if(s.id=='B1')a.B1=Math.random()<.05?'x':+(8+Math.random()*10).toFixed(2);
+else if(s.id=='g')a.g=Math.random()<.03?'x':+(3.5+Math.random()*6).toFixed(2);
+else a[s.id]=ri(3,18)});
+D.people.push({n:pk(sn)+pk(gn)+pk(gn),b:y+'-'+z(ri(1,12))+'-'+z(ri(1,28)),g:pk(['男','女']),a})}
+save();R()}
+function clr_(){if(confirm('清空全部名單？此動作無法復原')){D.people=[];save();R()}}
 function sync(){const n=$('#n'),b=$('#b');if(n)tmp.n=n.value.trim();if(b)tmp.b=b.value}
 function add(){cur=null;tmp={n:'',b:'',g:''};V='info';R()}
 function go(){sync();if(!tmp.n||!tmp.b||!tmp.g){alert('請填寫姓名、生日、性別');return}
@@ -145,6 +175,14 @@ function del(i){if(confirm('刪除 '+D.people[i].n+' 的資料？')){D.people.sp
 function ans(v){const p=D.people[cur];p.a[ST[step].id]=v;save();if(step<N-1)step++;else V='sum';R()}
 function numOK(){const v=parseFloat($('#inp').value);if(isNaN(v))return;ans(v)}
 function hint(v){const s=ST[step];v=parseFloat(v);let t='';if(!isNaN(v)){if(s.id=='B1')t=`起坐 ${chairS(v)} 分・${v>12?'大於12秒':'12秒內'}`;if(s.id=='g')t=`步行 ${gaitS(v)} 分`;if(s.id=='sc')t=`流暢 ${fluS(v)} 分`}$('#hint').textContent=t}
+function demo(){const n=parseInt(prompt('隨機產生幾位測試長輩？',5));if(!n||n<1)return;
+const r=k=>Math.floor(Math.random()*k),pk=a=>a[r(a.length)],f=2+Math.random();
+const fam='陳林黃張李王吳劉蔡楊',giv=['淑芬','金龍','美玉','阿嬌','文雄','秀英','進財','春嬌','明德','玉蘭','國強','寶珠'];
+for(let i=0;i<Math.min(n,50);i++){const a={};
+ST.forEach(s=>{a[s.id]=s.t=='yn'?pk(['是','否']):s.t=='opt'?pk(s.o)[1]:s.id=='sc'?3+r(13):s.id=='B1'?(r(12)?+(8+Math.random()*10).toFixed(2):'x'):(r(12)?+(3.5+Math.random()*6).toFixed(2):'x')});
+D.people.push({n:pk(fam)+pk(giv),b:(1935+r(21))+'-'+String(1+r(12)).padStart(2,'0')+'-'+String(1+r(28)).padStart(2,'0'),g:pk(['男','女']),a,d:1})}
+save();R()}
+function clearDemo(){if(confirm('刪除所有標示「測試」的資料？')){D.people=D.people.filter(p=>!p.d);save();R()}}
 function pick(){return new Promise(res=>{const f=$('#f');f.onchange=async()=>{const fl=f.files[0];if(!fl)return res(false);tpl=b2s(await fl.arrayBuffer());try{localStorage.setItem('tpl1',tpl)}catch(e){}res(true)};f.click()})}
 /* ---- 產生 Excel（以使用者範本為底，格式不變） ---- */
 async function gen(){const m=$('#msg');
