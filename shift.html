@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-Hant"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>115年11月 排班查詢</title>
+<style>
+:root{--bg:#fafaf7;--fg:#222;--mut:#777;--card:#fff;--line:#e3e3dc;--acc:#2f6f5e;--off:#c0392b;--offbg:#fbeceb;--lv:#a8650a;--lvbg:#fdf3e0;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17181a;--fg:#e8e8e4;--mut:#9a9a94;--card:#222426;--line:#35383a;--acc:#6fc1a9;--off:#ef8a7f;--offbg:#3a2523;--lv:#e6b25c;--lvbg:#3a2f1c}}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 -apple-system,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif}
+main{max-width:760px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:0 0 4px}.sub{color:var(--mut);font-size:13px;margin-bottom:12px}
+.tabs{display:flex;gap:8px;margin-bottom:12px}
+.tabs button{flex:1;padding:10px;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:8px;font:inherit;cursor:pointer}
+.tabs button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+select,input{width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--fg);font:inherit;margin-bottom:10px}
+.row{display:flex;gap:10px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line)}
+.list{background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.list .row:last-child{border:0}
+.d{width:64px;color:var(--mut);flex:none}.d b{color:var(--fg)}
+.nm{flex:1}.c{font-weight:600;min-width:70px;text-align:right}
+.tag{font-size:12px;padding:1px 7px;border-radius:10px;background:var(--lvbg);color:var(--lv);margin-left:6px}
+.off{background:var(--offbg)}.off .c{color:var(--off)}
+.lv .c{color:var(--lv)}.we .d b{color:var(--off)}
+.note{font-size:13px;color:var(--acc);padding:2px 12px 8px;background:var(--card)}
+.info{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:14px}
+.sites{color:var(--mut);font-size:13px}.warn{font-size:12px;color:var(--mut);margin-top:14px}
+.nav{display:flex;gap:8px;margin-bottom:10px}.nav button{flex:1;padding:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:8px;font:inherit}
+.sum{font-size:13px;color:var(--mut);margin-bottom:8px}
+.pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}.pill{padding:7px 14px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--fg);font:inherit;font-size:15px;cursor:pointer}.pill.on{background:var(--acc);color:#fff;border-color:var(--acc)}.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:12px}.cal .h{text-align:center;font-size:13px;color:var(--mut)}.cal button{height:38px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--fg);font:inherit;cursor:pointer;position:relative}.cal button.we{color:var(--off)}.cal button.on{background:var(--acc);color:#fff;border-color:var(--acc)}.cal i{position:absolute;bottom:5px;left:50%;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--lv)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin-bottom:10px}.cell{display:flex;justify-content:space-between;gap:6px;padding:7px 10px;background:var(--card);border:1px solid var(--line);border-radius:8px;font-size:15px}.cell b{color:var(--acc)}.grp{margin-bottom:8px;padding:8px 10px;border-radius:8px;background:var(--card);border:1px solid var(--line);font-size:14px}.grp em{font-style:normal;font-weight:600;margin-right:8px}.grp.off{background:var(--offbg)}.grp.off em{color:var(--off)}.grp.lv{background:var(--lvbg)}.grp.lv em{color:var(--lv)}.chip{display:inline-block;margin:2px 10px 2px 0}
+.mcal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.mcal .h{text-align:center;font-size:13px;color:var(--mut)}.mc{position:relative;min-height:56px;border:1px solid var(--line);border-radius:8px;background:var(--card);padding:3px 4px;display:flex;flex-direction:column;overflow:hidden}.mc small{color:var(--mut);font-size:11px}.mc.we small{color:var(--off)}.mc b{margin:auto;font-size:14px;text-align:center;word-break:break-all}.mc.off{background:var(--offbg)}.mc.off b{color:var(--off);font-weight:500;font-size:12px}.mc.lv{background:var(--lvbg)}.mc.lv b{color:var(--lv)}.mc i{position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:var(--acc)}.mnote{grid-column:1/-1;font-size:13px;color:var(--acc);margin-top:6px}
+</style></head><body><main>
+<h1>115年11月 排班查詢</h1>
+<div class="sub">2026年11月 · 依姓名或日期查詢</div>
+<div class="tabs"><button id="t1" class="on">依姓名</button><button id="t2">依日期</button></div>
+<div id="v1"><div id="pills" class="pills"></div><div id="sites"></div><div id="sum" class="sum"></div><div id="l1" class="mcal"></div></div>
+<div id="v2" hidden><div id="cal" class="cal"></div>
+<input id="q" placeholder="搜尋姓名…"><div id="dn"></div><div id="l2"></div></div>
+<div class="info" style="margin-top:12px"><b>說明</b>：休假＝休息；成果＝成果日；特休／補休＝請假；藥局＝藥局班；其餘數字或符號（如 5、18/18、66/）為班別／據點代碼，依原表呈現。</div>
+<div class="warn">資料由班表圖片轉錄，少數手寫碼可能有誤，請以原表為準。</div>
+<script>
+const H="休假",C="成果",Y="藥局",W="日一二三四五六";
+const N=["高麗君","翁美慧","蔡雅安","潘淑鳳","顏淑萍","曾麗惠","陳韻筑","鍾文鶯","林智仁","黃千千","蕭淑滿","黃筱蘋","李孟娟","蔡芸樺","徐暐達","劉潤琴","張淑貞","蔡尚文","袁子晏","侯妙薇","侯雅琳","黃靚","黃意筑","黃相瑜","黃尹慈","許勺瑄"];
+const S={高麗君:"型厝、新店",翁美慧:"六腳、官和",蔡雅安:"龍港、溪下、雙、函",潘淑鳳:"國姓、下寮、西安",顏淑萍:"復興、岑海、圍潭",曾麗惠:"興中里、振寮、北華",陳韻筑:"永安、江山"};
+const NOTE={3:"志協開會",7:"岑海補課",10:"岑海北華停課",12:"北華補課",18:"音樂課／考試里",25:"音樂課／見龍里"};
+const X={H:H,C:C,Y:Y};
+const raw={
+高麗君:"H,H,0,型/,0/休,休/12,0,H,H,H,型/,/休,16/12,H,H,2,3,H,型/休,16/12,H,H,H,H,型/12,/休,0,H,H,0",
+翁美慧:"C,,開會,/13,H,0/,66/,H,,0,/13,0/休假,0/,,H,0,0,/13,H,0,H,H,66/,0,/13,H,66/,0,H,0",
+蔡雅安:"H,H,H,龍/溪,0,雙/0,,H,H,H,龍/溪,3/0,雙/0,,H,H,H,龍/溪,0,雙/0,0,H,H,H,龍/溪,0,雙/0,H,H,H",
+潘淑鳳:"C,0,18/18,17/17,66,-/16,,H,0,18/18,17/17,休/9,-/16,0,H,H,18/18,17/17,0,-/16,66/,H,0,18/18,17/17,0,-/16,H,H,14",
+顏淑萍:"H,H,8/1,/圍,H,-/,H,H,H,8/,圍/1,H,H,H,H,H,8/1,圍/,H,H,,H,H,-/1,圍/,8/-,16,,H,H",
+曾麗惠:"C,15,9/9,3/,4/0,H,H,H,H,H,3/3,9/3,4/3,0,H,4/3,9/9,3/3,3,3,0,H,4/,9/9,3/3,3,3,,H,4/",
+陳韻筑:"C,3,6/0,5/,H,3/0,0,H,3,6/0,5/,H,3/4,,H,3,6/0,5/,H,H,H,H,3,6/3,5/,H,0,0,H,3",
+黃意筑:"H,0,Y,H,Y,0/,,H,0,Y,H,Y,0,Y,H,0,Y,H,Y,0,,H,0,Y,H,Y,,Y,H,0/藥"};
+const base={鍾文鶯:"5",林智仁:"2",黃千千:"1",蕭淑滿:"3",黃筱蘋:"4",李孟娟:"6",蔡芸樺:"7",徐暐達:"8",劉潤琴:"10",張淑貞:"11",蔡尚文:"12",袁子晏:"13",侯妙薇:"14",侯雅琳:"15",黃靚:"16"};
+const ex={鍾文鶯:{10:H},林智仁:{1:C,16:H},黃千千:{7:"1",10:"5"},蕭淑滿:{11:"特休",12:"特休",13:"特休"},黃筱蘋:{16:"3/4"},李孟娟:{24:"3/6"},蔡尚文:{1:C},袁子晏:{1:C},侯妙薇:{30:"特休"},侯雅琳:{1:C,2:"補休",13:"特休"},黃靚:{1:C,20:"特休",27:"特休",28:"特休",30:"特休"}};
+const dow=d=>(d-1)%7;
+const D={};
+for(const n in raw)D[n]=raw[n].split(",").map(x=>X[x]||x);
+for(const n in base){D[n]=[];for(let d=1;d<=30;d++){let v;const w=dow(d);
+ const e=ex[n]||{};if(e[d])v=e[d];else if(w==0||w==6)v=H;else if(n=="蕭淑滿"&&d>=16)v="";else v=base[n];D[n].push(v);}}
+D["黃相瑜"]=[];D["黃尹慈"]=[];D["許勺瑄"]=[];
+for(let d=1;d<=30;d++){const w=dow(d);
+ D["黃相瑜"].push(w==0?H:(w==6||w==3)?"":"/66");
+ D["黃尹慈"].push(w==0||[7,20,21,23,27].includes(d)?H:"66/");
+ D["許勺瑄"].push(w==0||d==5?H:(w==3||w==6)?"66/":"66");}
+const isOff=v=>v===H,isLv=v=>/特休|補休/.test(v);
+const cls=v=>isOff(v)?"off":isLv(v)?"lv":"";
+const lab=v=>v===""?"—":v;
+const $=id=>document.getElementById(id);
+let cur=N[0],cd=1;
+function rp(){$("pills").innerHTML=N.map(n=>`<button class="pill${n==cur?" on":""}" data-n="${n}">${n}</button>`).join("")}
+function rc(){$("cal").innerHTML=[...W].map(x=>`<div class="h">${x}</div>`).join("")+Array.from({length:30},(_,i)=>{const d=i+1,w=dow(d);return `${d==1&&w?'<div></div>'.repeat(w):""}<button data-d="${d}" class="${w==0||w==6?"we":""} ${d==cd?"on":""}">${d}${NOTE[d]?"<i></i>":""}</button>`}).join("")}
+$("pills").onclick=e=>{const n=e.target.dataset.n;if(n){cur=n;rp();r1()}};
+$("cal").onclick=e=>{const d=e.target.closest("button");if(d){cd=+d.dataset.d;rc();r2()}};
+
+function r1(){const n=cur,a=D[n];
+ $("sites").innerHTML=S[n]?`<div class="info">負責據點：<span class="sites">${S[n]}</span></div>`:"";
+ const off=a.filter(isOff).length,lv=a.filter(isLv).length,wk=a.filter(v=>v&&!isOff(v)&&!isLv(v)).length;
+ $("sum").textContent=`上班/其他 ${wk} 天 · 休假 ${off} 天 · 特休/補休 ${lv} 天`;
+ $("l1").innerHTML=[...W].map(x=>`<div class="h">${x}</div>`).join("")+'<div></div>'.repeat(dow(1))+a.map((v,i)=>{const d=i+1,w=dow(d);
+ return `<div class="mc ${cls(v)} ${w==0||w==6?"we":""}"><small>${d}</small><b>${lab(v)}</b>${NOTE[d]?"<i></i>":""}</div>`}).join("")+`<div class="mnote">● ${Object.entries(NOTE).map(([d,t])=>`11/${d} ${t}`).join("　")}</div>`;}
+function r2(){const d=cd,q=$("q").value.trim();
+ $("dn").innerHTML=`<div class="sum">11/${d}（週${W[dow(d)]}）</div>`+(NOTE[d]?`<div class="info">備註：${NOTE[d]}</div>`:"");
+ const f=N.filter(n=>n.includes(q)),g={w:[],o:[],l:[],b:[]};
+ f.forEach(n=>{const v=D[n][d-1];(isOff(v)?g.o:isLv(v)?g.l:v===""?g.b:g.w).push([n,v])});
+ const chips=a=>a.map(x=>`<span class="chip">${x[0]}${x[1]&&!isOff(x[1])?" "+x[1]:""}</span>`).join("");
+ $("l2").innerHTML=(g.w.length?`<div class="grid">${g.w.map(x=>`<div class="cell"><span>${x[0]}</span><b>${x[1]}</b></div>`).join("")}</div>`:"")+[["休假",g.o,"off"],["特休／補休",g.l,"lv"],["未排班",g.b,""]].filter(s=>s[1].length).map(s=>`<div class="grp ${s[2]}"><em>${s[0]} ${s[1].length}</em>${chips(s[1])}</div>`).join("")||`<div class="row">查無結果</div>`;}
+function tab(i){$("v1").hidden=i!=1;$("v2").hidden=i!=2;$("t1").className=i==1?"on":"";$("t2").className=i==2?"on":"";}
+$("t1").onclick=()=>tab(1);$("t2").onclick=()=>tab(2);
+$("q").oninput=r2;rp();rc();
+
+r1();r2();
+</script></main></body></html>
