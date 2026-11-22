@@ -56,6 +56,13 @@ nav button.on{color:var(--gold);box-shadow:inset 0 3px 0 var(--gold)}
 textarea{height:140px;font-size:12px}
 .yr{display:grid;grid-template-columns:34px 1fr 70px;gap:8px;align-items:center;padding:7px 14px;font-size:13px}
 .hide{display:none!important}
+.dr{display:grid;grid-template-columns:78px 1fr 76px;gap:8px;align-items:center;padding:8px 14px;font-size:13px;border-bottom:1px solid var(--line)}
+.dr:last-child{border:0}
+.dr.hi b{color:var(--red)}
+.dr .bar{margin:0}
+.dr span:last-child{text-align:right;font-weight:700}
+.nchips{margin-top:8px}
+.nchips .chip{padding:6px 12px;font-size:13px}
 </style>
 </head>
 <body>
@@ -73,6 +80,7 @@ textarea{height:140px;font-size:12px}
 <script>
 var TABS=[["home","📖","帳冊"],["ov","📊","總覽"],["list","🧾","明細"],["cat","🗂️","分類"],["more","⚙️","更多"]];
 var DEF={expense:["餐飲","日常用品","交通","健康","娛樂","居家","其他"],income:["薪資","獎金","投資","其他"]};
+var NOTES={"餐飲":["早餐","午餐","晚餐","點心","飲料","宵夜","買菜"],"日常用品":["衛生紙","清潔用品","洗髮精","牙膏"],"交通":["捷運","公車","加油","停車費","高鐵","計程車"],"健康":["掛號費","藥品","保健食品","牙科"],"娛樂":["電影","聚餐","訂閱","旅遊"],"居家":["水費","電費","瓦斯費","網路費","房租"],"薪資":["月薪"],"獎金":["年終","績效"],"投資":["股利","利息"],"其他":["零用錢","禮金","紅包"]};
 var S={tx:[],cats:JSON.parse(JSON.stringify(DEF))};
 var tab="home",today=ld(new Date()),ym=today.slice(0,7),q="",form=null;
 function ld(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
@@ -99,7 +107,7 @@ function render(){
     var r=sorted(list).slice(0,6);
     h+='<div class="card">'+(r.length?r.map(rowH).join(""):'<div class="empty">還沒有記錄，點右下角 ＋ 記第一筆</div>')+"</div>";
   }else if(tab==="ov"){
-    h=mnav()+stats(sums(list))+"<h2>支出分類</h2>"+breakdown(list)+"<h2>"+ym.slice(0,4)+" 年度彙總</h2>"+yearly();
+    h=mnav()+stats(sums(list))+"<h2>支出分類</h2>"+breakdown(list)+"<h2>每日支出</h2>"+dailyH(list)+"<h2>"+ym.slice(0,4)+" 年度彙總</h2>"+yearly();
   }else if(tab==="list"){
     var l=sorted(list).filter(function(t){return !q||(t.cat+t.note).toLowerCase().indexOf(q.toLowerCase())>-1});
     h=mnav()+'<input id="q" placeholder="搜尋備註或分類" value="'+esc(q)+'" oninput="q=this.value;keep()">';
@@ -112,7 +120,16 @@ function render(){
   $("#app").innerHTML=h;
 }
 function keep(){var l=sorted(mt(ym)).filter(function(t){return !q||(t.cat+t.note).toLowerCase().indexOf(q.toLowerCase())>-1});$("#lst").innerHTML=listH(l)}
-function listH(l){if(!l.length)return '<div class="card" style="margin-top:12px"><div class="empty">沒有符合的記錄</div></div>';var out="",d="";l.forEach(function(t){if(t.date!==d){if(d)out+="</div>";d=t.date;out+='<div class="dh">'+d+'</div><div class="card">'}out+=rowH(t,1)});return out+"</div>"}
+function listH(l){if(!l.length)return '<div class="card" style="margin-top:12px"><div class="empty">沒有符合的記錄</div></div>';var out="",d="",dt={};l.forEach(function(t){if(t.type==="expense")dt[t.date]=(dt[t.date]||0)+t.amt});l.forEach(function(t){if(t.date!==d){if(d)out+="</div>";d=t.date;out+='<div class="dh" style="display:flex;justify-content:space-between"><span>'+d+'</span><span>'+(dt[d]?"當日支出 "+money(dt[d]):"")+'</span></div><div class="card">'}out+=rowH(t,1)});return out+"</div>"}
+function dailyH(list){var m={},tot=0,mx=0,mxd="";
+  list.filter(function(t){return t.type==="expense"}).forEach(function(t){m[t.date]=(m[t.date]||0)+t.amt;tot+=t.amt});
+  var ks=Object.keys(m).sort().reverse();
+  if(!ks.length)return '<div class="card"><div class="empty">本月尚無支出</div></div>';
+  ks.forEach(function(k){if(m[k]>mx){mx=m[k];mxd=k}});
+  var p=ym.split("-"),dim=new Date(+p[0],+p[1],0).getDate(),days=ym===today.slice(0,7)?+today.slice(8):dim;
+  var avg=Math.round(tot/days),W="日一二三四五六";
+  var h='<div class="stats" style="margin-top:0"><div class="stat"><small>日均支出（'+days+' 天）</small><div class="neg">'+money(avg)+'</div></div><div class="stat"><small>單日最高（'+mxd.slice(5).replace("-","/")+'）</small><div class="neg">'+money(mx)+'</div></div></div>';
+  return h+'<div class="card">'+ks.map(function(k){var d=new Date(+k.slice(0,4),+k.slice(5,7)-1,+k.slice(8,10));return '<div class="dr'+(k===mxd?" hi":"")+'"><b>'+k.slice(5).replace("-","/")+" 週"+W.charAt(d.getDay())+'</b><div class="bar"><i style="width:'+Math.round(m[k]/mx*100)+'%;background:var(--red)"></i></div><span class="neg">'+money(m[k])+'</span></div>'}).join("")+'</div><div class="dh">僅列出有支出的日子；紅字為單日最高</div>'}
 function yearly(){var y=ym.slice(0,4),mx=1,rows=[];for(var i=1;i<=12;i++){var m=y+"-"+String(i).padStart(2,"0"),s=sums(mt(m));mx=Math.max(mx,s.e,s.i);rows.push([i,s])}
   return '<div class="card" style="padding:6px 0">'+rows.map(function(r){var s=r[1];return '<div class="yr"><span>'+r[0]+'月</span><div><div class="bar" style="margin:0 0 3px"><i style="width:'+(s.i/mx*100)+'%;background:var(--green)"></i></div><div class="bar" style="margin:0"><i style="width:'+(s.e/mx*100)+'%;background:var(--red)"></i></div></div><span class="'+(s.b<0?"neg":"pos")+'" style="text-align:right">'+(s.b<0?"−":"")+money(s.b)+"</span></div>"}).join("")+'</div><div class="dh">綠＝收入　紅＝支出　右側為結餘</div>'}
 function catH(t){return '<div class="card">'+S.cats[t].map(function(c,i){return '<div class="row"><div class="m"><b>'+esc(c)+'</b></div><button class="btn d" onclick="delCat(\''+t+"',"+i+')">刪除</button></div>'}).join("")+'<div class="row"><input id="nc_'+t+'" placeholder="新增分類名稱"><button class="btn p" onclick="addCat(\''+t+'\')">新增</button></div></div>'}
@@ -167,8 +184,10 @@ function sheet(){var cs=S.cats[form.type];if(cs.indexOf(form.cat)<0&&form.cat)cs
   $("#sheet").innerHTML='<div class="seg"><button class="chip '+(form.type==="expense"?"on":"")+'" onclick="setT(\'expense\')">支出</button><button class="chip '+(form.type==="income"?"on":"")+'" onclick="setT(\'income\')">收入</button></div>'+
   '<label>金額</label><input class="amt" id="f_amt" type="number" inputmode="numeric" min="0" placeholder="0" value="'+esc(form.amt)+'">'+
   '<label>分類</label><div class="chips">'+cs.map(function(c){return '<button class="chip '+(form.cat===c?"on":"")+'" onclick="setC(this)" data-c="'+esc(c)+'">'+esc(c)+"</button>"}).join("")+"</div>"+
-  '<label>日期</label><input id="f_date" type="date" value="'+form.date+'"><label>備註</label><input id="f_note" placeholder="例如：早餐" value="'+esc(form.note)+'">'+
+  '<label>日期</label><input id="f_date" type="date" value="'+form.date+'"><label>備註</label><input id="f_note" placeholder="例如：早餐" value="'+esc(form.note)+'">'+noteChips()+
   '<div style="display:flex;gap:8px;margin-top:18px">'+(form.id?'<button class="btn d" onclick="del()">刪除</button>':"")+'<button class="btn" style="flex:1" onclick="closeF()">取消</button><button class="btn p" style="flex:2" onclick="saveF()">儲存</button></div>'}
+function noteChips(){var ns=NOTES[form.cat]||[];if(!ns.length)return "";return '<div class="chips nchips">'+ns.map(function(n){return '<button class="chip '+(form.note===n?"on":"")+'" onclick="setN(this)" data-n="'+esc(n)+'">'+esc(n)+"</button>"}).join("")+"</div>"}
+function setN(b){pull();var n=b.getAttribute("data-n");form.note=form.note===n?"":n;sheet()}
 function pull(){form.amt=$("#f_amt").value;form.date=$("#f_date").value;form.note=$("#f_note").value}
 function setT(t){pull();form.type=t;form.cat=S.cats[t][0];sheet()}
 function setC(b){pull();form.cat=b.getAttribute("data-c");sheet()}
