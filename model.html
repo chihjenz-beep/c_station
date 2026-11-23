@@ -803,7 +803,7 @@ $('#zoom').addEventListener('input', e => { zoom = e.target.value / 100; $('#she
 $('#pOne').onclick = () => printIdx([sel]);
 $('#pAll').onclick = () => { const ix = people.map((_, i) => i).filter(isInc); if (!ix.length) { alert('目前沒有勾選參加評測的長輩'); return; } if (confirm('將產生 ' + ix.length + ' 位 × 4 頁 = ' + ix.length * 4 + ' 頁的列印內容，確定？')) printIdx(ix); };
 $('#hdrToggle').onclick = () => $('header').classList.toggle('open');
-const isNarrow = () => window.matchMedia('(max-width:960px),(max-height:520px)').matches;
+function isNarrow() { return window.matchMedia('(max-width:960px),(max-height:520px)').matches; }
 function autoFit() { if (!isNarrow()) return; const z = Math.max(0.3, Math.min(1, (window.innerWidth - 12) / 793.7)); zoom = z; $('#zoom').min = 30; $('#zoom').value = Math.round(z * 100); $('#sheets').style.zoom = z; }
 window.addEventListener('resize', autoFit); window.addEventListener('orientationchange', () => setTimeout(autoFit, 250));
 $('#incAll').onclick = () => { people.forEach(p => delete p.d.skip); save(); renderList(); };
