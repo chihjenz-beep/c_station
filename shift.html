@@ -31,6 +31,7 @@ select,input{width:100%;box-sizing:border-box;padding:10px;border:1px solid var(
 .mcal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.mcal .h{text-align:center;font-size:13px;color:var(--mut)}.mc{position:relative;min-height:56px;border:1px solid var(--line);border-radius:8px;background:var(--card);padding:3px 4px;display:flex;flex-direction:column;overflow:hidden}.mc small{color:var(--mut);font-size:11px}.mc.we small{color:var(--off)}.mc b{margin:auto;font-size:14px;text-align:center;word-break:break-all}.mc.off{background:var(--offbg)}.mc.off b{color:var(--off);font-weight:500;font-size:12px}.mc.lv{background:var(--lvbg)}.mc.lv b{color:var(--lv)}.mc i{position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:var(--acc)}.mnote{grid-column:1/-1;font-size:13px;color:var(--acc);margin-top:6px}
 .sn{display:block;font-size:11px;font-weight:400;color:var(--mut)}
 #l3 .row{padding:6px 12px;align-items:flex-start}.nm3{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;font-size:14px;line-height:1.45}.nm3 .f{grid-column:1/-1}.nm3 em{font-style:normal;color:var(--mut);margin-right:6px}
+.mc.g{min-height:74px}.mc.g .sl{font-size:12px;line-height:1.35;margin-top:1px}.mc.g .sl em{font-style:normal;color:var(--acc);margin-right:3px}.mc.emp{background:transparent;opacity:.55}
 </style></head><body><main>
 <h1>115年11月 排班查詢</h1>
 <div class="sub">2026年11月 · 依姓名或日期查詢</div>
@@ -38,7 +39,7 @@ select,input{width:100%;box-sizing:border-box;padding:10px;border:1px solid var(
 <div id="v1"><div id="pills" class="pills"></div><div id="sites"></div><div id="sum" class="sum"></div><div id="l1" class="mcal"></div></div>
 <div id="v2" hidden><div id="cal" class="cal"></div>
 <input id="q" placeholder="搜尋姓名…"><div id="dn"></div><div id="l2"></div></div>
-<div id="v3" hidden><div id="spills" class="pills"></div><div id="sum3" class="sum"></div><div id="l3" class="list"></div></div>
+<div id="v3" hidden><div id="spills" class="pills"></div><div id="sum3" class="sum"></div><div id="l3" class="mcal"></div></div>
 <div class="info" style="margin-top:12px"><b>說明</b>：休假＝休息；成果＝成果日；特休／補休＝請假；藥局＝藥局班；單一數字是據點編號：1 岑海、2 岱江、3 興中、4 振寮、5 江山、6 永安、7 新岑、8 復興、10 水頭、11 興中村、12 新店、13 官和、14 考試、15 見龍、16 下寮、17 國姓、18 西安、9 協會、0 平安、66 清禾。斜線「/」前為上午、後為下午，「-」或空白表示該時段沒排班。縮寫：型＝型厝、龍＝龍港、溪＝溪下、圍＝圍潭。</div>
 <div class="warn">資料由班表圖片轉錄，少數手寫碼可能有誤，請以原表為準。</div>
 <script>
@@ -103,9 +104,9 @@ const ST=Object.keys(IX).sort((a,b)=>Object.keys(IX[b]).length-Object.keys(IX[a]
 function rs(){$("spills").innerHTML=ST.map(s=>`<button class="pill${s==cs?" on":""}" data-s="${s}">${s}</button>`).join("")}
 function r3(){const m=IX[cs],ds=Object.keys(m).map(Number).sort((a,b)=>a-b);
  $("sum3").textContent=`${cs}：本月 ${ds.length} 天有排班`;
- $("l3").innerHTML=ds.map(d=>{const [a,p]=m[d],w=dow(d),same=a.join()==p.join();
- const t=same?`<div class="f"><em>全天</em>${a.join("、")}</div>`:`<div>${a.length?`<em>上午</em>${a.join("、")}`:""}</div><div>${p.length?`<em>下午</em>${p.join("、")}`:""}</div>`;
- return `<div class="row ${w==0||w==6?"we":""}"><div class="d"><b>11/${d}</b> ${W[w]}</div><div class="nm3">${t}</div></div>`}).join("")}
+ $("l3").innerHTML=[...W].map(x=>`<div class="h">${x}</div>`).join("")+'<div></div>'.repeat(dow(1))+Array.from({length:30},(_,i)=>{const d=i+1,w=dow(d),e=m[d];
+ const t=!e?"":e[0].join()==e[1].join()?`<div class="sl"><em>全</em>${e[0].join(" ")}</div>`:(e[0].length?`<div class="sl"><em>上</em>${e[0].join(" ")}</div>`:"")+(e[1].length?`<div class="sl"><em>下</em>${e[1].join(" ")}</div>`:"");
+ return `<div class="mc g ${w==0||w==6?"we":""}${e?"":" emp"}"><small>${d}</small>${t}${NOTE[d]?"<i></i>":""}</div>`}).join("")}
 $("spills").onclick=e=>{const s=e.target.dataset.s;if(s){cs=s;rs();r3()}};
 rs();r3();
 
