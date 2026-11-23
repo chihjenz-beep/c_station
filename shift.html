@@ -33,10 +33,11 @@ select,input{width:100%;box-sizing:border-box;padding:10px;border:1px solid var(
 </style></head><body><main>
 <h1>115年11月 排班查詢</h1>
 <div class="sub">2026年11月 · 依姓名或日期查詢</div>
-<div class="tabs"><button id="t1" class="on">依姓名</button><button id="t2">依日期</button></div>
+<div class="tabs"><button id="t1" class="on">依姓名</button><button id="t2">依日期</button><button id="t3">依地點</button></div>
 <div id="v1"><div id="pills" class="pills"></div><div id="sites"></div><div id="sum" class="sum"></div><div id="l1" class="mcal"></div></div>
 <div id="v2" hidden><div id="cal" class="cal"></div>
 <input id="q" placeholder="搜尋姓名…"><div id="dn"></div><div id="l2"></div></div>
+<div id="v3" hidden><div id="spills" class="pills"></div><div id="sum3" class="sum"></div><div id="l3" class="list"></div></div>
 <div class="info" style="margin-top:12px"><b>說明</b>：休假＝休息；成果＝成果日；特休／補休＝請假；藥局＝藥局班；單一數字是據點編號：1 岑海、2 岱江、3 興中、4 振寮、5 江山、6 永安、7 新岑、8 復興、10 水頭、11 興中村、12 新店、13 官和、14 考試、15 見龍、16 下寮、17 國姓、18 西安、9 協會、0 平安、66 清禾。斜線「/」前為上午、後為下午，「-」或空白表示該時段沒排班。縮寫：型＝型厝、龍＝龍港、溪＝溪下、圍＝圍潭。</div>
 <div class="warn">資料由班表圖片轉錄，少數手寫碼可能有誤，請以原表為準。</div>
 <script>
@@ -90,9 +91,22 @@ function r2(){const d=cd,q=$("q").value.trim();
  f.forEach(n=>{const v=D[n][d-1];(isOff(v)?g.o:isLv(v)?g.l:v===""?g.b:g.w).push([n,v])});
  const chips=a=>a.map(x=>`<span class="chip">${x[0]}${x[1]&&!isOff(x[1])?" "+x[1]:""}</span>`).join("");
  $("l2").innerHTML=(g.w.length?`<div class="grid">${g.w.map(x=>`<div class="cell"><span>${x[0]}</span><b>${x[1]}${sn(x[1],1)?" "+sn(x[1],1):""}</b></div>`).join("")}</div>`:"")+[["休假",g.o,"off"],["特休／補休",g.l,"lv"],["未排班",g.b,""]].filter(s=>s[1].length).map(s=>`<div class="grp ${s[2]}"><em>${s[0]} ${s[1].length}</em>${chips(s[1])}</div>`).join("")||`<div class="row">查無結果</div>`;}
-function tab(i){$("v1").hidden=i!=1;$("v2").hidden=i!=2;$("t1").className=i==1?"on":"";$("t2").className=i==2?"on":"";}
-$("t1").onclick=()=>tab(1);$("t2").onclick=()=>tab(2);
+function tab(i){$("v1").hidden=i!=1;$("v2").hidden=i!=2;$("v3").hidden=i!=3;$("t1").className=i==1?"on":"";$("t2").className=i==2?"on":"";$("t3").className=i==3?"on":"";}
+$("t1").onclick=()=>tab(1);$("t2").onclick=()=>tab(2);$("t3").onclick=()=>tab(3);
 $("q").oninput=r2;rp();rc();
+const NS=["休","休假","成果","特休","補休","藥局","藥","開會"];
+const so=x=>!x||x=="-"||NS.includes(x)?null:(SITE[x]||x);
+const IX={};
+N.forEach(n=>D[n].forEach((v,i)=>{const p=v.includes("/")?v.split("/"):[v,v];[0,1].forEach(k=>{const s=so(p[k]);if(!s)return;IX[s]=IX[s]||{};IX[s][i+1]=IX[s][i+1]||[[],[]];IX[s][i+1][k].push(n)})}));
+const ST=Object.keys(IX).sort((a,b)=>Object.keys(IX[b]).length-Object.keys(IX[a]).length);let cs=ST[0];
+function rs(){$("spills").innerHTML=ST.map(s=>`<button class="pill${s==cs?" on":""}" data-s="${s}">${s}</button>`).join("")}
+function r3(){const m=IX[cs],ds=Object.keys(m).map(Number).sort((a,b)=>a-b);
+ $("sum3").textContent=`${cs}：本月 ${ds.length} 天有排班`;
+ $("l3").innerHTML=ds.map(d=>{const [a,p]=m[d],w=dow(d),same=a.join()==p.join();
+ const t=same?`<div>全天　${a.join("、")}</div>`:(a.length?`<div>上午　${a.join("、")}</div>`:"")+(p.length?`<div>下午　${p.join("、")}</div>`:"");
+ return `<div class="row ${w==0||w==6?"we":""}"><div class="d"><b>11/${d}</b> ${W[w]}</div><div class="nm">${t}</div></div>`}).join("")}
+$("spills").onclick=e=>{const s=e.target.dataset.s;if(s){cs=s;rs();r3()}};
+rs();r3();
 
 r1();r2();
 </script></main></body></html>
