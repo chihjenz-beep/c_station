@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>延緩長輩前後測資料</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400&family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+
 <style>
 :root{--navy:#1f3d58;--gold:#c9a96a;--line:#aebccb;--pale:#e8f0f5;--bg:#eef1f4;--ink:#1b2530}
 *{box-sizing:border-box}
@@ -93,10 +95,76 @@ header button.qk{background:#2e9e6a;color:#fff;font-size:16px;font-weight:700;pa
  #printRoot .muted,#printRoot .foot,#printRoot .foot b{color:#333!important}
  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
+
+/* ===== 英倫藝文風介面（僅操作介面；四頁表單與列印維持原樣） ===== */
+body{background:#e9e2d0}
+header,#side,#panel,.qc,.empty{font-family:"Crimson Text","Noto Serif TC","Noto Serif CJK TC","Songti TC","PMingLiU","MingLiU",serif}
+header{background:#1f4a38;border-bottom:3px double #a8823d;padding:9px 16px;gap:10px 12px}
+header h1{font-size:20px;letter-spacing:3px;font-weight:700;margin:0 8px 0 0;padding-right:16px;border-right:1px solid #a8823d99}
+header button,header label.btn{background:#fbf7ee;color:#1f4a38;border:1px solid #a8823d;border-radius:2px;font-family:inherit;letter-spacing:.5px}
+header button:hover,header label.btn:hover{background:#f1e6c8}
+header button.pri{background:#a8823d;color:#fff;border-color:#a8823d;font-weight:700}
+header button.qk{background:#7a1f2b;color:#fbf7ee;border:1px solid #d9c08a;border-radius:3px;box-shadow:none}
+header button.qk:hover{background:#8d2735}
+header input[type=text],header input[type=month],header input[type=date],header select{background:#fbf7ee;color:#1f4a38;border:1px solid #a8823d;border-radius:2px;font-family:inherit}
+header small{font-style:italic;color:#e8d9b0}
+#site{background:transparent;border:1px solid #a8823d;border-radius:2px;color:#fbf7ee;font-family:inherit}
+#side{background:#fbf7ee;border-right:1px solid #cfc5ae}
+#side .ph{background:#fbf7ee;color:#6b5a3a;border-bottom:3px double #1f4a38;line-height:1.7}
+#side .ph b{font-size:17px;color:#1f4a38;letter-spacing:3px}
+#side .ph a{color:#8a6a2a}
+#prog{font-style:italic;color:#8a6a2a}
+#list li{border-bottom:1px dotted #cfc5ae;font-size:15px}
+#list li:hover{background:#f3ecdb}
+#list li.cur{background:#efe7d4;box-shadow:inset 3px 0 #1f4a38}
+#list .no{color:#a8823d;font-style:italic;font-size:13px}
+#list .inc{accent-color:#1f4a38}
+.dots i{background:#ddd3bd}.dots i.on{background:#3f7d5c}
+#panel{background:#fbf7ee;border-left:1px solid #cfc5ae}
+#panel h3{color:#1f4a38;font-size:16px;letter-spacing:2px;border-bottom:1px solid #a8823d;padding-bottom:3px}
+#status{background:#f1e9d6;border-left:3px solid #a8823d;border-radius:0;color:#5b5240}
+.hint{color:#5b5240}.hint b{background:#f1e3b0}
+#missing{background:#f1e9d6;border:0;border-left:3px solid #a8823d;border-radius:0}#missing .okk{color:#1f4a38}
+.le{border:1px solid #cfc5ae;border-radius:2px}.le.ok{border-color:#9db79f;background:#eef3ea}.le.mismatch,.le.ask{border-color:#d3b66f;background:#f7efd9}.le.err{border-color:#d49a92;background:#f6e4e1}
+.le .b button{border:1px solid #a8823d;border-radius:2px;font-family:inherit;color:#1f4a38;background:#fbf7ee}
+.empty{background:#fbf7ee;border:3px double #a8823d;border-radius:0;color:#5b5240}
+#qe,#q3{background:#1c231dcc}
+.qc{background:#fbf7ee;border:3px double #a8823d;border-radius:2px;box-shadow:0 10px 30px #0006}
+#qeWho,.qw{color:#8a6a2a;font-style:italic}
+#qeQ,.q3q{color:#1f4a38}
+#qeBar i,.qbar i{background:#d9cfb8;border-radius:1px}#qeBar i.y,.qbar i.y{background:#3f7d5c}#qeBar i.n{background:#a8823d}
+#qeBar i.cur,.qbar i.cur{outline-color:#1f4a38}
+.qb button,#q3Opts button{border:1px solid #a8823d;border-radius:2px;background:#fbf7ee;color:#26231f;font-family:inherit}
+.qb button:hover,#q3Opts button:hover{background:#f1e6c8}
+#qeY{background:#e4ece2;border-color:#1f4a38}#qeN{background:#f3e9d6;border-color:#a8823d}
+#q3Opts button.on{background:#1f4a38;color:#fbf7ee;border-color:#1f4a38}#q3Opts button.on b{color:#e8d9b0}
+#q3Opts button b{color:#1f4a38}
+.qh,#qeCur{color:#6b5a3a}
+
+#hdrToggle{display:none}
+/* ===== 手機／平板窄螢幕（直、橫皆適用）：改為上下堆疊、功能選單可收合、表單自動縮到符合螢幕寬度 ===== */
+@media (max-width:960px),(max-height:520px){
+ html,body{height:auto}
+ #app{display:block;height:auto;min-height:100vh}
+ header{position:sticky;top:0;z-index:8;padding:6px 10px;gap:6px 8px;max-height:78vh;overflow:auto}
+ header h1{font-size:16px;letter-spacing:1px;padding-right:10px;margin-right:4px}
+ header>*:not(h1):not(#hdrToggle){display:none}
+ header.open>*:not(h1):not(#hdrToggle){display:inline-block}
+ header.open button.qk{display:inline-block}
+ #hdrToggle{display:inline-block;font-size:14px;padding:7px 12px}
+ #side{max-height:30vh;border-right:0;border-bottom:1px solid #cfc5ae}
+ #side .ph{position:static;font-size:11.5px}
+ #list li{padding:9px 10px;font-size:15px}
+ #main{overflow:visible;padding:6px 0;scroll-margin-top:52px}
+ #panel{max-height:none;border-left:0;border-top:1px solid #cfc5ae}
+ .qc{max-height:96vh;overflow:auto;padding:14px 16px}
+ #qeQ{font-size:19px;min-height:0;margin:8px 0}.q3q{font-size:17px;margin:8px 0}
+ .qb button{font-size:17px;padding:12px 24px}#q3Opts button{padding:11px 14px}
+}
 </style></head><body>
 <div id="app">
  <header>
-  <h1>延緩長輩前後測資料</h1>
+  <h1>延緩長輩前後測資料</h1><button type="button" id="hdrToggle">☰ 功能選單</button>
   <span id="site"></span><label class="btn">匯入清冊<input type="file" id="rosterIn" accept=".xlsx,.xls,.csv" hidden></label><button id="clearRoster">刪除清冊</button>
   <span>目前：<b id="cur"></b></span>
   <span>開班編號（套用全部）<input type="text" id="classNo" placeholder="例：114-001"></span>
@@ -564,7 +632,7 @@ document.addEventListener('click', e => {
   }
   const li = e.target.closest && e.target.closest('#list li');
   if (li && e.target.classList && e.target.classList.contains('inc')) { people[+li.dataset.i].d.skip = !e.target.checked; save(); renderList(); return; }
-  if (li) select(+li.dataset.i);
+  if (li) { select(+li.dataset.i); if (isNarrow()) { $('header').classList.remove('open'); setTimeout(() => $('#main').scrollIntoView({ block: 'start' }), 30); } }
 });
 
 /* ===== 列印 / 匯出 ===== */
@@ -702,6 +770,7 @@ document.addEventListener('click', e => {
 $('#modal').addEventListener('click', () => { $('#modal').classList.remove('open', 'txt'); $('#modal pre').textContent = ''; });
 
 /* ===== 啟動 ===== */
+autoFit();
 load();
 $('#classNo').addEventListener('input', e => { people.forEach(p => p.d.classNo = e.target.value); save(); if (document.querySelector('#sheets')) renderSheets(); });
 $('#classNo').value = (people[0] && people[0].d.classNo) || '';
@@ -733,6 +802,10 @@ $('#dApply').onclick = applyDate; $('#dClear').onclick = () => { dateSet = { y: 
 $('#zoom').addEventListener('input', e => { zoom = e.target.value / 100; $('#sheets').style.zoom = zoom; });
 $('#pOne').onclick = () => printIdx([sel]);
 $('#pAll').onclick = () => { const ix = people.map((_, i) => i).filter(isInc); if (!ix.length) { alert('目前沒有勾選參加評測的長輩'); return; } if (confirm('將產生 ' + ix.length + ' 位 × 4 頁 = ' + ix.length * 4 + ' 頁的列印內容，確定？')) printIdx(ix); };
+$('#hdrToggle').onclick = () => $('header').classList.toggle('open');
+const isNarrow = () => window.matchMedia('(max-width:960px),(max-height:520px)').matches;
+function autoFit() { if (!isNarrow()) return; const z = Math.max(0.3, Math.min(1, (window.innerWidth - 12) / 793.7)); zoom = z; $('#zoom').min = 30; $('#zoom').value = Math.round(z * 100); $('#sheets').style.zoom = z; }
+window.addEventListener('resize', autoFit); window.addEventListener('orientationchange', () => setTimeout(autoFit, 250));
 $('#incAll').onclick = () => { people.forEach(p => delete p.d.skip); save(); renderList(); };
 $('#incNone').onclick = () => { if (confirm('將全部長輩設為「不評測」，之後再逐位勾選。確定？')) { people.forEach(p => p.d.skip = true); save(); renderList(); } };
 $('#csv').onclick = exportCSV; $('#jsonOut').onclick = exportJSON;
