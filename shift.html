@@ -30,6 +30,7 @@ select,input{width:100%;box-sizing:border-box;padding:10px;border:1px solid var(
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin-bottom:10px}.cell{display:flex;justify-content:space-between;gap:6px;padding:7px 10px;background:var(--card);border:1px solid var(--line);border-radius:8px;font-size:15px}.cell b{color:var(--acc);text-align:right}.grp{margin-bottom:8px;padding:8px 10px;border-radius:8px;background:var(--card);border:1px solid var(--line);font-size:14px}.grp em{font-style:normal;font-weight:600;margin-right:8px}.grp.off{background:var(--offbg)}.grp.off em{color:var(--off)}.grp.lv{background:var(--lvbg)}.grp.lv em{color:var(--lv)}.chip{display:inline-block;margin:2px 10px 2px 0}
 .mcal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.mcal .h{text-align:center;font-size:13px;color:var(--mut)}.mc{position:relative;min-height:56px;border:1px solid var(--line);border-radius:8px;background:var(--card);padding:3px 4px;display:flex;flex-direction:column;overflow:hidden}.mc small{color:var(--mut);font-size:11px}.mc.we small{color:var(--off)}.mc b{margin:auto;font-size:14px;text-align:center;word-break:break-all}.mc.off{background:var(--offbg)}.mc.off b{color:var(--off);font-weight:500;font-size:12px}.mc.lv{background:var(--lvbg)}.mc.lv b{color:var(--lv)}.mc i{position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:var(--acc)}.mnote{grid-column:1/-1;font-size:13px;color:var(--acc);margin-top:6px}
 .sn{display:block;font-size:11px;font-weight:400;color:var(--mut)}
+#l3 .row{padding:6px 12px;align-items:flex-start}.nm3{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;font-size:14px;line-height:1.45}.nm3 .f{grid-column:1/-1}.nm3 em{font-style:normal;color:var(--mut);margin-right:6px}
 </style></head><body><main>
 <h1>115年11月 排班查詢</h1>
 <div class="sub">2026年11月 · 依姓名或日期查詢</div>
@@ -103,8 +104,8 @@ function rs(){$("spills").innerHTML=ST.map(s=>`<button class="pill${s==cs?" on":
 function r3(){const m=IX[cs],ds=Object.keys(m).map(Number).sort((a,b)=>a-b);
  $("sum3").textContent=`${cs}：本月 ${ds.length} 天有排班`;
  $("l3").innerHTML=ds.map(d=>{const [a,p]=m[d],w=dow(d),same=a.join()==p.join();
- const t=same?`<div>全天　${a.join("、")}</div>`:(a.length?`<div>上午　${a.join("、")}</div>`:"")+(p.length?`<div>下午　${p.join("、")}</div>`:"");
- return `<div class="row ${w==0||w==6?"we":""}"><div class="d"><b>11/${d}</b> ${W[w]}</div><div class="nm">${t}</div></div>`}).join("")}
+ const t=same?`<div class="f"><em>全天</em>${a.join("、")}</div>`:`<div>${a.length?`<em>上午</em>${a.join("、")}`:""}</div><div>${p.length?`<em>下午</em>${p.join("、")}`:""}</div>`;
+ return `<div class="row ${w==0||w==6?"we":""}"><div class="d"><b>11/${d}</b> ${W[w]}</div><div class="nm3">${t}</div></div>`}).join("")}
 $("spills").onclick=e=>{const s=e.target.dataset.s;if(s){cs=s;rs();r3()}};
 rs();r3();
 
