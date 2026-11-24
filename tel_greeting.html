@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>電話問安隨機抽選 · 整月匯入檔產生</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+
+  :root{
+    --paper:#F6F4EF; --panel:#FFFFFF; --ink:#282723; --ink-soft:#5C594F; --line:#DED8C9;
+    --teal:#3F6E66; --teal-deep:#2C4F49; --teal-tint:#E7F0EE;
+    --clay:#A9613F; --clay-tint:#F3E4DA; --present:#5C8A5A; --radius:3px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:'Noto Sans TC',sans-serif;line-height:1.6;}
+  .wrap{max-width:940px;margin:0 auto;padding:40px 28px 80px;}
+  header.top{border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:28px;display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+  h1{font-family:'Noto Serif TC',serif;font-weight:700;font-size:26px;margin:0;}
+  .sub{color:var(--ink-soft);font-size:13.5px;margin-top:4px;}
+  .tag{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--teal-deep);background:var(--teal-tint);border:1px solid var(--teal);padding:3px 8px;border-radius:var(--radius);}
+  section{margin-bottom:26px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px 24px;}
+  h2{font-family:'Noto Serif TC',serif;font-size:17px;font-weight:600;margin:0 0 14px;padding-bottom:10px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;}
+  h2 .n{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--teal);border:1px solid var(--teal);width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;}
+  .field{display:flex;flex-direction:column;gap:5px;}
+  label{font-size:12.5px;color:var(--ink-soft);}
+  select, input[type=date], input[type=time], input[type=text]{
+    font-family:'Noto Sans TC',sans-serif;font-size:14px;padding:7px 10px;border:1px solid var(--line);
+    border-radius:var(--radius);background:var(--paper);color:var(--ink);
+  }
+  select:focus, input:focus, textarea:focus{outline:none;border-color:var(--teal);}
+  .time-range{display:flex;align-items:center;gap:6px;}
+  .time-range span{color:var(--ink-soft);font-size:13px;}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media (max-width:680px){.two-col{grid-template-columns:1fr;}}
+  textarea.num-input{
+    width:100%;font-family:'JetBrains Mono',monospace;font-size:14px;border:1px solid var(--line);
+    border-radius:var(--radius);padding:10px;resize:vertical;min-height:58px;background:var(--paper);color:var(--ink);
+  }
+  .zone-label{font-size:12.5px;font-weight:600;color:var(--teal-deep);margin-bottom:4px;}
+  .helptext{font-size:12px;color:var(--ink-soft);margin-top:5px;}
+  button.primary{font-family:'Noto Sans TC',sans-serif;font-weight:600;font-size:14px;background:var(--teal);color:#fff;border:none;padding:10px 20px;border-radius:var(--radius);cursor:pointer;}
+  button.primary:hover{background:var(--teal-deep);}
+  button.ghost{font-family:'Noto Sans TC',sans-serif;font-size:13px;background:transparent;color:var(--teal-deep);border:1px solid var(--teal);padding:8px 16px;border-radius:var(--radius);cursor:pointer;}
+  button.ghost:hover{background:var(--teal-tint);}
+  button.link{background:none;border:none;color:var(--clay);font-size:12.5px;cursor:pointer;padding:0;text-decoration:underline;font-family:inherit;}
+  .status{font-size:13px;color:var(--ink-soft);margin-top:10px;min-height:18px;}
+  .status.err{color:#A93A2C;} .status.ok{color:var(--present);}
+
+  .day-card{border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;margin-top:12px;background:var(--paper);}
+  .day-head{display:flex;align-items:center;gap:12px;margin-bottom:10px;cursor:pointer;user-select:none;}
+  .day-head:focus-visible{outline:2px solid var(--teal);outline-offset:3px;border-radius:var(--radius);}
+  .day-head .day-title{flex:1;display:flex;align-items:baseline;}
+  .day-head .chev{display:inline-block;width:18px;color:var(--teal);font-size:13px;transition:transform .15s;}
+  .day-card.collapsed .chev{transform:rotate(-90deg);}
+  .day-card.collapsed .day-head{margin-bottom:0;}
+  .day-card.collapsed .slots{display:none;}
+  .day-sum{display:none;font-size:12.5px;color:var(--ink-soft);}
+  .day-card.collapsed .day-sum{display:inline;}
+  .day-title{font-family:'Noto Serif TC',serif;font-weight:600;font-size:15px;}
+  .day-title small{font-family:'JetBrains Mono',monospace;font-weight:400;color:var(--ink-soft);font-size:12px;margin-left:8px;}
+  .empty-note{color:var(--ink-soft);font-size:13px;padding:14px 0 2px;}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th,td{padding:6px 9px;border-bottom:1px solid var(--line);text-align:left;}
+  th{font-weight:600;color:var(--ink-soft);font-size:12px;border-bottom:1.5px solid var(--ink);}
+  tr.absent td{background:var(--clay-tint);}
+  tr.slot-head td{background:var(--teal-tint);font-weight:600;color:var(--teal-deep);font-size:12.5px;}
+  input.id-edit{width:120px;font-family:'JetBrains Mono',monospace;font-size:12.5px;padding:4px 6px;}
+  td input[type=checkbox]{transform:scale(1.1);cursor:pointer;}
+  details.prev-day{border:1px solid var(--line);border-radius:var(--radius);margin-top:10px;background:var(--panel);}
+  details.prev-day > summary{cursor:pointer;padding:10px 14px;font-weight:600;font-size:14px;list-style:none;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  details.prev-day > summary::-webkit-details-marker{display:none;}
+  details.prev-day > summary .cnt{font-weight:400;color:var(--ink-soft);font-size:12.5px;}
+  details.prev-day .inner{padding:0 14px 12px;}
+
+  .roster-toggle{margin-top:14px;}
+  details.roster summary{cursor:pointer;font-size:13px;color:var(--teal-deep);user-select:none;}
+  details.roster[open] summary{margin-bottom:12px;}
+  .roster-grid{max-height:280px;overflow:auto;border:1px solid var(--line);border-radius:var(--radius);}
+  .roster-grid table{font-size:12.5px;}
+  .roster-grid th{position:sticky;top:0;background:var(--panel);}
+
+  .counts{display:flex;gap:14px;margin-bottom:6px;flex-wrap:wrap;}
+  .count-box{border:1px solid var(--line);border-radius:var(--radius);padding:8px 16px;background:var(--paper);}
+  .count-box .num{font-family:'Noto Serif TC',serif;font-size:21px;font-weight:700;color:var(--teal-deep);}
+  .count-box .lbl{font-size:12px;color:var(--ink-soft);}
+
+    transition:border-color .15s,background .15s;min-height:74px;display:flex;align-items:center;justify-content:center;position:relative;margin-bottom:8px;}
+  input[type=number]{font-family:'Noto Sans TC',sans-serif;font-size:14px;padding:7px 10px;width:80px;border:1px solid var(--line);border-radius:var(--radius);background:var(--paper);color:var(--ink);}
+  .chk{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-soft);padding-bottom:8px;}
+  .slot-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+  .slot-title .zone-label{margin:0;}
+  .day-card .slots table{background:var(--panel);}
+  .tot{font-size:13px;color:var(--ink-soft);margin-top:14px;}
+  footer{margin-top:36px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-soft);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>電話問安 · 隨機抽選工具</h1>
+      <div class="sub">依個案清冊隨機抽選 → 逐日預覽並可調整 → 產生整月 .xlsx</div>
+    </div>
+    <span class="tag">岱江里</span>
+  </header>
+
+  <section class="card">
+    <h2><span class="n">1</span>時段與抽選人數</h2>
+    <div class="row">
+      <div class="field"><label>上午時段</label>
+        <div class="time-range"><input type="time" id="amStart" value="11:30"><span>–</span><input type="time" id="amEnd" value="12:29"></div></div>
+      <div class="field"><label>下午時段</label>
+        <div class="time-range"><input type="time" id="pmStart" value="15:30"><span>–</span><input type="time" id="pmEnd" value="16:30"></div></div>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <div class="field"><label for="amCount">上午抽選人數</label><input type="number" id="amCount" min="0" value="6"></div>
+      <div class="field"><label for="pmCount">下午抽選人數</label><input type="number" id="pmCount" min="0" value="15"></div>
+      <label class="chk"><input type="checkbox" id="noOverlap">同一天上午、下午不抽到同一人</label>
+    </div>
+    <div class="helptext">人數填 0 表示該時段不舉辦、略過。新的人數只影響之後新增的日期或重新抽選，已抽出的日期不會變動。</div>
+    <div class="roster-toggle">
+      <details class="roster">
+        <summary>檢視／編輯個案清冊（<span id="rosterCount">0</span> 人，抽選來源）</summary>
+        <div class="roster-grid">
+          <table>
+            <thead><tr><th style="width:50px">位置</th><th>姓名</th><th style="width:60px">性別</th><th style="width:150px">個案編號</th><th style="width:40px"></th></tr></thead>
+            <tbody id="rosterBody"></tbody>
+          </table>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;align-items:center;">
+          <button class="ghost" id="addRosterRow">+ 新增個案</button>
+          <button class="ghost" id="importRosterBtn">⬆ 匯入試算表</button>
+          <select id="importMode" title="匯入方式" style="padding:7px 8px;font-size:13px;">
+            <option value="replace">取代現有清冊</option>
+            <option value="append">附加到現有清冊</option>
+          </select>
+          <button class="ghost" id="rosterTemplateBtn">下載範本</button>
+          <input type="file" id="rosterFile" accept=".xlsx,.xls,.csv" style="display:none">
+          <span class="status" id="rosterSaveStatus" style="margin:0"></span>
+        </div>
+        <div class="helptext" id="importMsg">可匯入 .xlsx／.xls／.csv。第一列請有標題：位置（可省略）、姓名、性別、個案編號。</div>
+      </details>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2><span class="n">2</span>新增日期並抽選問安名單</h2>
+    <div class="row">
+      <div class="field"><label for="newDate">要新增的日期</label><input type="date" id="newDate"></div>
+      <button class="ghost" id="addDayBtn">+ 新增日期</button>
+      <button class="ghost" id="rerollAllBtn">全部重新抽選</button>
+      <button class="ghost" id="collapseAllBtn">全部收合</button>
+      <button class="ghost" id="expandAllBtn">全部展開</button>
+      <button class="link" id="clearDaysBtn" style="margin-left:auto">清除全部日期</button>
+    </div>
+    <div class="status" id="addDayStatus"></div>
+    <div id="daysContainer"></div>
+    <div class="tot" id="totals"></div>
+    <div class="helptext">新增日期時會立即從清冊隨機抽出名單，可取消勾選不要的人、或按「重新抽選」重抽該時段。</div>
+  </section>
+
+  <section class="card">
+    <h2><span class="n">3</span>產生匯入檔</h2>
+    <button class="primary" id="generateBtn">產生整月匯入 .xlsx</button>
+    <span class="status" id="generateStatus"></span>
+  </section>
+
+  <footer>抽選與產生都在本機瀏覽器內完成，不會上傳資料。個案清冊、時段、人數與已抽選的日期會保留在此瀏覽器中。</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const DEFAULT_ROSTER = [
+    {pos:1,name:"蔡陳淑女",id:"Q201016688",gender:"女"},
+    {pos:2,name:"蕭李萌雲",id:"Q201903784",gender:"女"},
+    {pos:3,name:"邱琇荷",id:"Q200923684",gender:"女"},
+    {pos:4,name:"蔡吳金針",id:"113020424",gender:"女"},
+    {pos:5,name:"蔡陳素娥",id:"114079568",gender:"女"},
+    {pos:6,name:"張陳秝溱",id:"113042354",gender:"女"},
+    {pos:7,name:"蔡慶德",id:"115017155",gender:"男"},
+    {pos:8,name:"蕭劉素蘭",id:"Q200931373",gender:"女"},
+    {pos:9,name:"蔡鄭趕",id:"113020432",gender:"女"},
+    {pos:10,name:"蔡黃秀枝",id:"Q201963440",gender:"女"},
+    {pos:11,name:"葛翁秀蘭",id:"111050159",gender:"女"},
+    {pos:12,name:"王蔡淑連",id:"114020146",gender:"女"},
+    {pos:13,name:"蔡春菊",id:"112030456",gender:"女"},
+    {pos:15,name:"蔡燕雪",id:"114082286",gender:"女"},
+    {pos:16,name:"蔡方屬玉",id:"113020441",gender:"女"},
+    {pos:17,name:"蔡呂戀娥",id:"113021061",gender:"女"},
+    {pos:18,name:"蔡陳秀絨",id:"113025900",gender:"女"},
+    {pos:19,name:"蔡邱金蓮",id:"113025901",gender:"女"},
+    {pos:20,name:"高金進",id:"114025903",gender:"男"},
+    {pos:21,name:"林蔡秀春",id:"114036726",gender:"女"},
+    {pos:23,name:"林蔡秀霞",id:"114019704",gender:"女"},
+    {pos:24,name:"蔡來好",id:"114019769",gender:"女"},
+    {pos:25,name:"張吉雄",id:"114027476",gender:"男"},
+    {pos:26,name:"陳葉秋絨",id:"115001950",gender:"女"},
+    {pos:27,name:"蔡朱桃美",id:"115019335",gender:"女"}
+  ];
+  const state = { roster: [], days: {} };   // days: { iso: {am:[{pos,on}], pm:[{pos,on}]} }
+  const $ = id=>document.getElementById(id);
+  const amStart=$('amStart'), amEnd=$('amEnd'), pmStart=$('pmStart'), pmEnd=$('pmEnd');
+  const collapsedDays = new Set();
+
+  // ---------- storage ----------
+  const hasChatStorage = (typeof window.storage !== 'undefined' && window.storage && typeof window.storage.get === 'function');
+  async function storageGet(key){
+    if(hasChatStorage){ try{ const r = await window.storage.get(key, false); return (r && r.value) ? r.value : null; }catch(e){ return null; } }
+    try{ return window.localStorage.getItem(key); }catch(e){ return null; }
+  }
+  async function storageSet(key, value){
+    if(hasChatStorage){ try{ await window.storage.set(key, value, false); return true; }catch(e){ return false; } }
+    try{ window.localStorage.setItem(key, value); return true; }catch(e){ return false; }
+  }
+  async function loadJSON(key, fallback){
+    const v = await storageGet(key);
+    if(v){ try{ return JSON.parse(v); }catch(e){} }
+    return fallback;
+  }
+
+  // ---------- helpers ----------
+  const WEEK = ['日','一','二','三','四','五','六'];
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function toISO(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+  function parseISO(iso){ const [y,m,d]=iso.split('-').map(Number); return new Date(y,m-1,d); }
+  function toROCDate(iso){ const [y,m,d]=iso.split('-').map(Number); return (y-1911)+'/'+pad(m)+'/'+pad(d); }
+  function dayLabel(iso){ const d=parseISO(iso); return `${toROCDate(iso)}（${WEEK[d.getDay()]}）`; }
+  const byPos = pos => state.roster.find(p=>p.pos===pos);
+  const rosterIdx = pos => state.roster.findIndex(p=>p.pos===pos);
+
+  // ---------- roster ----------
+  const rosterBody = $('rosterBody');
+  function renderRosterTable(){
+    $('rosterCount').textContent = state.roster.length;
+    rosterBody.innerHTML = '';
+    state.roster.forEach((p, idx)=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input type="text" class="r-pos" value="${p.pos}" style="width:44px"></td>
+        <td><input type="text" class="r-name" value="${p.name}" style="width:110px"></td>
+        <td><select class="r-gender" style="width:56px">
+          <option value="女" ${p.gender==='女'?'selected':''}>女</option>
+          <option value="男" ${p.gender==='男'?'selected':''}>男</option></select></td>
+        <td><input type="text" class="r-id id-edit" value="${p.id||''}" placeholder="個案編號"></td>
+        <td><button class="link r-del" title="刪除">✕</button></td>`;
+      tr.querySelector('.r-pos').addEventListener('change', e=>{ state.roster[idx].pos = Number(e.target.value)||p.pos; persistRoster(); });
+      tr.querySelector('.r-name').addEventListener('change', e=>{ state.roster[idx].name = e.target.value.trim(); persistRoster(); });
+      tr.querySelector('.r-gender').addEventListener('change', e=>{ state.roster[idx].gender = e.target.value; persistRoster(); });
+      tr.querySelector('.r-id').addEventListener('change', e=>{ state.roster[idx].id = e.target.value.trim(); persistRoster(); });
+      tr.querySelector('.r-del').addEventListener('click', ()=>{ state.roster.splice(idx,1); renderRosterTable(); persistRoster(); renderDays(); });
+      rosterBody.appendChild(tr);
+    });
+  }
+  let rosterTimer=null;
+  function persistRoster(){
+    clearTimeout(rosterTimer);
+    const status = $('rosterSaveStatus');
+    status.textContent = '儲存中…';
+    rosterTimer = setTimeout(async ()=>{
+      const ok = await storageSet('roster:岱江里', JSON.stringify(state.roster));
+      status.textContent = ok ? '已儲存' : '儲存失敗（僅暫存於本頁）';
+      setTimeout(()=>{status.textContent='';}, 1800);
+    }, 400);
+  }
+  $('addRosterRow').addEventListener('click', ()=>{
+    const nextPos = state.roster.length ? Math.max(...state.roster.map(p=>p.pos))+1 : 1;
+    state.roster.push({pos:nextPos, name:'', id:'', gender:'女'});
+    renderRosterTable(); persistRoster();
+  });
+
+  // ---------- 匯入試算表 ----------
+  function setImportMsg(t, cls){ const m=$('importMsg'); m.textContent=t; m.style.color = cls==='err' ? '#b4432a' : (cls==='ok' ? 'var(--teal-deep)' : ''); }
+  function parseRosterRows(rows){
+    const norm = v => String(v ?? '').replace(/\s+/g,'').trim();
+    let hIdx = rows.findIndex((r,i)=> i<10 && r.some(c=>/姓名|名字/.test(norm(c))));
+    let col = {pos:-1, name:1, gender:2, id:3};
+    let start = 0;
+    if(hIdx >= 0){
+      const h = rows[hIdx].map(norm);
+      const find = re => h.findIndex(c=>re.test(c));
+      col = {
+        name: find(/姓名|名字/),
+        id: find(/個案編號|個案號|案號|身分證|身份證|編號/),
+        gender: find(/性別/),
+        pos: find(/^(位置|序號|項次|序|No\.?|NO\.?)$/)
+      };
+      // 「編號」若同時被當成位置與個案編號，優先當個案編號
+      start = hIdx + 1;
+    } else if((rows[0]||[]).length < 4){
+      col = {pos:-1, name:0, gender:1, id:2};
+    } else {
+      col = {pos:0, name:1, gender:2, id:3};
+    }
+    const out = [];
+    for(let i=start;i<rows.length;i++){
+      const r = rows[i];
+      const name = norm(col.name>=0 ? r[col.name] : '');
+      if(!name) continue;
+      const g = col.gender>=0 ? norm(r[col.gender]) : '';
+      out.push({
+        pos: col.pos>=0 ? (Number(r[col.pos])||0) : 0,
+        name,
+        id: col.id>=0 ? norm(r[col.id]) : '',
+        gender: g.includes('男') ? '男' : '女'
+      });
+    }
+    return out;
+  }
+  async function importRosterFile(file){
+    try{
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, {type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:''});
+      const list = parseRosterRows(rows);
+      if(!list.length){ setImportMsg('沒有讀到任何個案，請確認第一列有「姓名」標題。','err'); return; }
+      const replace = $('importMode').value === 'replace';
+      if(replace && state.roster.length && !confirm(`將以檔案內的 ${list.length} 人取代目前 ${state.roster.length} 人的清冊，確定嗎？\n（已抽出的日期若含已不存在的位置，將不再顯示該人）`)) return;
+      const base = replace ? [] : state.roster.slice();
+      const used = new Set(base.map(p=>p.pos));
+      let next = base.length ? Math.max(...base.map(p=>p.pos)) + 1 : 1;
+      let fixed = 0;
+      list.forEach(p=>{
+        if(!p.pos || used.has(p.pos)){
+          if(p.pos) fixed++;
+          while(used.has(next)) next++;
+          p.pos = next;
+        }
+        used.add(p.pos);
+        base.push(p);
+      });
+      base.sort((a,b)=>a.pos-b.pos);
+      state.roster = base;
+      renderRosterTable(); persistRoster(); renderDays();
+      setImportMsg(`已匯入 ${list.length} 人（${replace?'取代':'附加'}）` + (fixed?`，其中 ${fixed} 筆位置重複已自動改號`:'') + `，目前共 ${state.roster.length} 人。`, 'ok');
+    }catch(err){
+      setImportMsg('匯入失敗：' + (err && err.message ? err.message : err), 'err');
+    }
+  }
+  $('importRosterBtn').addEventListener('click', ()=>$('rosterFile').click());
+  $('rosterFile').addEventListener('change', async e=>{
+    const f = e.target.files[0];
+    e.target.value = '';
+    if(f) await importRosterFile(f);
+  });
+  $('rosterTemplateBtn').addEventListener('click', ()=>{
+    const aoa = [['位置','姓名','性別','個案編號'], [1,'王小明','男','114000001'], [2,'陳小美','女','114000002']];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), '個案清冊');
+    XLSX.writeFile(wb, '個案清冊匯入範本.xlsx');
+  });
+
+  // ---------- persistence ----------
+  let daysTimer=null;
+  function persistDays(){ clearTimeout(daysTimer); daysTimer = setTimeout(()=>{ storageSet('drawdays:岱江里', JSON.stringify(state.days)); }, 400); }
+  function persistCollapsed(){ storageSet('drawcollapsed:岱江里', JSON.stringify([...collapsedDays])); }
+  function persistSettings(){
+    storageSet('settings:draw', JSON.stringify({amCount:$('amCount').value, pmCount:$('pmCount').value, noOverlap:$('noOverlap').checked}));
+  }
+  function persistTimes(){
+    storageSet('settings:times', JSON.stringify({amStart:amStart.value, amEnd:amEnd.value, pmStart:pmStart.value, pmEnd:pmEnd.value}));
+  }
+
+  // ---------- 隨機抽選 ----------
+  function draw(n, excludePos){
+    const pool = state.roster.filter(p=>p.name && !excludePos.has(p.pos));
+    for(let i=pool.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [pool[i],pool[j]] = [pool[j],pool[i]];
+    }
+    return pool.slice(0, Math.max(0,n))
+      .sort((a,b)=>rosterIdx(a.pos)-rosterIdx(b.pos))      // 依清冊順序排列
+      .map(p=>({pos:p.pos, on:true}));
+  }
+  const countOf = id => Math.max(0, parseInt($(id).value,10) || 0);
+  const posSet = list => new Set((list||[]).map(x=>x.pos));
+  function drawSlot(slot, day){
+    const other = slot==='am' ? day.pm : day.am;
+    const ex = $('noOverlap').checked ? posSet(other) : new Set();
+    return draw(countOf(slot==='am'?'amCount':'pmCount'), ex);
+  }
+  function drawDay(){
+    const day = {am:[], pm:[]};
+    day.am = drawSlot('am', day);
+    day.pm = drawSlot('pm', day);
+    return day;
+  }
+
+  // ---------- days UI ----------
+  function activePicks(day, slot){ return day[slot].filter(x=>x.on && byPos(x.pos)); }
+  function daySummary(day){ return `上午 ${activePicks(day,'am').length} 人　下午 ${activePicks(day,'pm').length} 人`; }
+  function updateTotals(){
+    const keys = Object.keys(state.days);
+    let a=0,p=0; keys.forEach(k=>{ a+=activePicks(state.days[k],'am').length; p+=activePicks(state.days[k],'pm').length; });
+    $('totals').textContent = keys.length ? `共 ${keys.length} 天，已勾選上午 ${a} 人次、下午 ${p} 人次` : '';
+  }
+  function slotHTML(iso, slot, label, day){
+    const list = day[slot].filter(x=>byPos(x.pos));
+    let h = `<div><div class="slot-title"><div class="zone-label">${label}問安名單（${activePicks(day,slot).length} 人）</div>
+      <button class="link reroll" data-slot="${slot}">重新抽選</button></div>`;
+    if(!list.length){ h += `<div class="empty-note" style="padding:6px 0">（未抽選，略過）</div></div>`; return h; }
+    h += `<table><thead><tr><th style="width:30px"></th><th style="width:44px">位置</th><th>姓名</th><th style="width:50px">性別</th><th style="width:110px">個案編號</th></tr></thead><tbody>`;
+    list.forEach(x=>{
+      const p = byPos(x.pos);
+      h += `<tr class="absent"><td><input type="checkbox" class="pick" data-slot="${slot}" data-pos="${x.pos}" ${x.on?'checked':''}></td>
+        <td>${p.pos}</td><td>${p.name}</td><td>${p.gender||''}</td>
+        <td>${p.id || '<span style="color:#A93A2C">缺編號</span>'}</td></tr>`;
+    });
+    return h + `</tbody></table></div>`;
+  }
+  function setCollapsed(card, iso, flag){
+    card.classList.toggle('collapsed', flag);
+    card.querySelector('.day-head').setAttribute('aria-expanded', String(!flag));
+    if(flag) collapsedDays.add(iso); else collapsedDays.delete(iso);
+  }
+  function renderDays(){
+    const box = $('daysContainer');
+    box.innerHTML = '';
+    const keys = Object.keys(state.days).sort();
+    if(!keys.length){
+      box.innerHTML = '<div class="empty-note">尚未新增日期。請在上方選擇日期後按「新增日期」。</div>';
+      updateTotals(); return;
+    }
+    keys.forEach(iso=>{
+      const day = state.days[iso];
+      const card = document.createElement('div');
+      card.className = 'day-card'; card.dataset.iso = iso;
+      card.innerHTML = `
+        <div class="day-head" role="button" tabindex="0" aria-expanded="true" title="點擊收合／展開">
+          <div class="day-title"><span class="chev">▾</span>${dayLabel(iso)}<small>${iso}</small></div>
+          <span class="day-sum">${daySummary(day)}</span>
+          <button class="link reroll-day">重新抽選此日</button>
+          <button class="link del-day">移除此日</button>
+        </div>
+        <div class="two-col slots">${slotHTML(iso,'am','上午',day)}${slotHTML(iso,'pm','下午',day)}</div>`;
+      const head = card.querySelector('.day-head');
+      head.addEventListener('click', ev=>{
+        if(ev.target.closest('button')) return;
+        setCollapsed(card, iso, !card.classList.contains('collapsed')); persistCollapsed();
+      });
+      head.addEventListener('keydown', ev=>{
+        if(ev.target!==head) return;
+        if(ev.key==='Enter' || ev.key===' '){ ev.preventDefault(); head.click(); }
+      });
+      card.querySelector('.del-day').addEventListener('click', ()=>{
+        collapsedDays.delete(iso); persistCollapsed();
+        delete state.days[iso]; renderDays(); persistDays();
+      });
+      card.querySelector('.reroll-day').addEventListener('click', ()=>{
+        state.days[iso] = drawDay(); renderDays(); persistDays();
+      });
+      card.querySelectorAll('.reroll').forEach(b=>b.addEventListener('click', ()=>{
+        day[b.dataset.slot] = drawSlot(b.dataset.slot, day); renderDays(); persistDays();
+      }));
+      card.querySelectorAll('.pick').forEach(c=>c.addEventListener('change', ()=>{
+        const it = day[c.dataset.slot].find(x=>x.pos===Number(c.dataset.pos));
+        if(it){ it.on = c.checked; }
+        card.querySelector('.day-sum').textContent = daySummary(day);
+        card.querySelectorAll('.zone-label').forEach((el,i)=>{
+          const slot = i===0?'am':'pm';
+          el.textContent = `${slot==='am'?'上午':'下午'}問安名單（${activePicks(day,slot).length} 人）`;
+        });
+        updateTotals(); persistDays();
+      }));
+      setCollapsed(card, iso, collapsedDays.has(iso));
+      box.appendChild(card);
+    });
+    updateTotals();
+  }
+
+  function addDay(v, status){
+    if(!v){ status.textContent='請先選擇日期'; status.className='status err'; return; }
+    if(state.days[v]){ status.textContent=`${dayLabel(v)} 已在清單中`; status.className='status err'; return; }
+    if(!state.roster.some(p=>p.name)){ status.textContent='個案清冊是空的，無法抽選'; status.className='status err'; return; }
+    state.days[v] = drawDay();
+    const need = countOf('amCount') + countOf('pmCount');
+    const named = state.roster.filter(p=>p.name).length;
+    status.textContent = `已新增 ${dayLabel(v)}` + (Math.max(countOf('amCount'),countOf('pmCount'))>named ? `（清冊僅 ${named} 人，人數不足的時段已盡量抽滿）` : '');
+    status.className = 'status ok';
+    const next = parseISO(v); next.setDate(next.getDate()+1);
+    $('newDate').value = toISO(next);
+    renderDays(); persistDays();
+  }
+  $('addDayBtn').addEventListener('click', ()=>addDay($('newDate').value, $('addDayStatus')));
+  $('rerollAllBtn').addEventListener('click', ()=>{
+    if(!Object.keys(state.days).length) return;
+    if(!confirm('要重新抽選所有日期嗎？目前的名單與勾選都會被取代。')) return;
+    Object.keys(state.days).forEach(k=>{ state.days[k] = drawDay(); });
+    renderDays(); persistDays();
+  });
+  function setAllCollapsed(flag){
+    document.querySelectorAll('.day-card').forEach(c=>setCollapsed(c, c.dataset.iso, flag));
+    persistCollapsed();
+  }
+  $('collapseAllBtn').addEventListener('click', ()=>setAllCollapsed(true));
+  $('expandAllBtn').addEventListener('click', ()=>setAllCollapsed(false));
+  $('clearDaysBtn').addEventListener('click', ()=>{
+    if(!Object.keys(state.days).length) return;
+    if(confirm('要清除全部日期嗎？')){
+      state.days = {}; collapsedDays.clear(); persistCollapsed();
+      renderDays(); persistDays(); $('addDayStatus').textContent='';
+    }
+  });
+
+  // ---------- xlsx（規則與原工具相同） ----------
+  function pickMinutes(startStr, endStr, n){
+    const [sh, sm] = startStr.split(':').map(Number);
+    const [eh, em] = endStr.split(':').map(Number);
+    let s = sh*60+sm, e = eh*60+em;
+    if(e < s) e = s;
+    const pool = [];
+    for(let m=s; m<=e; m++) pool.push(m);
+    for(let i=pool.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [pool[i],pool[j]] = [pool[j],pool[i]];
+    }
+    return pool.slice(0,n).sort((a,b)=>a-b);
+  }
+  function minuteToHMS(m){ return pad(Math.floor(m/60))+':'+pad(m%60)+':00'; }
+
+  $('generateBtn').addEventListener('click', ()=>{
+    const status = $('generateStatus');
+    const keys = Object.keys(state.days).sort();
+    if(!keys.length){ status.textContent='請先新增日期'; status.className='status err'; return; }
+
+    const header = ['個案編號','個案姓名','性別','電訪日期','接聽情形','其他','口頭表達','其他','健康情況','其他','生活狀況','其他','親友互動','其他','精神狀況','其他','備註'];
+    const aoa = [header];
+    let count = 0;
+    const overflow = [];
+
+    keys.forEach(iso=>{
+      const roc = toROCDate(iso);
+      [['am',amStart.value,amEnd.value,'上午'],['pm',pmStart.value,pmEnd.value,'下午']].forEach(([slot,st,en,label])=>{
+        const rows = activePicks(state.days[iso], slot).map(x=>byPos(x.pos))
+          .sort((a,b)=>rosterIdx(a.pos)-rosterIdx(b.pos));
+        if(!rows.length) return;
+        const [sh,sm]=st.split(':').map(Number), [eh,em]=en.split(':').map(Number);
+        const avail = Math.max(0,(eh*60+em)-(sh*60+sm))+1;
+        if(rows.length > avail) overflow.push(`${dayLabel(iso)}${label}`);
+        const mins = pickMinutes(st, en, Math.min(rows.length, avail));
+        rows.forEach((p,i)=>{
+          const t = minuteToHMS(mins[Math.min(i, mins.length-1)]);
+          const row = [p.id||'', p.name, p.gender||'', roc+' '+t];
+          for(let k=0;k<6;k++){ row.push(Math.random()<0.5?1:2); row.push(''); }
+          row.push('');
+          aoa.push(row); count++;
+        });
+      });
+    });
+
+    if(!count){ status.textContent='沒有任何要輸出的資料'; status.className='status err'; return; }
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{wch:14},{wch:10},{wch:6},{wch:20},{wch:9},{wch:6},{wch:9},{wch:6},{wch:9},{wch:6},{wch:9},{wch:6},{wch:9},{wch:6},{wch:9},{wch:6},{wch:10}];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '工作表1');
+
+    const first = keys[0], last = keys[keys.length-1];
+    const sameMonth = first.slice(0,7) === last.slice(0,7);
+    const tag = sameMonth ? first.slice(0,7).replace('-','') : first.replace(/-/g,'')+'-'+last.replace(/-/g,'');
+    const fname = `電話問安資料匯入範本_${tag}.xlsx`;
+    XLSX.writeFile(wb, fname);
+
+    let msg = `已產生 ${fname}（${keys.length} 天，共 ${count} 筆）`;
+    if(overflow.length) msg += `；注意：${overflow.join('、')} 人數超過時段內可用分鐘數，部分時間重複`;
+    status.textContent = msg;
+    status.className = overflow.length ? 'status err' : 'status ok';
+  });
+
+  // ---------- init ----------
+  async function init(){
+    $('newDate').value = toISO(new Date());
+    state.roster = await loadJSON('roster:岱江里', JSON.parse(JSON.stringify(DEFAULT_ROSTER)));
+    state.days = await loadJSON('drawdays:岱江里', {});
+    (await loadJSON('drawcollapsed:岱江里', [])).forEach(k=>collapsedDays.add(k));
+    const t = await loadJSON('settings:times', null);
+    if(t){ amStart.value=t.amStart||amStart.value; amEnd.value=t.amEnd||amEnd.value; pmStart.value=t.pmStart||pmStart.value; pmEnd.value=t.pmEnd||pmEnd.value; }
+    const d = await loadJSON('settings:draw', null);
+    if(d){ $('amCount').value = d.amCount ?? 6; $('pmCount').value = d.pmCount ?? 15; $('noOverlap').checked = !!d.noOverlap; }
+    [amStart,amEnd,pmStart,pmEnd].forEach(el=>el.addEventListener('change', persistTimes));
+    ['amCount','pmCount','noOverlap'].forEach(id=>$(id).addEventListener('change', persistSettings));
+    renderRosterTable();
+    renderDays();
+  }
+  init();
+})();
+</script>
+</body>
+</html>
