@@ -129,7 +129,7 @@
         <summary>檢視／編輯個案清冊（<span id="rosterCount">0</span> 人，抽選來源）</summary>
         <div class="roster-grid">
           <table>
-            <thead><tr><th style="width:50px">位置</th><th>姓名</th><th style="width:60px">性別</th><th style="width:150px">個案編號</th><th style="width:40px"></th></tr></thead>
+            <thead><tr><th>姓名</th><th style="width:60px">性別</th><th style="width:150px">個案編號</th><th style="width:40px"></th></tr></thead>
             <tbody id="rosterBody"></tbody>
           </table>
         </div>
@@ -144,7 +144,7 @@
           <input type="file" id="rosterFile" accept=".xlsx,.xls,.csv" style="display:none">
           <span class="status" id="rosterSaveStatus" style="margin:0"></span>
         </div>
-        <div class="helptext" id="importMsg">可匯入 .xlsx／.xls／.csv。第一列請有標題：位置（可省略）、姓名、性別、個案編號。</div>
+        <div class="helptext" id="importMsg">可匯入 .xlsx／.xls／.csv。只讀取「個案姓名」「個案性別」「個案編號」三欄（欄位標題需存在），其他欄位一律忽略。</div>
       </details>
     </div>
   </section>
@@ -243,14 +243,12 @@
     state.roster.forEach((p, idx)=>{
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><input type="text" class="r-pos" value="${p.pos}" style="width:44px"></td>
         <td><input type="text" class="r-name" value="${p.name}" style="width:110px"></td>
         <td><select class="r-gender" style="width:56px">
           <option value="女" ${p.gender==='女'?'selected':''}>女</option>
           <option value="男" ${p.gender==='男'?'selected':''}>男</option></select></td>
         <td><input type="text" class="r-id id-edit" value="${p.id||''}" placeholder="個案編號"></td>
         <td><button class="link r-del" title="刪除">✕</button></td>`;
-      tr.querySelector('.r-pos').addEventListener('change', e=>{ state.roster[idx].pos = Number(e.target.value)||p.pos; persistRoster(); });
       tr.querySelector('.r-name').addEventListener('change', e=>{ state.roster[idx].name = e.target.value.trim(); persistRoster(); });
       tr.querySelector('.r-gender').addEventListener('change', e=>{ state.roster[idx].gender = e.target.value; persistRoster(); });
       tr.querySelector('.r-id').addEventListener('change', e=>{ state.roster[idx].id = e.target.value.trim(); persistRoster(); });
@@ -280,7 +278,7 @@
   function parseRosterRows(rows){
     const norm = v => String(v ?? '').replace(/\s+/g,'').trim();
     let hIdx = rows.findIndex((r,i)=> i<10 && r.some(c=>/姓名|名字/.test(norm(c))));
-    let col = {pos:-1, name:1, gender:2, id:3};
+    let col = {name:1, gender:2, id:3};
     let start = 0;
     if(hIdx >= 0){
       const h = rows[hIdx].map(norm);
@@ -288,15 +286,13 @@
       col = {
         name: find(/姓名|名字/),
         id: find(/個案編號|個案號|案號|身分證|身份證|編號/),
-        gender: find(/性別/),
-        pos: find(/^(位置|序號|項次|序|No\.?|NO\.?)$/)
+        gender: find(/性別/)
       };
-      // 「編號」若同時被當成位置與個案編號，優先當個案編號
       start = hIdx + 1;
     } else if((rows[0]||[]).length < 4){
-      col = {pos:-1, name:0, gender:1, id:2};
+      col = {name:0, gender:1, id:2};
     } else {
-      col = {pos:0, name:1, gender:2, id:3};
+      col = {name:1, gender:2, id:3};
     }
     const out = [];
     for(let i=start;i<rows.length;i++){
@@ -305,7 +301,7 @@
       if(!name) continue;
       const g = col.gender>=0 ? norm(r[col.gender]) : '';
       out.push({
-        pos: col.pos>=0 ? (Number(r[col.pos])||0) : 0,
+        pos: 0,
         name,
         id: col.id>=0 ? norm(r[col.id]) : '',
         gender: g.includes('男') ? '男' : '女'
@@ -313,33 +309,33 @@
     }
     return out;
   }
+  function fixSheetRange(ws){
+    let r1=Infinity,c1=Infinity,r2=-1,c2=-1;
+    Object.keys(ws).forEach(k=>{
+      if(k[0]==='!') return;
+      const a = XLSX.utils.decode_cell(k);
+      if(a.r<r1) r1=a.r; if(a.c<c1) c1=a.c; if(a.r>r2) r2=a.r; if(a.c>c2) c2=a.c;
+    });
+    if(r2>=0) ws['!ref'] = XLSX.utils.encode_range({s:{r:r1,c:c1}, e:{r:r2,c:c2}});
+  }
   async function importRosterFile(file){
     try{
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, {type:'array'});
       const ws = wb.Sheets[wb.SheetNames[0]];
+      fixSheetRange(ws);   // 部分系統匯出的檔案範圍宣告不正確，改依實際儲存格重算
       const rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:''});
       const list = parseRosterRows(rows);
       if(!list.length){ setImportMsg('沒有讀到任何個案，請確認第一列有「姓名」標題。','err'); return; }
       const replace = $('importMode').value === 'replace';
-      if(replace && state.roster.length && !confirm(`將以檔案內的 ${list.length} 人取代目前 ${state.roster.length} 人的清冊，確定嗎？\n（已抽出的日期若含已不存在的位置，將不再顯示該人）`)) return;
+      if(replace && state.roster.length && !confirm(`將以檔案內的 ${list.length} 人取代目前 ${state.roster.length} 人的清冊，確定嗎？\n（已抽出的日期名單會一併清除）`)) return;
       const base = replace ? [] : state.roster.slice();
-      const used = new Set(base.map(p=>p.pos));
       let next = base.length ? Math.max(...base.map(p=>p.pos)) + 1 : 1;
-      let fixed = 0;
-      list.forEach(p=>{
-        if(!p.pos || used.has(p.pos)){
-          if(p.pos) fixed++;
-          while(used.has(next)) next++;
-          p.pos = next;
-        }
-        used.add(p.pos);
-        base.push(p);
-      });
-      base.sort((a,b)=>a.pos-b.pos);
+      list.forEach(p=>{ p.pos = next++; base.push(p); });   // pos 僅為內部識別碼，不顯示
       state.roster = base;
+      if(replace){ state.days = {}; collapsedDays.clear(); persistCollapsed(); persistDays(); }
       renderRosterTable(); persistRoster(); renderDays();
-      setImportMsg(`已匯入 ${list.length} 人（${replace?'取代':'附加'}）` + (fixed?`，其中 ${fixed} 筆位置重複已自動改號`:'') + `，目前共 ${state.roster.length} 人。`, 'ok');
+      setImportMsg(`已匯入 ${list.length} 人（${replace?'取代':'附加'}）` + `，目前共 ${state.roster.length} 人。`, 'ok');
     }catch(err){
       setImportMsg('匯入失敗：' + (err && err.message ? err.message : err), 'err');
     }
@@ -351,7 +347,7 @@
     if(f) await importRosterFile(f);
   });
   $('rosterTemplateBtn').addEventListener('click', ()=>{
-    const aoa = [['位置','姓名','性別','個案編號'], [1,'王小明','男','114000001'], [2,'陳小美','女','114000002']];
+    const aoa = [['個案姓名','個案性別','個案編號'], ['王小明','男','114000001'], ['陳小美','女','114000002']];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), '個案清冊');
     XLSX.writeFile(wb, '個案清冊匯入範本.xlsx');
@@ -406,11 +402,11 @@
     let h = `<div><div class="slot-title"><div class="zone-label">${label}問安名單（${activePicks(day,slot).length} 人）</div>
       <button class="link reroll" data-slot="${slot}">重新抽選</button></div>`;
     if(!list.length){ h += `<div class="empty-note" style="padding:6px 0">（未抽選，略過）</div></div>`; return h; }
-    h += `<table><thead><tr><th style="width:30px"></th><th style="width:44px">位置</th><th>姓名</th><th style="width:50px">性別</th><th style="width:110px">個案編號</th></tr></thead><tbody>`;
+    h += `<table><thead><tr><th style="width:30px"></th><th>姓名</th><th style="width:50px">性別</th><th style="width:110px">個案編號</th></tr></thead><tbody>`;
     list.forEach(x=>{
       const p = byPos(x.pos);
       h += `<tr class="absent"><td><input type="checkbox" class="pick" data-slot="${slot}" data-pos="${x.pos}" ${x.on?'checked':''}></td>
-        <td>${p.pos}</td><td>${p.name}</td><td>${p.gender||''}</td>
+        <td>${p.name}</td><td>${p.gender||''}</td>
         <td>${p.id || '<span style="color:#A93A2C">缺編號</span>'}</td></tr>`;
     });
     return h + `</tbody></table></div>`;
