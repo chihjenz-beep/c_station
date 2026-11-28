@@ -5394,11 +5394,29 @@ function importM3XLSX(){
     if(!sheet.length){ alert('這個檔案裡找不到「排班」工作表，請確認是用「匯出排班 Excel」產生的檔案。'); return; }
     const nameToStaffId = {}; staff.forEach(s=>{ nameToStaffId[s.name]=s.id; });
     const nameToSiteId = {}; sites.forEach(s=>{ nameToSiteId[s.name]=s.id; });
+    // 地點名稱容錯：完全相同 → 去掉結尾「里／村」後相同（唯一）→ 名稱互相包含（唯一，例如「藥局」對「平安藥局」）
+    const stripLV = n=>String(n).replace(/[里村]$/,'');
+    const siteCache = {};
+    const resolveSite = name=>{
+      if(name in siteCache) return siteCache[name];
+      let id = nameToSiteId[name];
+      if(!id){
+        let c = sites.filter(x=>stripLV(x.name)===stripLV(name));
+        if(c.length>1 && !/[里村]$/.test(name)){ const li = c.filter(x=>x.name.endsWith('里')); if(li.length===1) c = li; }   // 「興中」同時有興中里、興中村時，不帶字尾的視為「里」
+        if(c.length!==1 && name.length>=2) c = sites.filter(x=>x.name.includes(name) || name.includes(x.name));
+        id = c.length===1 ? c[0].id : undefined;
+      }
+      return (siteCache[name] = id);
+    };
+    const unknownStaff = {}, unknownSite = {};
     let added=0, skippedDup=0, skippedBad=0, skippedLocked=0, skippedType=0;
     sheet.forEach(row=>{
       const date = String(row['日期']||'').trim();
-      const staffId = nameToStaffId[String(row['員工']||'').trim()];
-      const site = nameToSiteId[String(row['地點']||'').trim()];
+      const staffName = String(row['員工']||'').trim(), siteName = String(row['地點']||'').trim();
+      const staffId = nameToStaffId[staffName];
+      const site = resolveSite(siteName);
+      if(staffName && !staffId) unknownStaff[staffName] = (unknownStaff[staffName]||0) + 1;
+      if(siteName && !site) unknownSite[siteName] = (unknownSite[siteName]||0) + 1;
       const start = String(row['開始']||'').trim();
       const end = String(row['結束']||'').trim();
       const status = String(row['狀態']||'').trim()==='已發布' ? 'published' : 'draft';
@@ -5412,7 +5430,9 @@ function importM3XLSX(){
       schedule[date].push({ staffId, site, start, end, status });
       added++;
     });
-    if(!confirm(`即將套用匯入結果：新增 ${added} 筆${skippedDup?`、略過 ${skippedDup} 筆重複`:''}${skippedBad?`、略過 ${skippedBad} 筆欄位有誤（找不到同名人員/地點、或時間顛倒）`:''}${skippedLocked?`、略過 ${skippedLocked} 筆過去月份（已鎖定）`:''}${skippedType?`、略過 ${skippedType} 筆上班類型與地點不符`:''}。\n匯入只會「新增」，不會刪除或覆蓋既有排班。確定要套用嗎？`)) return;
+    const unkTxt = [Object.keys(unknownStaff).length ? `找不到的人員：${Object.entries(unknownStaff).map(([k,v])=>k+'×'+v).join('、')}` : '',
+                    Object.keys(unknownSite).length ? `找不到的地點：${Object.entries(unknownSite).map(([k,v])=>k+'×'+v).join('、')}（請先到 M1 新增這些地點，再重新匯入；已匯入的不會重複）` : ''].filter(Boolean).join('\n');
+    if(!confirm((unkTxt ? unkTxt + '\n\n' : '') + `即將套用匯入結果：新增 ${added} 筆${skippedDup?`、略過 ${skippedDup} 筆重複`:''}${skippedBad?`、略過 ${skippedBad} 筆欄位有誤（找不到同名人員/地點、或時間顛倒）`:''}${skippedLocked?`、略過 ${skippedLocked} 筆過去月份（已鎖定）`:''}${skippedType?`、略過 ${skippedType} 筆上班類型與地點不符`:''}。\n匯入只會「新增」，不會刪除或覆蓋既有排班。確定要套用嗎？`)) return;
     saveStore(STORE_KEYS.schedule, schedule);
     renderAllAfterSync();
     alert('✅ 匯入完成');
